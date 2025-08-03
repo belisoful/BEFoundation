@@ -6,8 +6,8 @@
 
 ##  Framework Library Downloads
 
- - [BEFramework.zip v1.0.0 (Universal: arm64 x86_64)](https://github.com/belisoful/BEFoundation/blob/main/Framework%20Release%20v1.0.0/BEFoundation%20Universal%20(arm64%2C%20x86_64)/BEFoundation.framework.zip)
- - [BEFramework.zip v1.0.0 (arm64)](https://github.com/belisoful/BEFoundation/blob/main/Framework%20Release%20v1.0.0/BEFoundation%20(arm64)/BEFoundation.framework.zip)
+ - [BEFoundation.framework.zip v1.0.0 (Universal: arm64 x86_64)](https://github.com/belisoful/BEFoundation/blob/main/Framework%20Release%20v1.0.0/BEFoundation%20Universal%20(arm64%2C%20x86_64)/BEFoundation.framework.zip)
+ - [BEFoundation.framework.zip v1.0.0 (arm64)](https://github.com/belisoful/BEFoundation/blob/main/Framework%20Release%20v1.0.0/BEFoundation%20(arm64)/BEFoundation.framework.zip)
 
 ---
 
