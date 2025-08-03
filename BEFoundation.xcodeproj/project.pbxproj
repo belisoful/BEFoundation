@@ -1,0 +1,817 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		CE85BAA12E152E1700AADE8F /* Accelerate.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CE85BA9F2E152D7F00AADE8F /* Accelerate.framework */; };
+		CE8E41322E3CAD940041A7BD /* BEObjectRegistry.h in Headers */ = {isa = PBXBuildFile; fileRef = CE8E40FC2E3CAD940041A7BD /* BEObjectRegistry.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		CE8E41332E3CAD940041A7BD /* NSDateFormatterRFC3339.h in Headers */ = {isa = PBXBuildFile; fileRef = CE8E41162E3CAD940041A7BD /* NSDateFormatterRFC3339.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		CE8E41342E3CAD940041A7BD /* BEMetalHelper.h in Headers */ = {isa = PBXBuildFile; fileRef = CE8E40F82E3CAD940041A7BD /* BEMetalHelper.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		CE8E41352E3CAD940041A7BD /* NSOrderedSet+BExtension.h in Headers */ = {isa = PBXBuildFile; fileRef = CE8E412B2E3CAD940041A7BD /* NSOrderedSet+BExtension.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		CE8E41362E3CAD940041A7BD /* NSCoder+AtIndex.h in Headers */ = {isa = PBXBuildFile; fileRef = CE8E41122E3CAD940041A7BD /* NSCoder+AtIndex.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		CE8E41372E3CAD940041A7BD /* NSPooledPriorityNotification.h in Headers */ = {isa = PBXBuildFile; fileRef = CE8E40EB2E3CAD940041A7BD /* NSPooledPriorityNotification.h */; };
+		CE8E41382E3CAD940041A7BD /* NSNumber+BExtension.h in Headers */ = {isa = PBXBuildFile; fileRef = CE8E41202E3CAD940041A7BD /* NSNumber+BExtension.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		CE8E41392E3CAD940041A7BD /* BEPathWatcher.h in Headers */ = {isa = PBXBuildFile; fileRef = CE8E40FE2E3CAD940041A7BD /* BEPathWatcher.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		CE8E413A2E3CAD940041A7BD /* BERuntime.h in Headers */ = {isa = PBXBuildFile; fileRef = CE8E41042E3CAD940041A7BD /* BERuntime.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		CE8E413B2E3CAD940041A7BD /* NSObject+GlobalRegistry.h in Headers */ = {isa = PBXBuildFile; fileRef = CE8E41292E3CAD940041A7BD /* NSObject+GlobalRegistry.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		CE8E413C2E3CAD940041A7BD /* BEFoundation-Bridging-Swift.h in Headers */ = {isa = PBXBuildFile; fileRef = CE8E40F72E3CAD940041A7BD /* BEFoundation-Bridging-Swift.h */; };
+		CE8E413D2E3CAD940041A7BD /* NSObject+DynamicMethodsHelpers.h in Headers */ = {isa = PBXBuildFile; fileRef = CE8E41272E3CAD940041A7BD /* NSObject+DynamicMethodsHelpers.h */; };
+		CE8E413E2E3CAD940041A7BD /* NSMutableNumber.hpp in Headers */ = {isa = PBXBuildFile; fileRef = CE8E411D2E3CAD940041A7BD /* NSMutableNumber.hpp */; };
+		CE8E413F2E3CAD940041A7BD /* NSDictionary+BExtension.h in Headers */ = {isa = PBXBuildFile; fileRef = CE8E41182E3CAD940041A7BD /* NSDictionary+BExtension.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		CE8E41402E3CAD940041A7BD /* NSArray+BExtension.h in Headers */ = {isa = PBXBuildFile; fileRef = CE8E41102E3CAD940041A7BD /* NSArray+BExtension.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		CE8E41412E3CAD940041A7BD /* NSCoder+HalfFloat.h in Headers */ = {isa = PBXBuildFile; fileRef = CE8E41142E3CAD940041A7BD /* NSCoder+HalfFloat.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		CE8E41422E3CAD940041A7BD /* NSSet+BExtension.h in Headers */ = {isa = PBXBuildFile; fileRef = CE8E412D2E3CAD940041A7BD /* NSSet+BExtension.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		CE8E41432E3CAD940041A7BD /* BESingleton.h in Headers */ = {isa = PBXBuildFile; fileRef = CE8E41062E3CAD940041A7BD /* BESingleton.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		CE8E41442E3CAD940041A7BD /* NSMutableNumber.h in Headers */ = {isa = PBXBuildFile; fileRef = CE8E411C2E3CAD940041A7BD /* NSMutableNumber.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		CE8E41452E3CAD940041A7BD /* BEMutable.h in Headers */ = {isa = PBXBuildFile; fileRef = CE8E40FA2E3CAD940041A7BD /* BEMutable.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		CE8E41462E3CAD940041A7BD /* NSNotification+MutableUserInfo.h in Headers */ = {isa = PBXBuildFile; fileRef = CE8E40E92E3CAD940041A7BD /* NSNotification+MutableUserInfo.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		CE8E41472E3CAD940041A7BD /* BE_ARC.h in Headers */ = {isa = PBXBuildFile; fileRef = CE8E40F22E3CAD940041A7BD /* BE_ARC.h */; };
+		CE8E41482E3CAD940041A7BD /* NSNumber+Primes16b.h in Headers */ = {isa = PBXBuildFile; fileRef = CE8E41232E3CAD940041A7BD /* NSNumber+Primes16b.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		CE8E41492E3CAD940041A7BD /* BEPriorityExtensions.h in Headers */ = {isa = PBXBuildFile; fileRef = CE8E41022E3CAD940041A7BD /* BEPriorityExtensions.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		CE8E414A2E3CAD940041A7BD /* BECharacterSet.h in Headers */ = {isa = PBXBuildFile; fileRef = CE8E40F32E3CAD940041A7BD /* BECharacterSet.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		CE8E414B2E3CAD940041A7BD /* FxTime.h in Headers */ = {isa = PBXBuildFile; fileRef = CE8E410C2E3CAD940041A7BD /* FxTime.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		CE8E414C2E3CAD940041A7BD /* NSMethodSignature+BlockSignatures.h in Headers */ = {isa = PBXBuildFile; fileRef = CE8E411A2E3CAD940041A7BD /* NSMethodSignature+BlockSignatures.h */; };
+		CE8E414D2E3CAD940041A7BD /* NSPriorityNotification.h in Headers */ = {isa = PBXBuildFile; fileRef = CE8E40ED2E3CAD940041A7BD /* NSPriorityNotification.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		CE8E414E2E3CAD940041A7BD /* BEFoundation.h in Headers */ = {isa = PBXBuildFile; fileRef = CE8E40F52E3CAD940041A7BD /* BEFoundation.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		CE8E414F2E3CAD940041A7BD /* BEStackExtensions.h in Headers */ = {isa = PBXBuildFile; fileRef = CE8E41082E3CAD940041A7BD /* BEStackExtensions.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		CE8E41502E3CAD940041A7BD /* NSObject+DynamicMethods.h in Headers */ = {isa = PBXBuildFile; fileRef = CE8E41252E3CAD940041A7BD /* NSObject+DynamicMethods.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		CE8E41512E3CAD940041A7BD /* BEPredicateRule.h in Headers */ = {isa = PBXBuildFile; fileRef = CE8E41002E3CAD940041A7BD /* BEPredicateRule.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		CE8E41522E3CAD940041A7BD /* NSPriorityNotificationCenter.h in Headers */ = {isa = PBXBuildFile; fileRef = CE8E40EF2E3CAD940041A7BD /* NSPriorityNotificationCenter.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		CE8E41532E3CAD940041A7BD /* NSString+BExtension.h in Headers */ = {isa = PBXBuildFile; fileRef = CE8E412F2E3CAD940041A7BD /* NSString+BExtension.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		CE8E41542E3CAD940041A7BD /* CIImage+BExtension.h in Headers */ = {isa = PBXBuildFile; fileRef = CE8E410A2E3CAD940041A7BD /* CIImage+BExtension.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		CE8E41562E3CAD940041A7BD /* BEFoundation.docc in Sources */ = {isa = PBXBuildFile; fileRef = CE8E40F62E3CAD940041A7BD /* BEFoundation.docc */; };
+		CE8E41572E3CAD940041A7BD /* NSPooledPriorityNotification.m in Sources */ = {isa = PBXBuildFile; fileRef = CE8E40EC2E3CAD940041A7BD /* NSPooledPriorityNotification.m */; };
+		CE8E41582E3CAD940041A7BD /* BERuntime.m in Sources */ = {isa = PBXBuildFile; fileRef = CE8E41052E3CAD940041A7BD /* BERuntime.m */; };
+		CE8E41592E3CAD940041A7BD /* NSDictionary+BExtension.m in Sources */ = {isa = PBXBuildFile; fileRef = CE8E41192E3CAD940041A7BD /* NSDictionary+BExtension.m */; };
+		CE8E415A2E3CAD940041A7BD /* NSArray+BExtension.m in Sources */ = {isa = PBXBuildFile; fileRef = CE8E41112E3CAD940041A7BD /* NSArray+BExtension.m */; };
+		CE8E415B2E3CAD940041A7BD /* NSCoder+HalfFloat.m in Sources */ = {isa = PBXBuildFile; fileRef = CE8E41152E3CAD940041A7BD /* NSCoder+HalfFloat.m */; };
+		CE8E415C2E3CAD940041A7BD /* NSOrderedSet+BExtension.m in Sources */ = {isa = PBXBuildFile; fileRef = CE8E412C2E3CAD940041A7BD /* NSOrderedSet+BExtension.m */; };
+		CE8E415D2E3CAD940041A7BD /* NSNumber+BExtension.m in Sources */ = {isa = PBXBuildFile; fileRef = CE8E41212E3CAD940041A7BD /* NSNumber+BExtension.m */; };
+		CE8E415E2E3CAD940041A7BD /* NSSet+BExtension.m in Sources */ = {isa = PBXBuildFile; fileRef = CE8E412E2E3CAD940041A7BD /* NSSet+BExtension.m */; };
+		CE8E415F2E3CAD940041A7BD /* BEStackExtensions.m in Sources */ = {isa = PBXBuildFile; fileRef = CE8E41092E3CAD940041A7BD /* BEStackExtensions.m */; };
+		CE8E41602E3CAD940041A7BD /* NSPriorityNotification.m in Sources */ = {isa = PBXBuildFile; fileRef = CE8E40EE2E3CAD940041A7BD /* NSPriorityNotification.m */; };
+		CE8E41612E3CAD940041A7BD /* NSDateFormatterRFC3339.m in Sources */ = {isa = PBXBuildFile; fileRef = CE8E41172E3CAD940041A7BD /* NSDateFormatterRFC3339.m */; };
+		CE8E41622E3CAD940041A7BD /* NSString+BExtension.m in Sources */ = {isa = PBXBuildFile; fileRef = CE8E41302E3CAD940041A7BD /* NSString+BExtension.m */; };
+		CE8E41632E3CAD940041A7BD /* NSNotification+MutableUserInfo.m in Sources */ = {isa = PBXBuildFile; fileRef = CE8E40EA2E3CAD940041A7BD /* NSNotification+MutableUserInfo.m */; };
+		CE8E41642E3CAD940041A7BD /* NSObject+GlobalRegistry.m in Sources */ = {isa = PBXBuildFile; fileRef = CE8E412A2E3CAD940041A7BD /* NSObject+GlobalRegistry.m */; };
+		CE8E41652E3CAD940041A7BD /* FxTime.m in Sources */ = {isa = PBXBuildFile; fileRef = CE8E410D2E3CAD940041A7BD /* FxTime.m */; };
+		CE8E41672E3CAD940041A7BD /* NSObject+DynamicMethodsHelpers.m in Sources */ = {isa = PBXBuildFile; fileRef = CE8E41282E3CAD940041A7BD /* NSObject+DynamicMethodsHelpers.m */; };
+		CE8E41682E3CAD940041A7BD /* BEPathWatcher.m in Sources */ = {isa = PBXBuildFile; fileRef = CE8E40FF2E3CAD940041A7BD /* BEPathWatcher.m */; };
+		CE8E41692E3CAD940041A7BD /* NSPriorityNotificationCenter.m in Sources */ = {isa = PBXBuildFile; fileRef = CE8E40F02E3CAD940041A7BD /* NSPriorityNotificationCenter.m */; };
+		CE8E416A2E3CAD940041A7BD /* CIImage+BExtension.m in Sources */ = {isa = PBXBuildFile; fileRef = CE8E410B2E3CAD940041A7BD /* CIImage+BExtension.m */; };
+		CE8E416B2E3CAD940041A7BD /* BEPriorityExtensions.m in Sources */ = {isa = PBXBuildFile; fileRef = CE8E41032E3CAD940041A7BD /* BEPriorityExtensions.m */; };
+		CE8E416C2E3CAD940041A7BD /* NSMethodSignature+BlockSignatures.m in Sources */ = {isa = PBXBuildFile; fileRef = CE8E411B2E3CAD940041A7BD /* NSMethodSignature+BlockSignatures.m */; };
+		CE8E416D2E3CAD940041A7BD /* BEPredicateRule.m in Sources */ = {isa = PBXBuildFile; fileRef = CE8E41012E3CAD940041A7BD /* BEPredicateRule.m */; };
+		CE8E416E2E3CAD940041A7BD /* BEMutable.m in Sources */ = {isa = PBXBuildFile; fileRef = CE8E40FB2E3CAD940041A7BD /* BEMutable.m */; };
+		CE8E41702E3CAD940041A7BD /* NSObject+DynamicMethods.m in Sources */ = {isa = PBXBuildFile; fileRef = CE8E41262E3CAD940041A7BD /* NSObject+DynamicMethods.m */; };
+		CE8E41712E3CAD940041A7BD /* BEObjectRegistry.m in Sources */ = {isa = PBXBuildFile; fileRef = CE8E40FD2E3CAD940041A7BD /* BEObjectRegistry.m */; };
+		CE8E41722E3CAD940041A7BD /* NSMutableNumber.mm in Sources */ = {isa = PBXBuildFile; fileRef = CE8E411E2E3CAD940041A7BD /* NSMutableNumber.mm */; };
+		CE8E41732E3CAD940041A7BD /* BECharacterSet.m in Sources */ = {isa = PBXBuildFile; fileRef = CE8E40F42E3CAD940041A7BD /* BECharacterSet.m */; };
+		CE8E41742E3CAD940041A7BD /* BEMetalHelper.m in Sources */ = {isa = PBXBuildFile; fileRef = CE8E40F92E3CAD940041A7BD /* BEMetalHelper.m */; };
+		CE8E41752E3CAD940041A7BD /* BESingleton.m in Sources */ = {isa = PBXBuildFile; fileRef = CE8E41072E3CAD940041A7BD /* BESingleton.m */; };
+		CE8E41772E3CAD940041A7BD /* NSNumber+Primes16b.m in Sources */ = {isa = PBXBuildFile; fileRef = CE8E41242E3CAD940041A7BD /* NSNumber+Primes16b.m */; };
+		CE8E41782E3CAD940041A7BD /* NSCoder+AtIndex.m in Sources */ = {isa = PBXBuildFile; fileRef = CE8E41132E3CAD940041A7BD /* NSCoder+AtIndex.m */; };
+		CE8E417A2E3CB5EB0041A7BD /* LICENSE in Resources */ = {isa = PBXBuildFile; fileRef = CE8E41792E3CB5EB0041A7BD /* LICENSE */; };
+		CE9272CD2D3321B60040EB84 /* BEFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CE9272C22D3321B60040EB84 /* BEFoundation.framework */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		CE9272CE2D3321B60040EB84 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = CE9272B92D3321B60040EB84 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = CE9272C12D3321B60040EB84;
+			remoteInfo = BEFoundation;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		CE85BA9F2E152D7F00AADE8F /* Accelerate.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Accelerate.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.5.sdk/System/Library/Frameworks/Accelerate.framework; sourceTree = DEVELOPER_DIR; };
+		CE8E40E92E3CAD940041A7BD /* NSNotification+MutableUserInfo.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "NSNotification+MutableUserInfo.h"; sourceTree = "<group>"; };
+		CE8E40EA2E3CAD940041A7BD /* NSNotification+MutableUserInfo.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "NSNotification+MutableUserInfo.m"; sourceTree = "<group>"; };
+		CE8E40EB2E3CAD940041A7BD /* NSPooledPriorityNotification.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NSPooledPriorityNotification.h; sourceTree = "<group>"; };
+		CE8E40EC2E3CAD940041A7BD /* NSPooledPriorityNotification.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = NSPooledPriorityNotification.m; sourceTree = "<group>"; };
+		CE8E40ED2E3CAD940041A7BD /* NSPriorityNotification.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NSPriorityNotification.h; sourceTree = "<group>"; };
+		CE8E40EE2E3CAD940041A7BD /* NSPriorityNotification.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = NSPriorityNotification.m; sourceTree = "<group>"; };
+		CE8E40EF2E3CAD940041A7BD /* NSPriorityNotificationCenter.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NSPriorityNotificationCenter.h; sourceTree = "<group>"; };
+		CE8E40F02E3CAD940041A7BD /* NSPriorityNotificationCenter.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = NSPriorityNotificationCenter.m; sourceTree = "<group>"; };
+		CE8E40F22E3CAD940041A7BD /* BE_ARC.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BE_ARC.h; sourceTree = "<group>"; };
+		CE8E40F32E3CAD940041A7BD /* BECharacterSet.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BECharacterSet.h; sourceTree = "<group>"; };
+		CE8E40F42E3CAD940041A7BD /* BECharacterSet.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = BECharacterSet.m; sourceTree = "<group>"; };
+		CE8E40F52E3CAD940041A7BD /* BEFoundation.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BEFoundation.h; sourceTree = "<group>"; };
+		CE8E40F62E3CAD940041A7BD /* BEFoundation.docc */ = {isa = PBXFileReference; lastKnownFileType = folder.documentationcatalog; path = BEFoundation.docc; sourceTree = "<group>"; };
+		CE8E40F72E3CAD940041A7BD /* BEFoundation-Bridging-Swift.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "BEFoundation-Bridging-Swift.h"; sourceTree = "<group>"; };
+		CE8E40F82E3CAD940041A7BD /* BEMetalHelper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BEMetalHelper.h; sourceTree = "<group>"; };
+		CE8E40F92E3CAD940041A7BD /* BEMetalHelper.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = BEMetalHelper.m; sourceTree = "<group>"; };
+		CE8E40FA2E3CAD940041A7BD /* BEMutable.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BEMutable.h; sourceTree = "<group>"; };
+		CE8E40FB2E3CAD940041A7BD /* BEMutable.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = BEMutable.m; sourceTree = "<group>"; };
+		CE8E40FC2E3CAD940041A7BD /* BEObjectRegistry.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BEObjectRegistry.h; sourceTree = "<group>"; };
+		CE8E40FD2E3CAD940041A7BD /* BEObjectRegistry.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = BEObjectRegistry.m; sourceTree = "<group>"; };
+		CE8E40FE2E3CAD940041A7BD /* BEPathWatcher.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BEPathWatcher.h; sourceTree = "<group>"; };
+		CE8E40FF2E3CAD940041A7BD /* BEPathWatcher.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = BEPathWatcher.m; sourceTree = "<group>"; };
+		CE8E41002E3CAD940041A7BD /* BEPredicateRule.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BEPredicateRule.h; sourceTree = "<group>"; };
+		CE8E41012E3CAD940041A7BD /* BEPredicateRule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = BEPredicateRule.m; sourceTree = "<group>"; };
+		CE8E41022E3CAD940041A7BD /* BEPriorityExtensions.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BEPriorityExtensions.h; sourceTree = "<group>"; };
+		CE8E41032E3CAD940041A7BD /* BEPriorityExtensions.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = BEPriorityExtensions.m; sourceTree = "<group>"; };
+		CE8E41042E3CAD940041A7BD /* BERuntime.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BERuntime.h; sourceTree = "<group>"; };
+		CE8E41052E3CAD940041A7BD /* BERuntime.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = BERuntime.m; sourceTree = "<group>"; };
+		CE8E41062E3CAD940041A7BD /* BESingleton.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BESingleton.h; sourceTree = "<group>"; };
+		CE8E41072E3CAD940041A7BD /* BESingleton.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = BESingleton.m; sourceTree = "<group>"; };
+		CE8E41082E3CAD940041A7BD /* BEStackExtensions.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BEStackExtensions.h; sourceTree = "<group>"; };
+		CE8E41092E3CAD940041A7BD /* BEStackExtensions.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = BEStackExtensions.m; sourceTree = "<group>"; };
+		CE8E410A2E3CAD940041A7BD /* CIImage+BExtension.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "CIImage+BExtension.h"; sourceTree = "<group>"; };
+		CE8E410B2E3CAD940041A7BD /* CIImage+BExtension.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "CIImage+BExtension.m"; sourceTree = "<group>"; };
+		CE8E410C2E3CAD940041A7BD /* FxTime.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FxTime.h; sourceTree = "<group>"; };
+		CE8E410D2E3CAD940041A7BD /* FxTime.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FxTime.m; sourceTree = "<group>"; };
+		CE8E41102E3CAD940041A7BD /* NSArray+BExtension.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "NSArray+BExtension.h"; sourceTree = "<group>"; };
+		CE8E41112E3CAD940041A7BD /* NSArray+BExtension.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "NSArray+BExtension.m"; sourceTree = "<group>"; };
+		CE8E41122E3CAD940041A7BD /* NSCoder+AtIndex.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "NSCoder+AtIndex.h"; sourceTree = "<group>"; };
+		CE8E41132E3CAD940041A7BD /* NSCoder+AtIndex.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "NSCoder+AtIndex.m"; sourceTree = "<group>"; };
+		CE8E41142E3CAD940041A7BD /* NSCoder+HalfFloat.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "NSCoder+HalfFloat.h"; sourceTree = "<group>"; };
+		CE8E41152E3CAD940041A7BD /* NSCoder+HalfFloat.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "NSCoder+HalfFloat.m"; sourceTree = "<group>"; };
+		CE8E41162E3CAD940041A7BD /* NSDateFormatterRFC3339.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NSDateFormatterRFC3339.h; sourceTree = "<group>"; };
+		CE8E41172E3CAD940041A7BD /* NSDateFormatterRFC3339.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = NSDateFormatterRFC3339.m; sourceTree = "<group>"; };
+		CE8E41182E3CAD940041A7BD /* NSDictionary+BExtension.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "NSDictionary+BExtension.h"; sourceTree = "<group>"; };
+		CE8E41192E3CAD940041A7BD /* NSDictionary+BExtension.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "NSDictionary+BExtension.m"; sourceTree = "<group>"; };
+		CE8E411A2E3CAD940041A7BD /* NSMethodSignature+BlockSignatures.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "NSMethodSignature+BlockSignatures.h"; sourceTree = "<group>"; };
+		CE8E411B2E3CAD940041A7BD /* NSMethodSignature+BlockSignatures.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "NSMethodSignature+BlockSignatures.m"; sourceTree = "<group>"; };
+		CE8E411C2E3CAD940041A7BD /* NSMutableNumber.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NSMutableNumber.h; sourceTree = "<group>"; };
+		CE8E411D2E3CAD940041A7BD /* NSMutableNumber.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = NSMutableNumber.hpp; sourceTree = "<group>"; };
+		CE8E411E2E3CAD940041A7BD /* NSMutableNumber.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = NSMutableNumber.mm; sourceTree = "<group>"; };
+		CE8E41202E3CAD940041A7BD /* NSNumber+BExtension.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "NSNumber+BExtension.h"; sourceTree = "<group>"; };
+		CE8E41212E3CAD940041A7BD /* NSNumber+BExtension.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "NSNumber+BExtension.m"; sourceTree = "<group>"; };
+		CE8E41232E3CAD940041A7BD /* NSNumber+Primes16b.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "NSNumber+Primes16b.h"; sourceTree = "<group>"; };
+		CE8E41242E3CAD940041A7BD /* NSNumber+Primes16b.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "NSNumber+Primes16b.m"; sourceTree = "<group>"; };
+		CE8E41252E3CAD940041A7BD /* NSObject+DynamicMethods.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "NSObject+DynamicMethods.h"; sourceTree = "<group>"; };
+		CE8E41262E3CAD940041A7BD /* NSObject+DynamicMethods.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "NSObject+DynamicMethods.m"; sourceTree = "<group>"; };
+		CE8E41272E3CAD940041A7BD /* NSObject+DynamicMethodsHelpers.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "NSObject+DynamicMethodsHelpers.h"; sourceTree = "<group>"; };
+		CE8E41282E3CAD940041A7BD /* NSObject+DynamicMethodsHelpers.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "NSObject+DynamicMethodsHelpers.m"; sourceTree = "<group>"; };
+		CE8E41292E3CAD940041A7BD /* NSObject+GlobalRegistry.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "NSObject+GlobalRegistry.h"; sourceTree = "<group>"; };
+		CE8E412A2E3CAD940041A7BD /* NSObject+GlobalRegistry.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "NSObject+GlobalRegistry.m"; sourceTree = "<group>"; };
+		CE8E412B2E3CAD940041A7BD /* NSOrderedSet+BExtension.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "NSOrderedSet+BExtension.h"; sourceTree = "<group>"; };
+		CE8E412C2E3CAD940041A7BD /* NSOrderedSet+BExtension.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "NSOrderedSet+BExtension.m"; sourceTree = "<group>"; };
+		CE8E412D2E3CAD940041A7BD /* NSSet+BExtension.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "NSSet+BExtension.h"; sourceTree = "<group>"; };
+		CE8E412E2E3CAD940041A7BD /* NSSet+BExtension.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "NSSet+BExtension.m"; sourceTree = "<group>"; };
+		CE8E412F2E3CAD940041A7BD /* NSString+BExtension.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "NSString+BExtension.h"; sourceTree = "<group>"; };
+		CE8E41302E3CAD940041A7BD /* NSString+BExtension.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "NSString+BExtension.m"; sourceTree = "<group>"; };
+		CE8E41792E3CB5EB0041A7BD /* LICENSE */ = {isa = PBXFileReference; lastKnownFileType = text; path = LICENSE; sourceTree = SOURCE_ROOT; };
+		CE8E417B2E3CB69B0041A7BD /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		CE9272C22D3321B60040EB84 /* BEFoundation.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = BEFoundation.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		CE9272CC2D3321B60040EB84 /* BEFoundationTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BEFoundationTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		CEA64D252E0A328A00922BF7 /* BEFoundation.profdata */ = {isa = PBXFileReference; lastKnownFileType = file; path = BEFoundation.profdata; sourceTree = "<group>"; };
+		CEBDEECD2D3344400031DDD6 /* BEFoundation.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = BEFoundation.xctestplan; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		CE9272D02D3321B60040EB84 /* BEFoundationTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = BEFoundationTests;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		CE9272BF2D3321B60040EB84 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				CE85BAA12E152E1700AADE8F /* Accelerate.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CE9272C92D3321B60040EB84 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				CE9272CD2D3321B60040EB84 /* BEFoundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		CE85BA9E2E152D7F00AADE8F /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				CE85BA9F2E152D7F00AADE8F /* Accelerate.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		CE8E40F12E3CAD940041A7BD /* NSPriorityNotificationCenter */ = {
+			isa = PBXGroup;
+			children = (
+				CE8E40E92E3CAD940041A7BD /* NSNotification+MutableUserInfo.h */,
+				CE8E40EA2E3CAD940041A7BD /* NSNotification+MutableUserInfo.m */,
+				CE8E40EB2E3CAD940041A7BD /* NSPooledPriorityNotification.h */,
+				CE8E40EC2E3CAD940041A7BD /* NSPooledPriorityNotification.m */,
+				CE8E40ED2E3CAD940041A7BD /* NSPriorityNotification.h */,
+				CE8E40EE2E3CAD940041A7BD /* NSPriorityNotification.m */,
+				CE8E40EF2E3CAD940041A7BD /* NSPriorityNotificationCenter.h */,
+				CE8E40F02E3CAD940041A7BD /* NSPriorityNotificationCenter.m */,
+			);
+			path = NSPriorityNotificationCenter;
+			sourceTree = "<group>";
+		};
+		CE8E41312E3CAD940041A7BD /* BEFoundation Source */ = {
+			isa = PBXGroup;
+			children = (
+				CE8E40F12E3CAD940041A7BD /* NSPriorityNotificationCenter */,
+				CE8E40F22E3CAD940041A7BD /* BE_ARC.h */,
+				CE8E40F32E3CAD940041A7BD /* BECharacterSet.h */,
+				CE8E40F42E3CAD940041A7BD /* BECharacterSet.m */,
+				CE8E40F52E3CAD940041A7BD /* BEFoundation.h */,
+				CE8E40F62E3CAD940041A7BD /* BEFoundation.docc */,
+				CE8E40F72E3CAD940041A7BD /* BEFoundation-Bridging-Swift.h */,
+				CE8E40F82E3CAD940041A7BD /* BEMetalHelper.h */,
+				CE8E40F92E3CAD940041A7BD /* BEMetalHelper.m */,
+				CE8E40FA2E3CAD940041A7BD /* BEMutable.h */,
+				CE8E40FB2E3CAD940041A7BD /* BEMutable.m */,
+				CE8E40FC2E3CAD940041A7BD /* BEObjectRegistry.h */,
+				CE8E40FD2E3CAD940041A7BD /* BEObjectRegistry.m */,
+				CE8E40FE2E3CAD940041A7BD /* BEPathWatcher.h */,
+				CE8E40FF2E3CAD940041A7BD /* BEPathWatcher.m */,
+				CE8E41002E3CAD940041A7BD /* BEPredicateRule.h */,
+				CE8E41012E3CAD940041A7BD /* BEPredicateRule.m */,
+				CE8E41022E3CAD940041A7BD /* BEPriorityExtensions.h */,
+				CE8E41032E3CAD940041A7BD /* BEPriorityExtensions.m */,
+				CE8E41042E3CAD940041A7BD /* BERuntime.h */,
+				CE8E41052E3CAD940041A7BD /* BERuntime.m */,
+				CE8E41062E3CAD940041A7BD /* BESingleton.h */,
+				CE8E41072E3CAD940041A7BD /* BESingleton.m */,
+				CE8E41082E3CAD940041A7BD /* BEStackExtensions.h */,
+				CE8E41092E3CAD940041A7BD /* BEStackExtensions.m */,
+				CE8E410A2E3CAD940041A7BD /* CIImage+BExtension.h */,
+				CE8E410B2E3CAD940041A7BD /* CIImage+BExtension.m */,
+				CE8E410C2E3CAD940041A7BD /* FxTime.h */,
+				CE8E410D2E3CAD940041A7BD /* FxTime.m */,
+				CE8E41102E3CAD940041A7BD /* NSArray+BExtension.h */,
+				CE8E41112E3CAD940041A7BD /* NSArray+BExtension.m */,
+				CE8E41122E3CAD940041A7BD /* NSCoder+AtIndex.h */,
+				CE8E41132E3CAD940041A7BD /* NSCoder+AtIndex.m */,
+				CE8E41142E3CAD940041A7BD /* NSCoder+HalfFloat.h */,
+				CE8E41152E3CAD940041A7BD /* NSCoder+HalfFloat.m */,
+				CE8E41162E3CAD940041A7BD /* NSDateFormatterRFC3339.h */,
+				CE8E41172E3CAD940041A7BD /* NSDateFormatterRFC3339.m */,
+				CE8E41182E3CAD940041A7BD /* NSDictionary+BExtension.h */,
+				CE8E41192E3CAD940041A7BD /* NSDictionary+BExtension.m */,
+				CE8E411A2E3CAD940041A7BD /* NSMethodSignature+BlockSignatures.h */,
+				CE8E411B2E3CAD940041A7BD /* NSMethodSignature+BlockSignatures.m */,
+				CE8E411C2E3CAD940041A7BD /* NSMutableNumber.h */,
+				CE8E411D2E3CAD940041A7BD /* NSMutableNumber.hpp */,
+				CE8E411E2E3CAD940041A7BD /* NSMutableNumber.mm */,
+				CE8E41202E3CAD940041A7BD /* NSNumber+BExtension.h */,
+				CE8E41212E3CAD940041A7BD /* NSNumber+BExtension.m */,
+				CE8E41232E3CAD940041A7BD /* NSNumber+Primes16b.h */,
+				CE8E41242E3CAD940041A7BD /* NSNumber+Primes16b.m */,
+				CE8E41252E3CAD940041A7BD /* NSObject+DynamicMethods.h */,
+				CE8E41262E3CAD940041A7BD /* NSObject+DynamicMethods.m */,
+				CE8E41272E3CAD940041A7BD /* NSObject+DynamicMethodsHelpers.h */,
+				CE8E41282E3CAD940041A7BD /* NSObject+DynamicMethodsHelpers.m */,
+				CE8E41292E3CAD940041A7BD /* NSObject+GlobalRegistry.h */,
+				CE8E412A2E3CAD940041A7BD /* NSObject+GlobalRegistry.m */,
+				CE8E412B2E3CAD940041A7BD /* NSOrderedSet+BExtension.h */,
+				CE8E412C2E3CAD940041A7BD /* NSOrderedSet+BExtension.m */,
+				CE8E412D2E3CAD940041A7BD /* NSSet+BExtension.h */,
+				CE8E412E2E3CAD940041A7BD /* NSSet+BExtension.m */,
+				CE8E412F2E3CAD940041A7BD /* NSString+BExtension.h */,
+				CE8E41302E3CAD940041A7BD /* NSString+BExtension.m */,
+			);
+			path = "BEFoundation Source";
+			sourceTree = "<group>";
+		};
+		CE9272B82D3321B60040EB84 = {
+			isa = PBXGroup;
+			children = (
+				CEBDEECD2D3344400031DDD6 /* BEFoundation.xctestplan */,
+				CE8E417B2E3CB69B0041A7BD /* README.md */,
+				CE8E41792E3CB5EB0041A7BD /* LICENSE */,
+				CE8E41312E3CAD940041A7BD /* BEFoundation Source */,
+				CE9272D02D3321B60040EB84 /* BEFoundationTests */,
+				CE9272C32D3321B60040EB84 /* Products */,
+				CEA64D262E0A328A00922BF7 /* OptimizationProfiles */,
+				CE85BA9E2E152D7F00AADE8F /* Frameworks */,
+			);
+			sourceTree = "<group>";
+		};
+		CE9272C32D3321B60040EB84 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				CE9272C22D3321B60040EB84 /* BEFoundation.framework */,
+				CE9272CC2D3321B60040EB84 /* BEFoundationTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		CEA64D262E0A328A00922BF7 /* OptimizationProfiles */ = {
+			isa = PBXGroup;
+			children = (
+				CEA64D252E0A328A00922BF7 /* BEFoundation.profdata */,
+			);
+			path = OptimizationProfiles;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXHeadersBuildPhase section */
+		CE9272BD2D3321B60040EB84 /* Headers */ = {
+			isa = PBXHeadersBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				CE8E41322E3CAD940041A7BD /* BEObjectRegistry.h in Headers */,
+				CE8E41332E3CAD940041A7BD /* NSDateFormatterRFC3339.h in Headers */,
+				CE8E41342E3CAD940041A7BD /* BEMetalHelper.h in Headers */,
+				CE8E41352E3CAD940041A7BD /* NSOrderedSet+BExtension.h in Headers */,
+				CE8E41362E3CAD940041A7BD /* NSCoder+AtIndex.h in Headers */,
+				CE8E41372E3CAD940041A7BD /* NSPooledPriorityNotification.h in Headers */,
+				CE8E41382E3CAD940041A7BD /* NSNumber+BExtension.h in Headers */,
+				CE8E41392E3CAD940041A7BD /* BEPathWatcher.h in Headers */,
+				CE8E413A2E3CAD940041A7BD /* BERuntime.h in Headers */,
+				CE8E413B2E3CAD940041A7BD /* NSObject+GlobalRegistry.h in Headers */,
+				CE8E413C2E3CAD940041A7BD /* BEFoundation-Bridging-Swift.h in Headers */,
+				CE8E413D2E3CAD940041A7BD /* NSObject+DynamicMethodsHelpers.h in Headers */,
+				CE8E413E2E3CAD940041A7BD /* NSMutableNumber.hpp in Headers */,
+				CE8E413F2E3CAD940041A7BD /* NSDictionary+BExtension.h in Headers */,
+				CE8E41402E3CAD940041A7BD /* NSArray+BExtension.h in Headers */,
+				CE8E41412E3CAD940041A7BD /* NSCoder+HalfFloat.h in Headers */,
+				CE8E41422E3CAD940041A7BD /* NSSet+BExtension.h in Headers */,
+				CE8E41432E3CAD940041A7BD /* BESingleton.h in Headers */,
+				CE8E41442E3CAD940041A7BD /* NSMutableNumber.h in Headers */,
+				CE8E41452E3CAD940041A7BD /* BEMutable.h in Headers */,
+				CE8E41462E3CAD940041A7BD /* NSNotification+MutableUserInfo.h in Headers */,
+				CE8E41472E3CAD940041A7BD /* BE_ARC.h in Headers */,
+				CE8E41482E3CAD940041A7BD /* NSNumber+Primes16b.h in Headers */,
+				CE8E41492E3CAD940041A7BD /* BEPriorityExtensions.h in Headers */,
+				CE8E414A2E3CAD940041A7BD /* BECharacterSet.h in Headers */,
+				CE8E414B2E3CAD940041A7BD /* FxTime.h in Headers */,
+				CE8E414C2E3CAD940041A7BD /* NSMethodSignature+BlockSignatures.h in Headers */,
+				CE8E414D2E3CAD940041A7BD /* NSPriorityNotification.h in Headers */,
+				CE8E414E2E3CAD940041A7BD /* BEFoundation.h in Headers */,
+				CE8E414F2E3CAD940041A7BD /* BEStackExtensions.h in Headers */,
+				CE8E41502E3CAD940041A7BD /* NSObject+DynamicMethods.h in Headers */,
+				CE8E41512E3CAD940041A7BD /* BEPredicateRule.h in Headers */,
+				CE8E41522E3CAD940041A7BD /* NSPriorityNotificationCenter.h in Headers */,
+				CE8E41532E3CAD940041A7BD /* NSString+BExtension.h in Headers */,
+				CE8E41542E3CAD940041A7BD /* CIImage+BExtension.h in Headers */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXHeadersBuildPhase section */
+
+/* Begin PBXNativeTarget section */
+		CE9272C12D3321B60040EB84 /* BEFoundation */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = CE9272D52D3321B60040EB84 /* Build configuration list for PBXNativeTarget "BEFoundation" */;
+			buildPhases = (
+				CE9272BD2D3321B60040EB84 /* Headers */,
+				CE9272BE2D3321B60040EB84 /* Sources */,
+				CE9272BF2D3321B60040EB84 /* Frameworks */,
+				CE9272C02D3321B60040EB84 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = BEFoundation;
+			packageProductDependencies = (
+			);
+			productName = BEFoundation;
+			productReference = CE9272C22D3321B60040EB84 /* BEFoundation.framework */;
+			productType = "com.apple.product-type.framework";
+		};
+		CE9272CB2D3321B60040EB84 /* BEFoundationTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = CE9272DA2D3321B60040EB84 /* Build configuration list for PBXNativeTarget "BEFoundationTests" */;
+			buildPhases = (
+				CE9272C82D3321B60040EB84 /* Sources */,
+				CE9272C92D3321B60040EB84 /* Frameworks */,
+				CE9272CA2D3321B60040EB84 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				CE9272CF2D3321B60040EB84 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				CE9272D02D3321B60040EB84 /* BEFoundationTests */,
+			);
+			name = BEFoundationTests;
+			packageProductDependencies = (
+			);
+			productName = BEFoundationTests;
+			productReference = CE9272CC2D3321B60040EB84 /* BEFoundationTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		CE9272B92D3321B60040EB84 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1620;
+				LastUpgradeCheck = 1640;
+				TargetAttributes = {
+					CE9272C12D3321B60040EB84 = {
+						CreatedOnToolsVersion = 16.2;
+					};
+					CE9272CB2D3321B60040EB84 = {
+						CreatedOnToolsVersion = 16.2;
+					};
+				};
+			};
+			buildConfigurationList = CE9272BC2D3321B60040EB84 /* Build configuration list for PBXProject "BEFoundation" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = CE9272B82D3321B60040EB84;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = CE9272C32D3321B60040EB84 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				CE9272C12D3321B60040EB84 /* BEFoundation */,
+				CE9272CB2D3321B60040EB84 /* BEFoundationTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		CE9272C02D3321B60040EB84 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				CE8E417A2E3CB5EB0041A7BD /* LICENSE in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CE9272CA2D3321B60040EB84 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		CE9272BE2D3321B60040EB84 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				CE8E41562E3CAD940041A7BD /* BEFoundation.docc in Sources */,
+				CE8E41572E3CAD940041A7BD /* NSPooledPriorityNotification.m in Sources */,
+				CE8E41582E3CAD940041A7BD /* BERuntime.m in Sources */,
+				CE8E41592E3CAD940041A7BD /* NSDictionary+BExtension.m in Sources */,
+				CE8E415A2E3CAD940041A7BD /* NSArray+BExtension.m in Sources */,
+				CE8E415B2E3CAD940041A7BD /* NSCoder+HalfFloat.m in Sources */,
+				CE8E415C2E3CAD940041A7BD /* NSOrderedSet+BExtension.m in Sources */,
+				CE8E415D2E3CAD940041A7BD /* NSNumber+BExtension.m in Sources */,
+				CE8E415E2E3CAD940041A7BD /* NSSet+BExtension.m in Sources */,
+				CE8E415F2E3CAD940041A7BD /* BEStackExtensions.m in Sources */,
+				CE8E41602E3CAD940041A7BD /* NSPriorityNotification.m in Sources */,
+				CE8E41612E3CAD940041A7BD /* NSDateFormatterRFC3339.m in Sources */,
+				CE8E41622E3CAD940041A7BD /* NSString+BExtension.m in Sources */,
+				CE8E41632E3CAD940041A7BD /* NSNotification+MutableUserInfo.m in Sources */,
+				CE8E41642E3CAD940041A7BD /* NSObject+GlobalRegistry.m in Sources */,
+				CE8E41652E3CAD940041A7BD /* FxTime.m in Sources */,
+				CE8E41672E3CAD940041A7BD /* NSObject+DynamicMethodsHelpers.m in Sources */,
+				CE8E41682E3CAD940041A7BD /* BEPathWatcher.m in Sources */,
+				CE8E41692E3CAD940041A7BD /* NSPriorityNotificationCenter.m in Sources */,
+				CE8E416A2E3CAD940041A7BD /* CIImage+BExtension.m in Sources */,
+				CE8E416B2E3CAD940041A7BD /* BEPriorityExtensions.m in Sources */,
+				CE8E416C2E3CAD940041A7BD /* NSMethodSignature+BlockSignatures.m in Sources */,
+				CE8E416D2E3CAD940041A7BD /* BEPredicateRule.m in Sources */,
+				CE8E416E2E3CAD940041A7BD /* BEMutable.m in Sources */,
+				CE8E41702E3CAD940041A7BD /* NSObject+DynamicMethods.m in Sources */,
+				CE8E41712E3CAD940041A7BD /* BEObjectRegistry.m in Sources */,
+				CE8E41722E3CAD940041A7BD /* NSMutableNumber.mm in Sources */,
+				CE8E41732E3CAD940041A7BD /* BECharacterSet.m in Sources */,
+				CE8E41742E3CAD940041A7BD /* BEMetalHelper.m in Sources */,
+				CE8E41752E3CAD940041A7BD /* BESingleton.m in Sources */,
+				CE8E41772E3CAD940041A7BD /* NSNumber+Primes16b.m in Sources */,
+				CE8E41782E3CAD940041A7BD /* NSCoder+AtIndex.m in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CE9272C82D3321B60040EB84 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		CE9272CF2D3321B60040EB84 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = CE9272C12D3321B60040EB84 /* BEFoundation */;
+			targetProxy = CE9272CE2D3321B60040EB84 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		CE9272D62D3321B60040EB84 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALLOW_TARGET_PLATFORM_SPECIALIZATION = YES;
+				BUILD_LIBRARY_FOR_DISTRIBUTION = YES;
+				CLANG_USE_OPTIMIZATION_PROFILE = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				DEFINES_MODULE = NO;
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				DYLIB_INSTALL_NAME_BASE = "@rpath";
+				ENABLE_MODULE_VERIFIER = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = (
+					"@executable_path/../Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 11.0;
+				MARKETING_VERSION = 1.0;
+				MODULE_VERIFIER_SUPPORTED_LANGUAGES = "objective-c objective-c++";
+				MODULE_VERIFIER_SUPPORTED_LANGUAGE_STANDARDS = "gnu17 gnu++20";
+				PRODUCT_BUNDLE_IDENTIFIER = com.belisoful.BEFoundation;
+				PRODUCT_NAME = "$(TARGET_NAME:c99extidentifier)";
+				SDKROOT = auto;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_INSTALL_OBJC_HEADER = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 2;
+				XROS_DEPLOYMENT_TARGET = 2.2;
+			};
+			name = Debug;
+		};
+		CE9272D72D3321B60040EB84 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALLOW_TARGET_PLATFORM_SPECIALIZATION = YES;
+				BUILD_LIBRARY_FOR_DISTRIBUTION = YES;
+				CLANG_USE_OPTIMIZATION_PROFILE = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				DEFINES_MODULE = NO;
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				DYLIB_INSTALL_NAME_BASE = "@rpath";
+				ENABLE_MODULE_VERIFIER = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = (
+					"@executable_path/../Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 11.0;
+				MARKETING_VERSION = 1.0;
+				MODULE_VERIFIER_SUPPORTED_LANGUAGES = "objective-c objective-c++";
+				MODULE_VERIFIER_SUPPORTED_LANGUAGE_STANDARDS = "gnu17 gnu++20";
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.belisoful.BEFoundation;
+				PRODUCT_NAME = "$(TARGET_NAME:c99extidentifier)";
+				SDKROOT = auto;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_INSTALL_OBJC_HEADER = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 2;
+				XROS_DEPLOYMENT_TARGET = 2.2;
+			};
+			name = Release;
+		};
+		CE9272D82D3321B60040EB84 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.5;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OBJC_BRIDGING_HEADER = "";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				VERSIONING_SYSTEM = "apple-generic";
+				VERSION_INFO_PREFIX = "";
+			};
+			name = Debug;
+		};
+		CE9272D92D3321B60040EB84 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.5;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OBJC_BRIDGING_HEADER = "";
+				VERSIONING_SYSTEM = "apple-generic";
+				VERSION_INFO_PREFIX = "";
+			};
+			name = Release;
+		};
+		CE9272DB2D3321B60040EB84 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALLOW_TARGET_PLATFORM_SPECIALIZATION = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.6;
+				MACOSX_DEPLOYMENT_TARGET = 15.2;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.belisoful.BEFoundationTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 2;
+				XROS_DEPLOYMENT_TARGET = 2.2;
+			};
+			name = Debug;
+		};
+		CE9272DC2D3321B60040EB84 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALLOW_TARGET_PLATFORM_SPECIALIZATION = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.6;
+				MACOSX_DEPLOYMENT_TARGET = 15.2;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.belisoful.BEFoundationTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 2;
+				XROS_DEPLOYMENT_TARGET = 2.2;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		CE9272BC2D3321B60040EB84 /* Build configuration list for PBXProject "BEFoundation" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CE9272D82D3321B60040EB84 /* Debug */,
+				CE9272D92D3321B60040EB84 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		CE9272D52D3321B60040EB84 /* Build configuration list for PBXNativeTarget "BEFoundation" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CE9272D62D3321B60040EB84 /* Debug */,
+				CE9272D72D3321B60040EB84 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		CE9272DA2D3321B60040EB84 /* Build configuration list for PBXNativeTarget "BEFoundationTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CE9272DB2D3321B60040EB84 /* Debug */,
+				CE9272DC2D3321B60040EB84 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = CE9272B92D3321B60040EB84 /* Project object */;
+}

@@ -22,7 +22,8 @@ xcuserdata/
 # Pods/
 #
 # Add this line if you want to avoid checking in source code from the Xcode workspace
-# *.xcworkspace
+*.xcworkspace
+xcbaselines
 
 # Carthage
 #
@@ -42,3 +43,5 @@ fastlane/report.xml
 fastlane/Preview.html
 fastlane/screenshots/**/*.png
 fastlane/test_output
+
+.DS_Store

@@ -1,0 +1,25 @@
+{
+  "configurations" : [
+    {
+      "id" : "00F2D2BB-830C-4807-B067-5A04318775A2",
+      "name" : "Test Scheme Action",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+
+  },
+  "testTargets" : [
+    {
+      "parallelizable" : true,
+      "target" : {
+        "containerPath" : "container:BEFoundation.xcodeproj",
+        "identifier" : "CE9272CB2D3321B60040EB84",
+        "name" : "BEFoundationTests"
+      }
+    }
+  ],
+  "version" : 1
+}
