@@ -75,6 +75,14 @@ BEFoundation includes **comprehensive unit tests** for all major components, usi
 
 ## 📦 Integration
 
+### Framework Integration
+
+1. Download the BEFoundation.framework ZIP file for your project.
+2. Unzip the file.
+3. Include the BEFoundation.framework in your Project Target under the General Tab and "Framework and Libraries" section.
+4. Under the "Embed" dropdown select "Embed & Sign" or "Embed Without Signing".
+5. Import the Headers you'd like to use.
+
 ### Manual Integration
 
 1. Clone or download this repository.
