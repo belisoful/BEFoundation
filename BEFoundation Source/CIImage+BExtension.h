@@ -2,6 +2,7 @@
  @header     CIImage+BExtension.h
  @copyright  © 2025 Delicense - @belisoful. All rights reserved.
  @date       2025-01-01
+ @author	 belisoful@icloud.com
  @abstract   Provides convenience methods for creating and compositing `CIImage` objects.
  @discussion This category on `CIImage` simplifies common image processing tasks,
 			 such as generating a `CIImage` from text with various attributes and

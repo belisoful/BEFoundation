@@ -1,9 +1,10 @@
 /*!
- @header NSNumber+Primes16b.h
- @copyright -© 2025 Delicense - @belisoful. All rights released.
- @date 2025-01-01
- @abstract A category extension for NSNumber that provides prime number operations within the 16-bit range.
- @discussion This category extends NSNumber with methods for finding, rounding, and working with prime numbers
+ @header		NSNumber+Primes16b.h
+ @copyright		-© 2025 Delicense - @belisoful. All rights released.
+ @date			2025-01-01
+ @author		belisoful@icloud.com
+ @abstract		A category extension for NSNumber that provides prime number operations within the 16-bit range.
+ @discussion	This category extends NSNumber with methods for finding, rounding, and working with prime numbers
  up to 65521 (the largest prime that fits in a 16-bit unsigned integer). It uses a precomputed lookup table
  of all 6542 primes in the 16-bit range for efficient operations.
  

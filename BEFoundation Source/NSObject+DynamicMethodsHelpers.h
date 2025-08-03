@@ -1,9 +1,10 @@
 /*!
- * @header NSObject+DynamicMethodsHelpers.h
- * @copyright © 2025 Delicense - @belisoful. All rights released.
- * @date 2025-01-01
- * @abstract Helper classes and utilities for the dynamic method injection system.
- * @discussion This header provides the underlying infrastructure for the dynamic method
+ * @header		NSObject+DynamicMethodsHelpers.h
+ * @copyright	-© 2025 Delicense - @belisoful. All rights released.
+ * @date		2025-01-01
+ * @author		belisoful@icloud.com
+ * @abstract	Helper classes and utilities for the dynamic method injection system.
+ * @discussion	This header provides the underlying infrastructure for the dynamic method
  *             injection system, including method swizzling management, signature parsing,
  *             and protocol introspection utilities. These components work together to
  *             enable safe and efficient runtime method injection.

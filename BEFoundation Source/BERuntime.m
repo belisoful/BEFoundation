@@ -1,9 +1,10 @@
 /*!
- * @file BERuntime.m
- * @copyright © 2025 Delicense - @belisoful. All rights released.
- * @date 2025-01-01
- * @abstract Implementation of runtime utility functions for Objective-C class and method introspection
- * @discussion This implementation provides utility functions for working with Objective-C runtime,
+ * @file		BERuntime.m
+ * @copyright	-© 2025 Delicense - @belisoful. All rights released.
+ * @date		2025-01-01
+ * @author		belisoful@icloud.com
+ * @abstract	Implementation of runtime utility functions for Objective-C class and method introspection
+ * @discussion	This implementation provides utility functions for working with Objective-C runtime,
  *             including metaclass resolution and method existence checking. These functions
  *             extend the standard runtime API with commonly needed functionality.
  */

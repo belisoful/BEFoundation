@@ -2,6 +2,7 @@
  @file			NSNotification+MutableUserInfo.m
  @copyright		-© 2025 Delicense - @belisoful. All rights released.
  @date			2025-01-01
+ @author		belisoful@icloud.com
  @abstract		Adds the ability to get the NSNotification userInfo as a NSMutableDictionary
  @discussion	This returns the userInfo of a NSNotification as a NSMutableDictionary if and only if
 				it is an NSMutableDictionary.

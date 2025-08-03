@@ -2,6 +2,7 @@
  @header 		FxTime.h
  @copyright 	-© 2025 Delicense - @belisoful. All rights released.
  @date 			2025-01-01
+ @author		belisoful@icloud.com
  @abstract 		A comprehensive Objective-C wrapper for CoreMedia's CMTime structure providing convenient time manipulation and arithmetic operations.
  @discussion	FxTime encapsulates CoreMedia's CMTime structure in an Objective-C object, providing a more convenient and object-oriented interface for time-based operations in media applications. This class supports all standard CMTime operations including arithmetic, comparison, and conversion while maintaining compatibility with NSSecureCoding and NSCopying protocols.
  

@@ -1,9 +1,10 @@
 /*!
- * @header BEPathWatcher.h
- * @copyright © 2025 Delicense - @belisoful. All rights released.
- * @date 2025-01-01
- * @abstract A Grand Central Dispatch-based file system monitoring utility.
- * @discussion This class monitors file system paths for changes using GCD's dispatch sources. It provides flexible callback mechanisms including blocks, target-action, and protocol-based notifications.
+ * @header		BEPathWatcher.h
+ * @copyright 	-© 2025 Delicense - @belisoful. All rights released.
+ * @date		2025-01-01
+ * @author		belisoful@icloud.com
+ * @abstract	A Grand Central Dispatch-based file system monitoring utility.
+ * @discussion	This class monitors file system paths for changes using GCD's dispatch sources. It provides flexible callback mechanisms including blocks, target-action, and protocol-based notifications.
  */
 
 #import <Foundation/Foundation.h>

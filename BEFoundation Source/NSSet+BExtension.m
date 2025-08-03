@@ -1,7 +1,8 @@
 /*!
  @file			NSSet+BExtension.m
  @copyright		-© 2025 Delicense - @belisoful. All rights released.
- @date			2025-01-01 
+ @date			2025-01-01
+ @author		belisoful@icloud.com
  @abstract		NSSet and NSMutableSet BExtension category provides mapping,
  				filtering, and object metadata like Class and className.
  @discussion	The BExtension category provides missing functionality to the

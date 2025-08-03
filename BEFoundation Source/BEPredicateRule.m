@@ -2,6 +2,7 @@
  @file			BEPredicateRule.m
  @copyright		-© 2025 Delicense - @belisoful. All rights released.
  @date			2025-01-01
+ @author		belisoful@icloud.com
  @abstract
  @discussion
 */

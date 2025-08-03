@@ -2,6 +2,7 @@
  @header		NSCoder+AtIndex.h
  @copyright		© 2025 Delicense - @belisoful. All rights released.
  @date			2025-01-01
+ @author		belisoful@icloud.com
  @abstract		A category on NSCoder that provides index-based encoding and decoding methods.
  @discussion	This category extends NSCoder to support encoding and decoding operations
 				using integer indices instead of string keys. Each index is internally

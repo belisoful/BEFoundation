@@ -2,6 +2,7 @@
  @header     BEStackExtensions.h
  @copyright  © 2025 Delicense - @belisoful. All rights reserved.
  @date       2025-01-01
+ @author	 belisoful@icloud.com
  @abstract   Adds stack (LIFO) and queue (FIFO) operations to mutable collections.
  @discussion This header file provides categories on NSMutableArray and NSMutableOrderedSet
 			 to enable stack-like and queue-like behaviors using common push, pop, and shift

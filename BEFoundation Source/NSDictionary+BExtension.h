@@ -1,9 +1,10 @@
 /*!
-@header NSDictionary+BExtension.h
-@copyright -© 2025 Delicense - @belisoful. All rights released.
-@date 2025-01-01
-@abstract A comprehensive extension to NSDictionary and NSMutableDictionary providing advanced collection manipulation, indexed subscripting, and recursive merging capabilities.
-@discussion This extension adds powerful functional programming methods to NSDictionary and NSMutableDictionary, including indexed access, object class inspection, dictionary mapping and filtering, and sophisticated recursive merging operations. The extension is designed to enhance the native Foundation dictionary classes with commonly needed operations while maintaining Apple's design patterns and conventions.
+ @header		NSDictionary+BExtension.h
+ @copyright		-© 2025 Delicense - @belisoful. All rights released.
+ @date			2025-01-01
+ @author		belisoful@icloud.com
+@abstract		A comprehensive extension to NSDictionary and NSMutableDictionary providing advanced collection manipulation, indexed subscripting, and recursive merging capabilities.
+@discussion		This extension adds powerful functional programming methods to NSDictionary and NSMutableDictionary, including indexed access, object class inspection, dictionary mapping and filtering, and sophisticated recursive merging operations. The extension is designed to enhance the native Foundation dictionary classes with commonly needed operations while maintaining Apple's design patterns and conventions.
 */
 
 #ifndef NSDictionary_BExtension_h

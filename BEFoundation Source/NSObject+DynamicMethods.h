@@ -2,6 +2,7 @@
  @header		NSObject+DynamicMethods.h
  @copyright		-© 2025 Delicense - @belisoful. All rights released.
  @date			2025-01-01
+ @author		belisoful@icloud.com
  @abstract		A comprehensive system for adding and managing dynamic methods to Objective-C objects at runtime using blocks.
  @discussion	This header provides a powerful runtime method injection system that allows you to add methods to existing objects
 				and classes using blocks. The system supports both instance methods (added to specific object instances) and

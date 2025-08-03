@@ -2,6 +2,7 @@
  @file			NSCoder+AtIndex.m
  @copyright		-© 2025 Delicense - @belisoful. All rights released.
  @date			2025-01-01
+ @author		belisoful@icloud.com
  @abstract		The NSCode Half Category adds encoding and decoding for Half
  				float, `_Float16`
  @discussion	The Half Float is a missing aspect of the basic NSCoder.

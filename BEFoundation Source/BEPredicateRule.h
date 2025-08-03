@@ -2,7 +2,8 @@
  @header		BEPredicateRule.h
  @copyright		-© 2025 Delicense - @belisoful. All rights released.
  @date			2025-01-01
- @abstract		(This needs to be filled in)
+ @author		belisoful@icloud.com
+ @abstract		This checks an object against an array or set of BEPredicateRule to check if the object is accepted, rejected, or NA.
  @discussion	
 */
 

@@ -2,6 +2,7 @@
  @file			NSPriorityNotification.m
  @copyright		© 2025 Delicense - @belisoful. All rights released.
  @date			2025-01-01
+ @author		belisoful@icloud.com 
  @abstract		Implementation of NSPriorityNotification class and NSNotification priority extensions.
  @discussion	This file implements the NSPriorityNotification class which extends NSNotification
 				with priority-based processing capabilities including reverse ordering and

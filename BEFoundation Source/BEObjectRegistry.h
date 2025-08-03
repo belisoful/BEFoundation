@@ -2,6 +2,7 @@
  @header        BEObjectRegistry.h
  @copyright     -© 2025 Delicense - @belisoful. All rights released.
  @date          2025-01-01
+ @author		belisoful@icloud.com
  @abstract      A thread-safe object registry system for managing object instances with UUID-based identification.
  @discussion    BEObjectRegistry provides a centralized system for registering and managing object instances using UUID-based identification. The registry maintains weak references to objects and provides thread-safe operations for registration, lookup, and management. Objects can be registered multiple times with reference counting, and the registry supports both automatic UUID generation and custom UUID provision through protocols.
 

@@ -1,3 +1,12 @@
+/*!
+ @file			BEPathWatcher.m
+ @copyright		-© 2025 Delicense - @belisoful. All rights released.
+ @date			2025-01-01
+ @author		belisoful@icloud.com
+ @abstract
+ @discussion
+*/
+
 #import "BEPathWatcher.h"
 #import "BE_ARC.h"
 

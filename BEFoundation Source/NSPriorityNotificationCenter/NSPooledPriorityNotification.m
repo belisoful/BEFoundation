@@ -2,6 +2,7 @@
  @file			NSPooledPriorityNotification.m
  @copyright		-© 2025 Delicense - @belisoful. All rights released.
  @date			2025-01-01
+ @author		belisoful@icloud.com
  @abstract		Internal implementation when NSPriorityNotificationCenter has an observer
 				using a different queue.
  @discussion	Observers on different queues use NSPooledPriorityNotification

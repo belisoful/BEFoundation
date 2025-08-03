@@ -2,6 +2,7 @@
  @file			NSString+BExtension.m
  @copyright		-© 2025 Delicense - @belisoful. All rights released.
  @date			2025-01-01
+ @author		belisoful@icloud.com
  @abstract		`NSString` Category extension to provide numeric and date validation.
  @discussion	This category adds methods for checking if the NSString is a digit, integer, floating point
  				number, or has a specific date or time.

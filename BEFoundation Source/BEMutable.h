@@ -2,6 +2,7 @@
  @header        BEMutable.h
  @copyright     © 2025 Delicense - @belisoful. All rights reserved.
  @date          2025-01-01
+ @author		belisoful@icloud.com
  @brief         Protocols and categories for object mutability and recursive copying of collections.
  @discussion    This header provides a comprehensive framework for determining object mutability and
 				performing recursive copying operations on Foundation collections. It defines protocols

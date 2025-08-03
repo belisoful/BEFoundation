@@ -1,9 +1,10 @@
 /*!
- @header NSObject+GlobalRegistry.h
- @copyright -© 2025 Delicense - @belisoful. All rights released.
- @date 2025-01-01
- @abstract A category extension for NSObject that provides global object registration and tracking capabilities.
- @discussion This category extends NSObject with methods for registering and tracking object instances
+ @header		NSObject+GlobalRegistry.h
+ @copyright		-© 2025 Delicense - @belisoful. All rights released.
+ @date			2025-01-01
+ @author		belisoful@icloud.com
+ @abstract		A category extension for NSObject that provides global object registration and tracking capabilities.
+ @discussion	This category extends NSObject with methods for registering and tracking object instances
  in a global registry. It provides a centralized way to manage object lifecycles and maintain
  references to objects across the application.
  

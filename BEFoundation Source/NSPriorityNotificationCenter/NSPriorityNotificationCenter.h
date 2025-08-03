@@ -2,6 +2,7 @@
  @header        NSPriorityNotificationCenter.h
  @copyright     -© 2025 Delicense - @belisoful. All rights released.
  @date          2025-01-01
+ @author		belisoful@icloud.com
  @abstract      A priority-based notification center that allows observers to be notified in order of priority
  @discussion    This class extends NSNotificationCenter to support priority-based notification delivery.
 				Observers with higher priority (lower numerical values) are notified first.

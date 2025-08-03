@@ -1,9 +1,10 @@
 /*!
-@header BEPriorityExtensions.h
-@copyright © 2025 Delicense - @belisoful. All rights released.
-@date 2025-01-01
-@abstract A comprehensive priority-based sorting framework for Foundation collections.
-@discussion This header provides protocols and categories that enable priority-based sorting
+ @header		BEPriorityExtensions.h
+ @copyright		-© 2025 Delicense - @belisoful. All rights released.
+ @date			2025-01-01
+ @author		belisoful@icloud.com
+ @abstract		A comprehensive priority-based sorting framework for Foundation collections.
+ @discussion	This header provides protocols and categories that enable priority-based sorting
 for Foundation collection classes. Objects can implement priority protocols to participate
 in automatic sorting operations, with fallback mechanisms for objects that don't initially
 have priority values.

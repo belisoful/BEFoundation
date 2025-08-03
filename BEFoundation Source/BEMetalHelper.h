@@ -2,6 +2,7 @@
 @header BEMetalHelper.h
 @copyright © 2025 Delicense - @belisoful. All rights released.
 @date 2025-06-10
+@author		belisoful@icloud.com
 @abstract Utilities for Metal texture processing and image conversion operations.
 @discussion The BEMetalHelper class provides efficient methods for converting Metal textures to NSImage objects and performing grayscale to RGB color space conversions using Apple's vImage framework for optimal performance.
 */

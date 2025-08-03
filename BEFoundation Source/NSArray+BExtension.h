@@ -2,6 +2,7 @@
  @header		NSArray+BExtension.h
  @copyright		-© 2025 Delicense - @belisoful. All rights released.
  @date			2025-01-01
+ @author		belisoful@icloud.com
  @abstract		Category extensions for NSArray and NSMutableArray providing additional utility methods.
  @discussion	This header provides category extensions for NSArray and NSMutableArray that add
 				functionality for collection conversion, class introspection, array manipulation,

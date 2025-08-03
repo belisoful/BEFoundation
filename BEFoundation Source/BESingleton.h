@@ -2,6 +2,7 @@
  @header     BESingleton.h
  @copyright  © 2025 Delicense - @belisoful. All rights reserved.
  @date       2025-01-01
+ @author	 belisoful@icloud.com
  @abstract   Provides a reusable and thread-safe singleton pattern implementation.
  @discussion This file defines the `BESingleton` protocol and a category on `NSObject`
 			 to simplify the creation of singleton classes. To create a singleton,

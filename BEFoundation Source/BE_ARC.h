@@ -2,6 +2,7 @@
  @header		`BE_ARC.h`
  @copyright		-© 2025 Delicense - @belisoful. All rights released.
  @date			2025-01-01
+ @author		belisoful@icloud.com
  @abstract		This is to enable direct usage of BEFoundation outside of the framework context.
  @discussion	When objective c ARC is turned on, 
 */

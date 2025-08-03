@@ -2,7 +2,7 @@
 //  BFoundationExtension.h
 //  BFoundationExtension
 //
-//  Created by ~ ~ on 12/24/24.
+//  Created by belisoful@icloud.com on 12/24/24.
 //
 
 #import <Foundation/Foundation.h>

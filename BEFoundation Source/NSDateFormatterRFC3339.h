@@ -2,6 +2,7 @@
  @header		NSDateFormatterRFC3339.h
  @copyright		-© 2025 Delicense - @belisoful. All rights released.
  @date			2025-01-01
+ @author		belisoful@icloud.com
  @abstract		Category extension for NSDateFormatter providing RFC 3339 date formatting support.
  @discussion	This header provides a category extension for NSDateFormatter that adds convenience
 				methods for working with RFC 3339 formatted dates. RFC 3339 is a profile of the

@@ -2,6 +2,7 @@
  @header		NSCoder+Half.h
  @copyright		-© 2025 Delicense - @belisoful. All rights released.
  @date			2025-01-01
+ @author		belisoful@icloud.com
  @abstract		Category extension for NSCoder providing encoding and decoding support for half-precision floats.
  @discussion	This header provides a category extension for NSCoder that adds functionality for
 				encoding and decoding half-precision floating-point values (_Float16). The standard

@@ -2,6 +2,7 @@
  @header		BECharacterSet.h
  @copyright		© 2025 Delicense - @belisoful. All rights released.
  @date			2025-06-10
+ @author		belisoful@icloud.com
  @abstract		This provides differentiable versions of NSCharacterSet and NSMutableCharacterSet.
  @discussion	BECharacterSet is a replacement for NSCharacterSet, and BEMutableCharacterSet is a
 				replacement for NSMutableCharacterSet.

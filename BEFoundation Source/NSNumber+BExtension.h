@@ -1,9 +1,10 @@
 /*!
- @header NSNumber+BExtension.h
- @copyright -© 2025 Delicense - @belisoful. All rights released.
- @date 2025-01-01
- @abstract Mathematical operations extension for NSNumber with type-safe arithmetic operations.
- @discussion This header provides a category extension for NSNumber that enables type-safe mathematical operations between NSNumber instances and primitive types. The extension preserves type precision and handles overflow detection for integer operations. It includes support for basic arithmetic operations (addition, subtraction, multiplication, division), modulus operations, power operations, and bitwise XOR operations.
+ @header		NSNumber+BExtension.h
+ @copyright		-© 2025 Delicense - @belisoful. All rights released.
+ @date			2025-01-01
+ @author		belisoful@icloud.com
+ @abstract		Mathematical operations extension for NSNumber with type-safe arithmetic operations.
+ @discussion	This header provides a category extension for NSNumber that enables type-safe mathematical operations between NSNumber instances and primitive types. The extension preserves type precision and handles overflow detection for integer operations. It includes support for basic arithmetic operations (addition, subtraction, multiplication, division), modulus operations, power operations, and bitwise XOR operations.
  
  The implementation uses a type precedence system to determine the appropriate return type based on the operands, ensuring that operations maintain the highest precision required by the input types.
  */
