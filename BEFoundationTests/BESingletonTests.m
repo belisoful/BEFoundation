@@ -427,6 +427,8 @@
 	// Note: The exact behavior depends on the mergeEntriesFromDictionary implementation
 	// This test assumes child info takes precedence
 	XCTAssertNotNil(child.receivedInitInfo, @"Child should receive merged init info");
+	
+	XCTAssertEqualObjects(child.receivedInitInfo, expectedMerged);
 }
 
 #pragma mark - Thread Safety Tests

@@ -10,7 +10,7 @@
 #import "NSObject+DynamicMethods.h"
 #import "NSObject+DynamicMethodsHelpers.h"
 #import "NSDictionary+BExtension.h"
-#import "BEruntime.h"
+#import "BERuntime.h"
 #import "BE_ARC.h"
 #import <CommonCrypto/CommonDigest.h>
 

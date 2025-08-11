@@ -32,8 +32,8 @@
 #define kIncludeImmutableClassesWithMutableImplementation NO
 
 #import <Foundation/Foundation.h>
-#import "NSMutableNumber.h"
-#import "BECharacterSet.h"
+#import <BEFoundation/NSMutableNumber.h>
+#import <BEFoundation/BECharacterSet.h>
 
 #pragma mark - NSObject Extensions
 

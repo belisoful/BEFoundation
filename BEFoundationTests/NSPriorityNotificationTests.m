@@ -203,7 +203,7 @@
 #pragma mark - NSPriorityNotification Instance Method Tests
 
 - (void)testInitWithNameObject {
-	NSPriorityNotification *notification = [[NSPriorityNotification alloc] initWithName:self.testNotificationName
+	NSPriorityNotification *notification = [NSPriorityNotification notificationWithName:self.testNotificationName
 																				  object:self.testObject
 																				userInfo:nil];
 	
@@ -216,7 +216,7 @@
 }
 
 - (void)testInitWithNameObjectUserInfo {
-	NSPriorityNotification *notification = [[NSPriorityNotification alloc] initWithName:self.testNotificationName
+	NSPriorityNotification *notification = [NSPriorityNotification notificationWithName:self.testNotificationName
 																				  object:self.testObject
 																				userInfo:self.testUserInfo];
 	
@@ -229,7 +229,7 @@
 }
 
 - (void)testInitWithNameObjectUserInfoReverse {
-	NSPriorityNotification *notification = [[NSPriorityNotification alloc] initWithName:self.testNotificationName
+	NSPriorityNotification *notification = [NSPriorityNotification notificationWithName:self.testNotificationName
 																				  object:self.testObject
 																				userInfo:self.testUserInfo
 																				 reverse:YES];
@@ -248,7 +248,7 @@
 		blockCalled = YES;
 	};
 	
-	NSPriorityNotification *notification = [[NSPriorityNotification alloc] initWithName:self.testNotificationName
+	NSPriorityNotification *notification = [NSPriorityNotification notificationWithName:self.testNotificationName
 																				  object:self.testObject
 																				userInfo:self.testUserInfo
 																			   postBlock:testBlock];
@@ -271,7 +271,7 @@
 		capturedNotification = note;
 	};
 	
-	NSPriorityNotification *notification = [[NSPriorityNotification alloc] initWithName:self.testNotificationName
+	NSPriorityNotification *notification = [NSPriorityNotification notificationWithName:self.testNotificationName
 																				  object:self.testObject
 																				userInfo:self.testUserInfo
 																				 reverse:YES
@@ -291,7 +291,7 @@
 
 - (void)testInitWithNilPostBlock {
 	id nilBlock = nil;
-	NSPriorityNotification *notification = [[NSPriorityNotification alloc] initWithName:self.testNotificationName
+	NSPriorityNotification *notification = [NSPriorityNotification notificationWithName:self.testNotificationName
 																				  object:self.testObject
 																				userInfo:self.testUserInfo
 																				 reverse:NO
@@ -612,7 +612,7 @@
 		blockCalled = YES;
 	};
 	
-	NSPriorityNotification *notification = [[NSPriorityNotification alloc] initWithName:self.testNotificationName
+	NSPriorityNotification *notification = [NSPriorityNotification notificationWithName:self.testNotificationName
 																				  object:self.testObject
 																				userInfo:self.testUserInfo
 																				 reverse:YES

@@ -17,6 +17,7 @@
 
 #import <Foundation/Foundation.h>
 #import <AppKit/AppKit.h>
+#import <Foundation/NSNotification.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -218,9 +219,9 @@ NS_ASSUME_NONNULL_BEGIN
  @discussion	This is the base designated initializer. It creates a notification with
 				reverse processing disabled and no post-processing block.
  */
-- (instancetype)initWithName:(NSNotificationName)name
+/*- (instancetype)initWithName:(NSNotificationName)name
 					  object:(nullable id)object
-					userInfo:(nullable NSDictionary *)userInfo NS_DESIGNATED_INITIALIZER;
+					userInfo:(nullable NSDictionary *)userInfo NS_DESIGNATED_INITIALIZER;*/
 
 /*!
  @method		initWithName:object:userInfo:reverse:
@@ -233,10 +234,10 @@ NS_ASSUME_NONNULL_BEGIN
  @discussion	This designated initializer allows configuration of reverse processing.
 				No post-processing block is set.
  */
-- (instancetype)initWithName:(NSNotificationName)name
+/*- (instancetype)initWithName:(NSNotificationName)name
 					  object:(nullable id)object
 					userInfo:(nullable NSDictionary *)userInfo
-					 reverse:(BOOL)reverse NS_DESIGNATED_INITIALIZER;
+					 reverse:(BOOL)reverse NS_DESIGNATED_INITIALIZER;*/
 
 /*!
  @method		initWithName:object:userInfo:postBlock:
@@ -249,10 +250,10 @@ NS_ASSUME_NONNULL_BEGIN
  @discussion	This designated initializer allows configuration of post-processing behavior.
 				Reverse processing is disabled. The block is copied and retained.
  */
-- (instancetype)initWithName:(NSNotificationName)name
+/*- (instancetype)initWithName:(NSNotificationName)name
 					  object:(nullable id)object
 					userInfo:(nullable NSDictionary *)userInfo
-				   postBlock:(void (NS_SWIFT_SENDABLE ^)(NSNotification *notification))postBlock NS_DESIGNATED_INITIALIZER;
+				   postBlock:(void (NS_SWIFT_SENDABLE ^)(NSNotification *notification))postBlock NS_DESIGNATED_INITIALIZER;*/
 
 /*!
  @method		initWithName:object:userInfo:reverse:postBlock:
@@ -266,11 +267,11 @@ NS_ASSUME_NONNULL_BEGIN
  @discussion	This is the most comprehensive designated initializer, allowing configuration
 				of all NSPriorityNotification features. The block is copied and retained.
  */
-- (instancetype)initWithName:(NSNotificationName)name
+/*- (instancetype)initWithName:(NSNotificationName)name
 					  object:(nullable id)object
 					userInfo:(nullable NSDictionary *)userInfo
 					 reverse:(BOOL)reverse
-				   postBlock:(void (NS_SWIFT_SENDABLE ^)(NSNotification *notification))postBlock NS_DESIGNATED_INITIALIZER;
+				   postBlock:(void (NS_SWIFT_SENDABLE ^)(NSNotification *notification))postBlock NS_DESIGNATED_INITIALIZER; */
 
 #pragma mark - NSSecureCoding Protocol
 

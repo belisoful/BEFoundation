@@ -918,7 +918,6 @@
 {
 	NSMutableString *string = NSMutableString.new;
 	NSString *nilString = nil;
-	NSString *result;
 	
 	XCTAssertThrowsSpecificNamed([string prependFormat:nilString], NSException, NSInvalidArgumentException);
 	XCTAssertThrowsSpecificNamed([string prependFormat:(NSString*)NSObject.new], NSException, NSInvalidArgumentException);

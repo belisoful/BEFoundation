@@ -437,7 +437,7 @@
 	NSSet *set = [NSSet setWithObjects:@"a", @"b", @"c", @"a", nil];
 	
 	array.set = set;
-	NSArray *reference = @[@"a", @"b", @"c"];
+	
 	XCTAssertEqual(array.count, 3);
 	XCTAssertTrue([array containsObject:@"a"]);
 	XCTAssertTrue([array containsObject:@"b"]);

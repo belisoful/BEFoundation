@@ -44,6 +44,21 @@
 								 userInfo:(nullable NSDictionary *)aUserInfo
 								  reverse:(BOOL)reverse;
 
+
+/*!
+ @method		resetNotificationWithName:object:userInfo:reverse:
+ @abstract		resets the NSPooledPriorityNotification.
+ @param			aName The name of the notification.
+ @param			anObject The object of the notification.
+ @param			aUserInfo The userInfo of the notification.
+ @param			reverse Whether or not the notification operates in reverse.
+ @discussion	When NSPriorityNotificationCenter sends a notification to an observer on
+				a specific queue, this class contains the information of the NSNotification or
+				subclass.
+ @result		Returns a NSPooledPriorityNotification containing a NSNotification.
+ */
+- (nonnull instancetype)resetNotificationWithName:(nonnull NSNotificationName)aName object:(nullable id)anObject userInfo:(nullable NSDictionary *)aUserInfo reverse:(BOOL)reverse;
+
 /*!
  @method		recycle
  @abstract		Returns the NSPooledPriorityNotification to the pool.

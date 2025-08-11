@@ -67,15 +67,15 @@
 
 
 /**
- @brief Nonatomic getter for the objCType string generated with @encode during assigning value.
+ @brief Nonatomic getter for the objCType string generated with `\@encode` during assigning value.
  */
 @property (nonatomic, assign, readonly) const char * _Nonnull objCType;
 
 
 /**
- @brief Initialize number object with ponter to the value and @encode value type.
+ @brief Initialize number object with ponter to the value and `\@encode` value type.
  @param value Pointer to the value, should not be nil.
- @param type Type string, returned by the @encode, should not be nil.
+ @param type Type string, returned by the `\@encode`, should not be nil.
  @warning Used assert for track nullability of the parameters.
  */
 - (nonnull instancetype) initWithBytes:(nonnull const void *) value objCType:(nonnull const char *) type;
@@ -190,37 +190,6 @@
  @brief Initialize number object with NSUInteger value.
  */
 - (nonnull NSMutableNumber *) initWithUnsignedInteger:(NSUInteger) value;
-
-
-/**
- @brief Thread safe INFINITY.
- */
-@property (class, copy, readonly) NSMutableNumber * _Nonnull infinity;
-
-/**
- @brief Thread safe -INFINITY.  `negativeInfinity` is already used as a define
- */
-@property (class, copy, readonly) NSMutableNumber * _Nonnull minusInfinity;
-
-/**
- @brief Thread safe NaN.
- */
-@property (class, copy, readonly) NSMutableNumber * _Nonnull notANumber;
-
-/**
- @brief Thread safe zero.
- */
-@property (class, copy, readonly) NSMutableNumber * _Nonnull zero;
-
-/**
- @brief Thread safe negative zero as a double.
- */
-@property (class, copy, readonly) NSMutableNumber * _Nonnull negativeZero;
-
-/**
- @brief Thread safe one.
- */
-@property (class, copy, readonly) NSMutableNumber * _Nonnull one;
 
 
 
@@ -512,6 +481,35 @@
  @brief Static creating methods which using typed initializers.
  */
 @interface NSMutableNumber(NSMutableNumberCreation)
+/**
+ @brief Thread safe INFINITY.
+ */
+@property (class, copy, readonly) NSMutableNumber * _Nonnull infinity;
+
+/**
+ @brief Thread safe -INFINITY.  `negativeInfinity` is already used as a define
+ */
+@property (class, copy, readonly) NSMutableNumber * _Nonnull minusInfinity;
+
+/**
+ @brief Thread safe NaN.
+ */
+@property (class, copy, readonly) NSMutableNumber * _Nonnull notANumber;
+
+/**
+ @brief Thread safe zero.
+ */
+@property (class, copy, readonly) NSMutableNumber * _Nonnull zero;
+
+/**
+ @brief Thread safe negative zero as a double.
+ */
+@property (class, copy, readonly) NSMutableNumber * _Nonnull negativeZero;
+
+/**
+ @brief Thread safe one.
+ */
+@property (class, copy, readonly) NSMutableNumber * _Nonnull one;
 
 + (nonnull NSMutableNumber *) numberWithChar:(char) number;
 + (nonnull NSMutableNumber *) numberWithUnsignedChar:(unsigned char) number;

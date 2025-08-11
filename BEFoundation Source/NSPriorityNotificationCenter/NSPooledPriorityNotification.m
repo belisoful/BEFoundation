@@ -44,7 +44,7 @@ static NSMutableSet *notificationPool = nil;
 				subclass.
  @result		Returns a NSPooledPriorityNotification containing a NSNotification.
  */
-+ (nonnull id)newTempNotificationWithName:(nullable NSString *)name
++ (nonnull id)newTempNotificationWithName:(nullable NSNotificationName)name
 								   object:(nullable id)anObject
 								 userInfo:(nullable NSDictionary *)aUserInfo
 								  reverse:(BOOL)reverse
@@ -57,16 +57,24 @@ static NSMutableSet *notificationPool = nil;
 	NSPooledPriorityNotification *notif = nil;
 	@synchronized(notificationPool) {
 		notif = NARC_RETAIN([notificationPool anyObject]);
+
 		if (notif) {
 			[notificationPool removeObject:notif];
-			notif = [notif initWithName:name object:anObject userInfo:aUserInfo reverse:reverse];
-		}
-
-		if (notif == nil) {
-			notif = [NSPooledPriorityNotification.alloc initWithName:name object:anObject userInfo:aUserInfo reverse:reverse];
+			[notif resetNotificationWithName:name object:anObject userInfo:aUserInfo reverse:reverse];
+		} else {
+			notif = [NSPooledPriorityNotification notificationWithName:name object:anObject userInfo:aUserInfo reverse:reverse];
 		}
 	}
 	return notif;
+}
+
+- (instancetype)resetNotificationWithName:(NSNotificationName)aName object:(nullable id)anObject userInfo:(nullable NSDictionary *)aUserInfo reverse:(BOOL)reverse
+{
+	_name = aName;
+	_object = anObject;
+	_userInfo = aUserInfo;
+	_reverse = reverse;
+	return self;
 }
 
 /*!

@@ -129,6 +129,19 @@ NS_ENUM(BEPredicateRuleOutcome) {
 + (nonnull BEPredicateRule*)ruleWithOutcome:(BEPredicateRuleOutcome)outcome priorityInteger:(NSInteger)priority block:(BOOL (^ _Nonnull)(id _Nullable evaluatedObject, NSDictionary<NSString *, id> * _Nullable bindings))block API_AVAILABLE(macos(10.6), ios(4.0), watchos(2.0), tvos(9.0));
 + (nonnull BEPredicateRule*)ruleWithOutcome:(BEPredicateRuleOutcome)outcome priorityDouble:(double)priority block:(BOOL (^ _Nonnull)(id _Nullable evaluatedObject, NSDictionary<NSString *, id> * _Nullable bindings))block API_AVAILABLE(macos(10.6), ios(4.0), watchos(2.0), tvos(9.0));
 
+
+// NSPredicate methods unavailable
++ (nonnull NSPredicate *)predicateWithFormat:(nonnull NSString *)predicateFormat argumentArray:(nullable NSArray *)arguments NS_UNAVAILABLE;
++ (nonnull NSPredicate *)predicateWithFormat:(nonnull NSString *)predicateFormat, ... NS_UNAVAILABLE;
++ (nonnull NSPredicate *)predicateWithFormat:(nonnull NSString *)predicateFormat arguments:(va_list)argList NS_UNAVAILABLE;
+
++ (nullable NSPredicate *)predicateFromMetadataQueryString:(nonnull NSString *)queryString NS_UNAVAILABLE;
+
++ (nonnull NSPredicate *)predicateWithValue:(BOOL)value NS_UNAVAILABLE;    // return predicates that always evaluate to true/false
+
++ (nonnull NSPredicate*)predicateWithBlock:(BOOL (^ _Nonnull)(id _Nullable evaluatedObject, NSDictionary<NSString *, id> * _Nullable bindings))block NS_UNAVAILABLE;
+// end NSPredicate methods unavailable
+
 @property (readonly, nonatomic, copy, nonnull) NSString *predicateFormat;    // returns the format string of the predicate
 
 - (nullable instancetype)initWithPredicate:(NSPredicate * _Nonnull)predicate;

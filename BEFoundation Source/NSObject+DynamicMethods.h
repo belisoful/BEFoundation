@@ -558,7 +558,7 @@ typedef NS_ENUM(NSInteger, BEDynamicMethodsActivationState) {
  @param			protocol	The protocol to retrieve the target implementation object.
  @return		The target, an NSArray when without a protocol, or nil.
  @discussion	This returns the target implementation for a specific protocol.
- 				When the protocol paramater is nil or `@protocol(NSNoProtocol)`, this
+ 				When the protocol paramater is nil or `\@protocol(NSNoProtocol)`, this
  				will return an NSArray of targets that don't have a protocol.
  				nil if none.
  */

@@ -13,7 +13,6 @@
 #import <BE_ARC.h>
 
 #import <objc/runtime.h>
-#import <Foundation/NSNotification.h>
 #import "NSPriorityNotification.h"
 #import <Foundation/NSCoder.h>
 #import <Foundation/NSDictionary.h>
@@ -182,13 +181,7 @@ static NSString * const NSReverseKey = @"NSPriorityNotification.reverse";
  */
 - (instancetype)initWithName:(NSNotificationName)name object:(nullable id)object userInfo:(nullable NSDictionary *)userInfo
 {
-	if (self) {
-		_name = name;
-		_object = object;
-		_userInfo = userInfo;
-		_reverse = NO;
-		_postBlock = NULL;
-	}
+	self = [self initWithName:name object:object userInfo:userInfo reverse:NO postBlock:nil];
 	return self;
 }
 
@@ -203,7 +196,7 @@ static NSString * const NSReverseKey = @"NSPriorityNotification.reverse";
  @discussion	This designated initializer allows control over observer processing order.
 				When reverse is YES, observers are called in reverse registration order.
  */
-- (instancetype)initWithName:(NSNotificationName)name object:(nullable id)object userInfo:(nullable NSDictionary *)userInfo reverse:(BOOL)reverse
+/*- (instancetype)initWithName:(NSNotificationName)name object:(nullable id)object userInfo:(nullable NSDictionary *)userInfo reverse:(BOOL)reverse
 {
 	if (self) {
 		_name = name;
@@ -213,7 +206,7 @@ static NSString * const NSReverseKey = @"NSPriorityNotification.reverse";
 		_postBlock = NULL;
 	}
 	return self;
-}
+}*/
 
 /*!
  @method		initWithName:object:userInfo:postBlock:
@@ -226,7 +219,7 @@ static NSString * const NSReverseKey = @"NSPriorityNotification.reverse";
  @discussion	This designated initializer sets up post-processing capabilities.
 				The block is copied using BLOCK_COPY for proper memory management.
  */
-- (instancetype)initWithName:(NSNotificationName)name object:(nullable id)object userInfo:(nullable NSDictionary *)userInfo postBlock:(void (NS_SWIFT_SENDABLE ^)(NSNotification *notification))postBlock
+/*- (instancetype)initWithName:(NSNotificationName)name object:(nullable id)object userInfo:(nullable NSDictionary *)userInfo postBlock:(void (NS_SWIFT_SENDABLE ^)(NSNotification *notification))postBlock
 {
 	if (self) {
 		_name = name;
@@ -238,7 +231,7 @@ static NSString * const NSReverseKey = @"NSPriorityNotification.reverse";
 		}
 	}
 	return self;
-}
+}*/
 
 /*!
  @method		initWithName:object:userInfo:reverse:postBlock:
