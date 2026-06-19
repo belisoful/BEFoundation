@@ -533,7 +533,7 @@
 {
 	BECharacterSet *charset = BECharacterSet.alphanumericCharacterSet;
 	int i = 0;
-	for(i; i < 255; i++) {
+	for(; i < 255; i++) {
 		XCTAssertEqual([charset characterIsMember:i], [charset.characterSet characterIsMember:i]);
 	}
 	XCTAssertEqual(i, 255);
@@ -543,7 +543,7 @@
 {
 	BECharacterSet *charset = BECharacterSet.alphanumericCharacterSet;
 	int i = 0;
-	for(i; i < 255; i++) {
+	for(; i < 255; i++) {
 		XCTAssertEqual([charset longCharacterIsMember:i], [charset.characterSet longCharacterIsMember:i]);
 	}
 	XCTAssertEqual(i, 255);
@@ -783,7 +783,7 @@
 	charset.characterSet = alphaNumericSet;
 	
 	int i = 0;
-	for(i; i < 255; i++) {
+	for(; i < 255; i++) {
 		XCTAssertEqual([charset characterIsMember:i], [alphaNumericSet characterIsMember:i]);
 	}
 	XCTAssertEqual(i, 255);
@@ -876,5 +876,29 @@
 	XCTAssertTrue([charset.characterSet isEqual:reference]);
 }
 
+- (void)testBEMutableCharacterSet_InitWithSetNil_BackingSetIsMutable {
+	// initWithSet:nil previously left _characterSet unset, so the superclass's init filled it
+	// with an IMMUTABLE set and the first mutation trapped (CFCharacterSet "Immutable character
+	// set passed to mutable function").
+	id nilSet = nil;
+	BEMutableCharacterSet *set = [[BEMutableCharacterSet alloc] initWithSet:nilSet];
+	XCTAssertNoThrow([set addCharactersInString:@"abc"]);
+	XCTAssertTrue([set characterIsMember:'a']);
+}
+
+- (void)testCharacterSetWithContentsOfFile_MissingFile_ReturnsNil {
+	// The factories are declared nullable with a documented nil-on-failure contract; they
+	// previously wrapped the failure in initWithSet:nil and returned an empty set instead.
+	XCTAssertNil([BECharacterSet characterSetWithContentsOfFile:@"/nonexistent/bogus.bitmap"]);
+	XCTAssertNil([BEMutableCharacterSet characterSetWithContentsOfFile:@"/nonexistent/bogus.bitmap"]);
+}
+
+- (void)testBEMutableCharacterSet_CharacterSetGetter_AliasesBackingSet {
+	// The getter returns the backing instance itself (not a copy): mutations through it
+	// are reflected in the BEMutableCharacterSet.
+	BEMutableCharacterSet *set = [BEMutableCharacterSet characterSetWithCharactersInString:@"x"];
+	[set.characterSet addCharactersInString:@"y"];
+	XCTAssertTrue([set characterIsMember:'y']);
+}
 
 @end

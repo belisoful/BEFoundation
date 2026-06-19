@@ -802,11 +802,15 @@
 - (void)testStringByPrependingFormat
 {
 	NSString *root = @"root";
-	
+
 	NSString *result = [root stringByPrependingFormat:@"abc_%d_", 11];
 	XCTAssertEqualObjects(result, @"abc_11_root");
-	
+
+	// Intentionally an empty format with an unused arg — NS_FORMAT_FUNCTION flags it; that is the point.
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wformat"
 	result = [root stringByPrependingFormat:@"", 11];
+#pragma clang diagnostic pop
 	XCTAssertEqualObjects(result, @"root");
 }
 
@@ -875,8 +879,12 @@
 
 - (void)testPrependFormat
 {
+	// This method deliberately calls prependFormat with empty / no-specifier formats and unused args
+	// to verify runtime behavior; NS_FORMAT_FUNCTION correctly flags those, so silence it locally.
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wformat"
 	NSMutableString *string = NSMutableString.new;
-	
+
 	[string prependFormat:@""];
 	XCTAssertEqualObjects(string, @"");
 	
@@ -911,6 +919,7 @@
 	
 	[string prependFormat:@"%@", @"-"];
 	XCTAssertEqualObjects(string, @"-abcx");
+#pragma clang diagnostic pop
 }
 
 
@@ -919,9 +928,12 @@
 	NSMutableString *string = NSMutableString.new;
 	NSString *nilString = nil;
 	
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wformat-security"
 	XCTAssertThrowsSpecificNamed([string prependFormat:nilString], NSException, NSInvalidArgumentException);
 	XCTAssertThrowsSpecificNamed([string prependFormat:(NSString*)NSObject.new], NSException, NSInvalidArgumentException);
-	
+#pragma clang diagnostic pop
+
 	@try {
 		[string prependFormat:nilString, 11];
 		XCTAssertTrue(false, @"Did not throw NSException: NSInvalidArgumentException");
@@ -945,12 +957,15 @@
 	} @catch (NSException *e) {}
 	 */
 	
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wformat-security"
 	XCTAssertThrowsSpecificNamed([string appendFormat:(NSString*)NSObject.new], NSException, NSInvalidArgumentException);
 	@try {
 		[string appendFormat:(NSString*)NSObject.new, 11];
 		XCTAssertTrue(false, @"Did not throw NSException: NSInvalidArgumentException");
 	} @catch (NSException *e) {
 	}
+#pragma clang diagnostic pop
 }
 
 
@@ -989,6 +1004,42 @@
 	
 	[string deleteAtIndex:2];
 	XCTAssertEqualObjects(string, @"bd");
+}
+
+#pragma mark - is*Value leniency & Unicode
+
+// NSScanner skips whitespace, so the is*Value checks tolerate BOTH leading and trailing
+// whitespace (but not interior), since -isAtEnd treats trailing whitespace as exhausted.
+- (void)testIsValue_WhitespaceLeniency
+{
+	XCTAssertTrue(@" 5".isIntegerValue, @"leading whitespace is skipped");
+	XCTAssertTrue(@"5 ".isIntegerValue, @"trailing whitespace is treated as end");
+	XCTAssertTrue(@"  5  ".isIntegerValue);
+	XCTAssertFalse(@"1 2".isIntegerValue, @"interior whitespace is not a valid integer");
+
+	XCTAssertTrue(@" 3.5 ".isDoubleValue);
+	XCTAssertFalse(@"3 . 5".isDoubleValue);
+}
+
+// decimalDigitCharacterSet and NSScanner both accept non-ASCII (e.g. Arabic-Indic) digits,
+// as the isDigits doc claims.
+- (void)testIsDigitsAndIsValue_UnicodeDigits
+{
+	NSString *arabicIndic = @"١٢٣"; // ١٢٣
+	XCTAssertTrue(arabicIndic.isDigits);
+	XCTAssertTrue(arabicIndic.isIntegerValue);
+	XCTAssertFalse(@"".isDigits, @"empty string is not all-digits");
+}
+
+- (void)testObjectAtIndexedSubscript_EmptyString
+{
+	XCTAssertNil(@""[0]);
+}
+
+- (void)testStringByInsertingString_EmptyAndBoundaries
+{
+	XCTAssertEqualObjects([@"abc" stringByInsertingString:@"" atIndex:1], @"abc", @"inserting empty is a no-op");
+	XCTAssertEqualObjects([@"" stringByInsertingString:@"x" atIndex:0], @"x", @"insert into empty at 0");
 }
 
 @end

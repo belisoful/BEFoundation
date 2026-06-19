@@ -156,9 +156,10 @@
 	[self finishArchivingAndCreateUnarchiver];
 	
 	_Float16 decodedValue = [self.unarchiver decodeHalfForKey:@"nonExistentKey"];
-	
-	XCTAssertTrue(isnan(decodedValue), @"Decoding non-existent key should return NaN");
-	
+
+	// Matches NSCoder's scalar-decode contract: a missing key reads back as 0.
+	XCTAssertEqual(decodedValue, (_Float16)0, @"Decoding non-existent key should return 0");
+
 	[self.unarchiver finishDecoding];
 }
 
@@ -170,10 +171,10 @@
 	[self finishArchivingAndCreateUnarchiver];
 	
 	_Float16 decodedValue = [self.unarchiver decodeHalfForKey:key];
-	
-	// This should return NaN because the data length doesn't match sizeof(_Float16)
-	XCTAssertTrue(isnan(decodedValue), @"Decoding wrong data type should return NaN");
-	
+
+	// Wrong-sized data (an int, not a 2-byte half) reads back as 0, like the other scalar decoders.
+	XCTAssertEqual(decodedValue, (_Float16)0, @"Decoding wrong data type should return 0");
+
 	[self.unarchiver finishDecoding];
 }
 

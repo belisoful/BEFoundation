@@ -8,7 +8,9 @@
 #import <XCTest/XCTest.h>
 #import <BEFoundation/NSObject+DynamicMethods.h>
 #import <simd/simd.h>
-#import <arm_neon.h>
+#if defined(__arm64__) || defined(__aarch64__)
+#import <arm_neon.h>		// arm-only; x86_64 slice cannot import the NEON builtin module
+#endif
 
 
 @interface CustomNSMethodSignature : NSMethodSignature
@@ -18,11 +20,15 @@
 
 @implementation CustomNSMethodSignature
 
+// NSMethodSignature is an abstract class cluster whose -init returns nil.
+// Intentionally skipping [super init] to avoid the cluster's nil return.
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wobjc-designated-initializers"
 - (instancetype)init
 {
-	//Skip self = [super init]; because [NSMethodSignature init] returns nil;
 	return self;
 }
+#pragma clang diagnostic pop
 
 
 - (const char *)getArgumentTypeAtIndex:(NSUInteger)idx
@@ -73,7 +79,7 @@
 	
 	XCTAssertNotNil(signature);
 	
-	XCTAssertEqual(strcmp([signature methodReturnType], "B"), 0);
+	XCTAssertEqual(strcmp([signature methodReturnType], @encode(BOOL)), 0);
 	XCTAssertEqual([signature methodReturnLength], 1);
 	XCTAssertEqual([signature frameLength], 224);
 	
@@ -92,7 +98,7 @@
 	
 	XCTAssertNotNil(signature);
 	
-	XCTAssertEqual(strcmp([signature methodReturnType], "B"), 0);
+	XCTAssertEqual(strcmp([signature methodReturnType], @encode(BOOL)), 0);
 	XCTAssertEqual([signature methodReturnLength], 1);
 	XCTAssertEqual([signature frameLength], 224);
 	
@@ -111,7 +117,7 @@
 	
 	XCTAssertNotNil(signature);
 	
-	XCTAssertEqual(strcmp([signature methodReturnType], "B"), 0);
+	XCTAssertEqual(strcmp([signature methodReturnType], @encode(BOOL)), 0);
 	XCTAssertEqual([signature methodReturnLength], 1);
 	XCTAssertEqual([signature frameLength], 224);
 	
@@ -133,7 +139,7 @@
 	
 	XCTAssertNotNil(signature);
 	
-	XCTAssertEqual(strcmp([signature methodReturnType], "B"), 0);
+	XCTAssertEqual(strcmp([signature methodReturnType], @encode(BOOL)), 0);
 	XCTAssertEqual([signature methodReturnLength], 1);
 	XCTAssertEqual([signature frameLength], 224);
 	
@@ -260,8 +266,12 @@
 	
 	XCTAssertEqualObjects(signature.methodReturnTypeString, @"i");
 	XCTAssertEqual([signature methodReturnLength], 4);
-	XCTAssertEqual([signature frameLength], 224);
-	
+#if defined(__arm64__) || defined(__aarch64__)
+	XCTAssertEqual([signature frameLength], 224);	// long double is 8 bytes on arm64
+#else
+	XCTAssertEqual([signature frameLength], 240);	// long double is 16 bytes on x86_64
+#endif
+
 	XCTAssertEqual(signature.numberOfArguments, 6);
 	XCTAssertEqualObjects([signature getArgumentTypeStringAtIndex:0], @"@");
 	XCTAssertEqualObjects([signature getArgumentTypeStringAtIndex:1], @":");
@@ -349,7 +359,11 @@
 	
 	XCTAssertEqual(strcmp([signature methodReturnType], "@\"NSNumber\""), 0);
 	XCTAssertEqual([signature methodReturnLength], 8);
+#if defined(__arm64__) || defined(__aarch64__)
 	XCTAssertEqual([signature frameLength], 248);
+#else
+	XCTAssertEqual([signature frameLength], 288);	// long double (16B) + struct-by-value differ on x86_64
+#endif
 	
 	XCTAssertEqual(signature.numberOfArguments, 12);
 	XCTAssertEqualObjects([signature getArgumentTypeStringAtIndex:0], @"@");
@@ -407,7 +421,7 @@
 	XCTAssertEqual([intSignature getArgumentSizeAtIndex:9], sizeof(long long));
 	XCTAssertEqualObjects([intSignature getArgumentTypeStringAtIndex:10], @"Q");
 	XCTAssertEqual([intSignature getArgumentSizeAtIndex:10], sizeof(unsigned long long));
-	XCTAssertEqualObjects([intSignature getArgumentTypeStringAtIndex:11], @"B");
+	XCTAssertEqualObjects([intSignature getArgumentTypeStringAtIndex:11], [NSString stringWithUTF8String:@encode(BOOL)]);
 	XCTAssertEqual([intSignature getArgumentSizeAtIndex:11], sizeof(int));
 	
 	id floatOtherBlock = ^void(id _self, char *cString, SEL selector, Class aClass, int *ptr, int a[4], struct myPoint pt, float f, double d, long double ld) {
@@ -442,7 +456,7 @@
 	CustomNSMethodSignature *signature = [CustomNSMethodSignature.alloc init];
 	
 	
-	XCTAssertEqualObjects([signature className], NSStringFromClass(CustomNSMethodSignature.class));
+	XCTAssertEqualObjects(NSStringFromClass([signature class]), NSStringFromClass(CustomNSMethodSignature.class));
 	
 	XCTAssertEqual([signature getArgumentSizeAtIndex:0], 0);
 	
@@ -470,7 +484,7 @@
 	
 	NSString *signature = [NSString stringWithCString:signatureChars encoding:NSASCIIStringEncoding];
 	
-	XCTAssertEqualObjects(signature, @"B44@?0@8:16@\"NSNumber\"24i32d36");
+	XCTAssertEqualObjects(signature, ([NSString stringWithFormat:@"%s44@?0@8:16@\"NSNumber\"24i32d36", @encode(BOOL)]));
 }
 
 
@@ -501,7 +515,7 @@
 	
 	XCTAssertTrue(signature != nil);
 	
-	XCTAssertEqualObjects(signature, @"B44@?0@8:16@\"NSNumber\"24i32d36");
+	XCTAssertEqualObjects(signature, ([NSString stringWithFormat:@"%s44@?0@8:16@\"NSNumber\"24i32d36", @encode(BOOL)]));
 }
 
 
@@ -532,7 +546,7 @@
 	
 	XCTAssertTrue(signature != nil);
 	
-	XCTAssertEqualObjects(signature, @"B28@0@\"NSNumber\"8i16d20");
+	XCTAssertEqualObjects(signature, ([NSString stringWithFormat:@"%s28@0@\"NSNumber\"8i16d20", @encode(BOOL)]));
 }
 
 
@@ -546,7 +560,7 @@
 	
 	XCTAssertTrue(signature != nil);
 	
-	XCTAssertEqualObjects(signature, @"B36@0:8@\"NSNumber\"16i24d28");
+	XCTAssertEqualObjects(signature, ([NSString stringWithFormat:@"%s36@0:8@\"NSNumber\"16i24d28", @encode(BOOL)]));
 }
 
 
@@ -606,6 +620,77 @@
 	XCTAssertEqual([BEMethodSignatureHelper parseNumberAtPointer:&number], 42);
 	XCTAssertEqual([BEMethodSignatureHelper parseNumberAtPointer:&charNumber], 53);
 }
+
+#pragma mark - BlockFlags constants
+
+// Lock the BlockFlags bit positions against the canonical Apple Block ABI (Block_private.h).
+- (void)testBlockFlags_CanonicalBitValues
+{
+	XCTAssertEqual((uint32_t)BLOCK_DEALLOCATING,         (uint32_t)0x0001);
+	XCTAssertEqual((uint32_t)BLOCK_REFCOUNT_MASK,        (uint32_t)0xfffe);
+	XCTAssertEqual((uint32_t)BLOCK_INLINE_LAYOUT_STRING, (uint32_t)(1u << 21));
+	XCTAssertEqual((uint32_t)BLOCK_SMALL_DESCRIPTOR,     (uint32_t)(1u << 22));
+	XCTAssertEqual((uint32_t)BLOCK_IS_NOESCAPE,          (uint32_t)(1u << 23));
+	XCTAssertEqual((uint32_t)BLOCK_NEEDS_FREE,           (uint32_t)(1u << 24));
+	XCTAssertEqual((uint32_t)BLOCK_HAS_COPY_DISPOSE,     (uint32_t)(1u << 25));
+	XCTAssertEqual((uint32_t)BLOCK_HAS_CTOR,             (uint32_t)(1u << 26));
+	XCTAssertEqual((uint32_t)BLOCK_IS_GC,                (uint32_t)(1u << 27));
+	XCTAssertEqual((uint32_t)BLOCK_IS_GLOBAL,            (uint32_t)(1u << 28));
+	XCTAssertEqual((uint32_t)BLOCK_USE_STRET,            (uint32_t)(1u << 29));
+	XCTAssertEqual((uint32_t)BLOCK_HAS_SIGNATURE,        (uint32_t)(1u << 30));
+	XCTAssertEqual((uint32_t)BLOCK_HAS_EXTENDED_LAYOUT,  (uint32_t)(1u << 31));
+	// The deallocating bit and the refcount mask are disjoint and together fill the low 16 bits.
+	XCTAssertEqual((uint32_t)(BLOCK_DEALLOCATING & BLOCK_REFCOUNT_MASK), (uint32_t)0);
+	XCTAssertEqual((uint32_t)(BLOCK_DEALLOCATING | BLOCK_REFCOUNT_MASK), (uint32_t)0xffff);
+}
+
+// Verify the flags against blocks the compiler/runtime actually produce.
+- (void)testBlockFlags_RealRuntimeBlocks
+{
+	void (^globalBlock)(void) = ^{};
+	Block_literal *g = (__bridge Block_literal *)globalBlock;
+	XCTAssertTrue((g->flags & BLOCK_IS_GLOBAL) != 0, @"a no-capture block is global");
+	XCTAssertTrue((g->flags & BLOCK_HAS_SIGNATURE) != 0);
+
+	__block int captured = 7;
+	int (^stackBlock)(int) = ^(int a){ return a + captured; };
+	Block_literal *s = (__bridge Block_literal *)stackBlock;
+	XCTAssertFalse((s->flags & BLOCK_IS_GLOBAL) != 0, @"a capturing block is not global");
+	XCTAssertTrue((s->flags & BLOCK_HAS_EXTENDED_LAYOUT) != 0, @"capturing blocks carry an extended layout");
+
+	NSObject *obj = [NSObject new];
+	id (^copyDisposeBlock)(void) = [^id{ return obj; } copy];
+	Block_literal *c = (__bridge Block_literal *)copyDisposeBlock;
+	XCTAssertTrue((c->flags & BLOCK_HAS_COPY_DISPOSE) != 0, @"a block capturing an object needs copy/dispose helpers");
+
+	// Signature extraction works through the (regular-descriptor) path used on this toolchain.
+	const char *sig = NSSignatureForBlock(globalBlock);
+	XCTAssertTrue(sig != NULL && sig[0] == 'v', @"void-returning block signature starts with 'v'");
+}
+
+#if !BE_APPLE_TERMS_COMPLIANT
+// This test is compiled in ONLY when the suite is built with BE_APPLE_TERMS_COMPLIANT=0, so it runs
+// only in the opt-out configuration. It exercises the non-public _Block_signature runtime path that
+// the default (compliant) build never references. Run it via Scripts/run-noncompliant-tests.sh.
+- (void)testBlockSignature_NonCompliantRuntimePath
+{
+	XCTAssertTrue(_Block_signature != NULL, @"_Block_signature must be available when opted out of compliance");
+
+	int (^block)(int, double) = ^int(int a, double d){ return a + (int)d; };
+	const char *sig = NSSignatureForBlock(block); // resolves via _Block_signature in this configuration
+	XCTAssertTrue(sig != NULL, @"runtime extractor returned a signature");
+	XCTAssertEqual(sig[0], 'i', @"int-returning block signature starts with 'i'");
+	XCTAssertTrue(strstr(sig, "@?") != NULL, @"the leading block pointer is encoded as @?");
+
+	// And the resulting method signature still derives correctly: signatureFromBlock strips the
+	// leading block pointer (@?), leaving the block's two explicit args (int, double).
+	NSMethodSignature *ms = [NSMethodSignature signatureFromBlock:block];
+	XCTAssertEqualObjects([ms methodReturnTypeString], @"i");
+	XCTAssertEqual(ms.numberOfArguments, (NSUInteger)2);
+	XCTAssertEqualObjects([ms getArgumentTypeStringAtIndex:0], @"i");
+	XCTAssertEqualObjects([ms getArgumentTypeStringAtIndex:1], @"d");
+}
+#endif
 
 @end
 

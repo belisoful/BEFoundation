@@ -1,0 +1,118 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: Build, Test, and Validate Docs (macOS)
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Build framework
+        run: |
+          set -o pipefail
+          xcodebuild -project BEFoundation.xcodeproj \
+                     -scheme BEFoundation \
+                     -configuration Debug \
+                     -destination 'platform=macOS' \
+                     CODE_SIGNING_ALLOWED=NO \
+                     build
+
+      - name: Run unit tests
+        run: |
+          set -o pipefail
+          xcodebuild -project BEFoundation.xcodeproj \
+                     -scheme BEFoundation \
+                     -configuration Debug \
+                     -destination 'platform=macOS' \
+                     CODE_SIGNING_ALLOWED=NO \
+                     test
+
+      - name: Validate documentation catalog
+        run: |
+          set -o pipefail
+          xcodebuild docbuild -project BEFoundation.xcodeproj \
+                              -scheme BEFoundation \
+                              -configuration Debug \
+                              -destination 'platform=macOS' \
+                              CODE_SIGNING_ALLOWED=NO
+
+  ios-test:
+    name: Tests (iOS Simulator)
+    runs-on: macos-15
+    timeout-minutes: 40
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run unit tests (iOS)
+        run: |
+          set -o pipefail
+          # A concrete arm64 simulator (not 'generic', which also builds the
+          # x86_64 slice and fails on the NEON intrinsics the framework pulls in).
+          ID=$(xcodebuild -showdestinations -scheme BEFoundation -project BEFoundation.xcodeproj 2>/dev/null \
+                 | grep "platform:iOS Simulator" | grep "arch:arm64" \
+                 | grep -oE "id:[0-9A-F-]{36}" | head -1 | cut -d: -f2)
+          echo "Using simulator: $ID"
+          xcodebuild test \
+                     -project BEFoundation.xcodeproj \
+                     -scheme BEFoundation \
+                     -configuration Debug \
+                     -destination "platform=iOS Simulator,id=$ID" \
+                     CODE_SIGNING_ALLOWED=NO
+
+  x86-test:
+    name: Tests (macOS x86_64)
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rosetta
+        # macos-15 runners are Apple Silicon; the x86_64 test bundle runs under Rosetta.
+        run: softwareupdate --install-rosetta --agree-to-license
+
+      - name: Run unit tests (x86_64)
+        run: |
+          set -o pipefail
+          xcodebuild test \
+                     -project BEFoundation.xcodeproj \
+                     -scheme BEFoundation \
+                     -configuration Debug \
+                     -destination 'platform=macOS,arch=x86_64' \
+                     CODE_SIGNING_ALLOWED=NO
+
+  address-sanitizer:
+    name: Tests under AddressSanitizer
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run unit tests with ASan
+        run: |
+          set -o pipefail
+          xcodebuild -project BEFoundation.xcodeproj \
+                     -scheme BEFoundation \
+                     -configuration Debug \
+                     -destination 'platform=macOS' \
+                     -enableAddressSanitizer YES \
+                     CODE_SIGNING_ALLOWED=NO \
+                     test

@@ -6,6 +6,7 @@
 //
 
 #import <XCTest/XCTest.h>
+#import <BEFoundation/BEPlatformTypes.h>
 #import "BEFoundation/BEMutable.h"
 
 @interface BEMutableTests : XCTestCase
@@ -596,14 +597,14 @@
 	
 	NSString *attrString = @"NSAttributedString";
 	NSDictionary *attributes = @{
-		NSFontAttributeName: [NSFont boldSystemFontOfSize:18],
-		NSForegroundColorAttributeName: [NSColor redColor]
+		NSFontAttributeName: [BEFont boldSystemFontOfSize:18],
+		NSForegroundColorAttributeName: [BEColor redColor]
 	};
 	
 	NSString *mattrString = @"NSMutableAttributedString";
 	NSDictionary *mattributes = @{
-		NSFontAttributeName: [NSFont boldSystemFontOfSize:50],
-		NSForegroundColorAttributeName: [NSColor blueColor]
+		NSFontAttributeName: [BEFont boldSystemFontOfSize:50],
+		NSForegroundColorAttributeName: [BEColor blueColor]
 	};
 	
 	NSArray *keys = @[
@@ -676,6 +677,25 @@
 	return @[keys, values];
 }
 
+/*!
+ * @abstract Deterministic, hash-independent stand-in for @c -[NSSet member:].
+ * @discussion @c -[NSSet member:] locates a candidate through the hash bucket of the
+ * argument. The collection fixtures above hash by element count, so several distinct
+ * elements share a bucket; under an unlucky heap layout @c member: can probe a bucket
+ * occupant that is not equal and return @c nil, which made the set correctness tests
+ * flaky. A linear scan is immune to that: the fixtures contain no two mutually-equal
+ * elements, so at most one member matches and the result is stable across runs.
+ */
+- (id)memberOf:(id<NSFastEnumeration>)haystack equalTo:(id)needle
+{
+	for (id candidate in haystack) {
+		if (candidate == needle || [candidate isEqual:needle]) {
+			return candidate;
+		}
+	}
+	return nil;
+}
+
 #pragma mark - BECollection copyRecursive
 
 // Immutable Sets
@@ -702,62 +722,64 @@
 				// All Collections must be immutable
 				XCTAssertTrue([obj conformsToProtocol:@protocol(BECollection)]);
 			}
+		} else {
+			NSLog(@"*** ERROR: NSMutableTests- %@", NSStringFromClass([obj class]));
 		}
 	}];
 	
-	XCTAssertNotEqual([result member:elements[0]], elements[0]);
-	XCTAssertEqualObjects([result member:elements[0]], elements[0]);
-	XCTAssertNotEqual([result member:elements[1]], elements[1]);
-	XCTAssertEqualObjects([result member:elements[1]], elements[1]);
-	XCTAssertNotEqual([result member:elements[2]], elements[2]);
-	XCTAssertEqualObjects([result member:elements[2]], elements[2]);
-	XCTAssertNotEqual([result member:elements[3]], elements[3]);
-	XCTAssertEqualObjects([result member:elements[3]], elements[3]);
-	XCTAssertNotEqual([result member:elements[4]], elements[4]);
-	XCTAssertEqualObjects([result member:elements[4]], elements[4]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[0]], elements[0]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[0]], elements[0]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[1]], elements[1]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[1]], elements[1]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[2]], elements[2]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[2]], elements[2]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[3]], elements[3]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[3]], elements[3]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[4]], elements[4]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[4]], elements[4]);
 	
 	//Immutable objects are the same
 	{
-		XCTAssertEqual([result member:elements[5]], elements[5]);
-		XCTAssertEqual([result member:elements[6]], elements[6]);
-		XCTAssertEqual([result member:elements[7]], elements[7]);
-		XCTAssertEqual([result member:elements[8]], elements[8]);
-		XCTAssertEqual([result member:elements[9]], elements[9]);
-		XCTAssertEqual([result member:elements[10]], elements[10]);
+		XCTAssertEqual([self memberOf:result equalTo:elements[5]], elements[5]);
+		XCTAssertEqual([self memberOf:result equalTo:elements[6]], elements[6]);
+		XCTAssertEqual([self memberOf:result equalTo:elements[7]], elements[7]);
+		XCTAssertEqual([self memberOf:result equalTo:elements[8]], elements[8]);
+		XCTAssertEqual([self memberOf:result equalTo:elements[9]], elements[9]);
+		XCTAssertEqual([self memberOf:result equalTo:elements[10]], elements[10]);
 		
-		XCTAssertEqual([result member:elements[11]], elements[11]);
-		XCTAssertNotEqual([result member:elements[12]], elements[12]);
-		XCTAssertEqualObjects([result member:elements[12]], elements[12]);	//NSMutableCharacterSet
+		XCTAssertEqual([self memberOf:result equalTo:elements[11]], elements[11]);
+		XCTAssertNotEqual([self memberOf:result equalTo:elements[12]], elements[12]);
+		XCTAssertEqualObjects([self memberOf:result equalTo:elements[12]], elements[12]);	//NSMutableCharacterSet
 	}
 	
-	XCTAssertNotEqual([result member:elements[13]], elements[13]);
-	XCTAssertEqualObjects([result member:elements[13]], elements[13]);
-	XCTAssertNotEqual([result member:elements[14]], elements[14]);
-	XCTAssertEqualObjects([result member:elements[14]], elements[14]);
-	XCTAssertNotEqual([result member:elements[15]], elements[15]);
-	XCTAssertEqualObjects([result member:elements[15]], elements[15]);
-	XCTAssertNotEqual([result member:elements[16]], elements[16]);
-	XCTAssertEqualObjects([result member:elements[16]], elements[16]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[13]], elements[13]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[13]], elements[13]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[14]], elements[14]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[14]], elements[14]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[15]], elements[15]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[15]], elements[15]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[16]], elements[16]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[16]], elements[16]);
 	
-	XCTAssertNotEqual([result member:elements[17]], elements[17]);
-	XCTAssertEqualObjects([result member:elements[17]], elements[17]);
-	XCTAssertNotEqual([result member:elements[18]], elements[18]);
-	XCTAssertEqualObjects([result member:elements[18]], elements[18]);
-	XCTAssertNotEqual([result member:elements[19]], elements[19]);
-	XCTAssertEqualObjects([result member:elements[19]], elements[19]);
-	XCTAssertNotEqual([result member:elements[20]], elements[20]);
-	XCTAssertEqualObjects([result member:elements[20]], elements[20]);
-	XCTAssertNotEqual([result member:elements[21]], elements[21]);
-	XCTAssertEqualObjects([result member:elements[21]], elements[21]);
-	XCTAssertNotEqual([result member:elements[22]], elements[22]);
-	XCTAssertEqualObjects([result member:elements[22]], elements[22]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[17]], elements[17]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[17]], elements[17]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[18]], elements[18]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[18]], elements[18]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[19]], elements[19]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[19]], elements[19]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[20]], elements[20]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[20]], elements[20]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[21]], elements[21]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[21]], elements[21]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[22]], elements[22]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[22]], elements[22]);
 	
-	XCTAssertEqual([result member:elements[23]], elements[23]);
+	XCTAssertEqual([self memberOf:result equalTo:elements[23]], elements[23]);
 	
 	XCTAssertNotNil(elements[24], @"Element 24 is missing.");
-	XCTAssertNotNil([result member:elements[24]], @"Element 24 is not found in the result");
-	XCTAssertNotEqual([result member:elements[24]], elements[24]);
-	XCTAssertEqualObjects([result member:elements[24]], elements[24]);
+	XCTAssertNotNil([self memberOf:result equalTo:elements[24]], @"Element 24 is not found in the result");
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[24]], elements[24]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[24]], elements[24]);
 }
 
 - (void)testNSOrderedSet_copyRecursive_Correctness {
@@ -1013,62 +1035,64 @@
 				// All Collections must be immutable
 				XCTAssertTrue([obj conformsToProtocol:@protocol(BECollection)]);
 			}
+		} else {
+			NSLog(@"*** ERROR: NSMutableTests- %@", NSStringFromClass([obj class]));
 		}
 	}];
 	
-	XCTAssertNotEqual([result member:elements[0]], elements[0]);
-	XCTAssertEqualObjects([result member:elements[0]], elements[0]);
-	XCTAssertNotEqual([result member:elements[1]], elements[1]);
-	XCTAssertEqualObjects([result member:elements[1]], elements[1]);
-	XCTAssertNotEqual([result member:elements[2]], elements[2]);
-	XCTAssertEqualObjects([result member:elements[2]], elements[2]);
-	XCTAssertNotEqual([result member:elements[3]], elements[3]);
-	XCTAssertEqualObjects([result member:elements[3]], elements[3]);
-	XCTAssertNotEqual([result member:elements[4]], elements[4]);
-	XCTAssertEqualObjects([result member:elements[4]], elements[4]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[0]], elements[0]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[0]], elements[0]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[1]], elements[1]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[1]], elements[1]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[2]], elements[2]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[2]], elements[2]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[3]], elements[3]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[3]], elements[3]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[4]], elements[4]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[4]], elements[4]);
 	
 	//Immutable objects are the same
 	{
-		XCTAssertEqual([result member:elements[5]], elements[5]);
-		XCTAssertEqual([result member:elements[6]], elements[6]);
-		XCTAssertEqual([result member:elements[7]], elements[7]);
-		XCTAssertEqual([result member:elements[8]], elements[8]);
-		XCTAssertEqual([result member:elements[9]], elements[9]);
-		XCTAssertEqual([result member:elements[10]], elements[10]);
+		XCTAssertEqual([self memberOf:result equalTo:elements[5]], elements[5]);
+		XCTAssertEqual([self memberOf:result equalTo:elements[6]], elements[6]);
+		XCTAssertEqual([self memberOf:result equalTo:elements[7]], elements[7]);
+		XCTAssertEqual([self memberOf:result equalTo:elements[8]], elements[8]);
+		XCTAssertEqual([self memberOf:result equalTo:elements[9]], elements[9]);
+		XCTAssertEqual([self memberOf:result equalTo:elements[10]], elements[10]);
 		
-		XCTAssertEqual([result member:elements[11]], elements[11]);
-		XCTAssertNotEqual([result member:elements[12]], elements[12]);	//NSMutableCharacterSet
-		XCTAssertEqualObjects([result member:elements[12]], elements[12]);
+		XCTAssertEqual([self memberOf:result equalTo:elements[11]], elements[11]);
+		XCTAssertNotEqual([self memberOf:result equalTo:elements[12]], elements[12]);	//NSMutableCharacterSet
+		XCTAssertEqualObjects([self memberOf:result equalTo:elements[12]], elements[12]);
 	}
 	
-	XCTAssertNotEqual([result member:elements[13]], elements[13]);
-	XCTAssertEqualObjects([result member:elements[13]], elements[13]);
-	XCTAssertNotEqual([result member:elements[14]], elements[14]);
-	XCTAssertEqualObjects([result member:elements[14]], elements[14]);
-	XCTAssertNotEqual([result member:elements[15]], elements[15]);
-	XCTAssertEqualObjects([result member:elements[15]], elements[15]);
-	XCTAssertNotEqual([result member:elements[16]], elements[16]);
-	XCTAssertEqualObjects([result member:elements[16]], elements[16]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[13]], elements[13]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[13]], elements[13]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[14]], elements[14]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[14]], elements[14]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[15]], elements[15]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[15]], elements[15]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[16]], elements[16]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[16]], elements[16]);
 	
-	XCTAssertNotEqual([result member:elements[17]], elements[17]);
-	XCTAssertEqualObjects([result member:elements[17]], elements[17]);
-	XCTAssertNotEqual([result member:elements[18]], elements[18]);
-	XCTAssertEqualObjects([result member:elements[18]], elements[18]);
-	XCTAssertNotEqual([result member:elements[19]], elements[19]);
-	XCTAssertEqualObjects([result member:elements[19]], elements[19]);
-	XCTAssertNotEqual([result member:elements[20]], elements[20]);
-	XCTAssertEqualObjects([result member:elements[20]], elements[20]);
-	XCTAssertNotEqual([result member:elements[21]], elements[21]);
-	XCTAssertEqualObjects([result member:elements[21]], elements[21]);
-	XCTAssertNotEqual([result member:elements[22]], elements[22]);
-	XCTAssertEqualObjects([result member:elements[22]], elements[22]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[17]], elements[17]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[17]], elements[17]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[18]], elements[18]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[18]], elements[18]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[19]], elements[19]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[19]], elements[19]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[20]], elements[20]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[20]], elements[20]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[21]], elements[21]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[21]], elements[21]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[22]], elements[22]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[22]], elements[22]);
 	
-	XCTAssertEqual([result member:elements[23]], elements[23]);
+	XCTAssertEqual([self memberOf:result equalTo:elements[23]], elements[23]);
 	
 	XCTAssertNotNil(elements[24], @"Element 24 is missing.");
-	XCTAssertNotNil([result member:elements[24]], @"Element 24 is not found in the result");
-	XCTAssertNotEqual([result member:elements[24]], elements[24]);
-	XCTAssertEqualObjects([result member:elements[24]], elements[24]);
+	XCTAssertNotNil([self memberOf:result equalTo:elements[24]], @"Element 24 is not found in the result");
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[24]], elements[24]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[24]], elements[24]);
 }
 
 - (void)testNSMutableOrderedSet_copyRecursive_Correctness {
@@ -1333,48 +1357,48 @@
 		}
 	}];
 	
-	XCTAssertNotEqual([result member:elements[0]], elements[0]);
-	XCTAssertEqualObjects([result member:elements[0]], elements[0]);
-	XCTAssertNotEqual([result member:elements[1]], elements[1]);
-	XCTAssertEqualObjects([result member:elements[1]], elements[1]);
-	XCTAssertNotEqual([result member:elements[2]], elements[2]);
-	XCTAssertEqualObjects([result member:elements[2]], elements[2]);
-	XCTAssertNotEqual([result member:elements[3]], elements[3]);
-	XCTAssertEqualObjects([result member:elements[3]], elements[3]);
-	XCTAssertNotEqual([result member:elements[4]], elements[4]);
-	XCTAssertEqualObjects([result member:elements[4]], elements[4]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[0]], elements[0]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[0]], elements[0]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[1]], elements[1]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[1]], elements[1]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[2]], elements[2]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[2]], elements[2]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[3]], elements[3]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[3]], elements[3]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[4]], elements[4]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[4]], elements[4]);
 	
 	//Immutable objects are the same
 	{
-		XCTAssertEqual([result member:elements[5]], elements[5]);
-		XCTAssertEqual([result member:elements[6]], elements[6]);
-		XCTAssertEqual([result member:elements[7]], elements[7]);
-		XCTAssertEqual([result member:elements[8]], elements[8]);
-		XCTAssertEqual([result member:elements[9]], elements[9]);
-		XCTAssertEqual([result member:elements[10]], elements[10]);
+		XCTAssertEqual([self memberOf:result equalTo:elements[5]], elements[5]);
+		XCTAssertEqual([self memberOf:result equalTo:elements[6]], elements[6]);
+		XCTAssertEqual([self memberOf:result equalTo:elements[7]], elements[7]);
+		XCTAssertEqual([self memberOf:result equalTo:elements[8]], elements[8]);
+		XCTAssertEqual([self memberOf:result equalTo:elements[9]], elements[9]);
+		XCTAssertEqual([self memberOf:result equalTo:elements[10]], elements[10]);
 		
-		XCTAssertEqual([result member:elements[11]], elements[11]);
-		XCTAssertEqual([result member:elements[12]], elements[12]);	//NSMutableCharacterSet
+		XCTAssertEqual([self memberOf:result equalTo:elements[11]], elements[11]);
+		XCTAssertEqual([self memberOf:result equalTo:elements[12]], elements[12]);	//NSMutableCharacterSet
 	}
 	
-	XCTAssertNotEqual([result member:elements[13]], elements[13]);
-	XCTAssertEqualObjects([result member:elements[13]], elements[13]);
-	XCTAssertNotEqual([result member:elements[14]], elements[14]);
-	XCTAssertEqualObjects([result member:elements[14]], elements[14]);
-	XCTAssertNotEqual([result member:elements[15]], elements[15]);
-	XCTAssertEqualObjects([result member:elements[15]], elements[15]);
-	XCTAssertNotEqual([result member:elements[16]], elements[16]);
-	XCTAssertEqualObjects([result member:elements[16]], elements[16]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[13]], elements[13]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[13]], elements[13]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[14]], elements[14]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[14]], elements[14]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[15]], elements[15]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[15]], elements[15]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[16]], elements[16]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[16]], elements[16]);
 	
-	XCTAssertEqual([result member:elements[17]], elements[17]);
-	XCTAssertEqual([result member:elements[18]], elements[18]);
-	XCTAssertEqual([result member:elements[19]], elements[19]);
-	XCTAssertEqual([result member:elements[20]], elements[20]);
-	XCTAssertEqual([result member:elements[21]], elements[21]);
-	XCTAssertEqual([result member:elements[22]], elements[22]);
+	XCTAssertEqual([self memberOf:result equalTo:elements[17]], elements[17]);
+	XCTAssertEqual([self memberOf:result equalTo:elements[18]], elements[18]);
+	XCTAssertEqual([self memberOf:result equalTo:elements[19]], elements[19]);
+	XCTAssertEqual([self memberOf:result equalTo:elements[20]], elements[20]);
+	XCTAssertEqual([self memberOf:result equalTo:elements[21]], elements[21]);
+	XCTAssertEqual([self memberOf:result equalTo:elements[22]], elements[22]);
 	
-	XCTAssertEqual([result member:elements[23]], elements[23]);
-	XCTAssertEqual([result member:elements[24]], elements[24]);
+	XCTAssertEqual([self memberOf:result equalTo:elements[23]], elements[23]);
+	XCTAssertEqual([self memberOf:result equalTo:elements[24]], elements[24]);
 }
 
 - (void)testNSOrderedSet_copyCollectionRecursive_Correctness {
@@ -1609,48 +1633,48 @@
 		}
 	}];
 	
-	XCTAssertNotEqual([result member:elements[0]], elements[0]);
-	XCTAssertEqualObjects([result member:elements[0]], elements[0]);
-	XCTAssertNotEqual([result member:elements[1]], elements[1]);
-	XCTAssertEqualObjects([result member:elements[1]], elements[1]);
-	XCTAssertNotEqual([result member:elements[2]], elements[2]);
-	XCTAssertEqualObjects([result member:elements[2]], elements[2]);
-	XCTAssertNotEqual([result member:elements[3]], elements[3]);
-	XCTAssertEqualObjects([result member:elements[3]], elements[3]);
-	XCTAssertNotEqual([result member:elements[4]], elements[4]);
-	XCTAssertEqualObjects([result member:elements[4]], elements[4]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[0]], elements[0]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[0]], elements[0]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[1]], elements[1]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[1]], elements[1]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[2]], elements[2]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[2]], elements[2]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[3]], elements[3]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[3]], elements[3]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[4]], elements[4]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[4]], elements[4]);
 	
 	//Immutable objects are the same
 	{
-		XCTAssertEqual([result member:elements[5]], elements[5]);
-		XCTAssertEqual([result member:elements[6]], elements[6]);
-		XCTAssertEqual([result member:elements[7]], elements[7]);
-		XCTAssertEqual([result member:elements[8]], elements[8]);
-		XCTAssertEqual([result member:elements[9]], elements[9]);
-		XCTAssertEqual([result member:elements[10]], elements[10]);
+		XCTAssertEqual([self memberOf:result equalTo:elements[5]], elements[5]);
+		XCTAssertEqual([self memberOf:result equalTo:elements[6]], elements[6]);
+		XCTAssertEqual([self memberOf:result equalTo:elements[7]], elements[7]);
+		XCTAssertEqual([self memberOf:result equalTo:elements[8]], elements[8]);
+		XCTAssertEqual([self memberOf:result equalTo:elements[9]], elements[9]);
+		XCTAssertEqual([self memberOf:result equalTo:elements[10]], elements[10]);
 		
-		XCTAssertEqual([result member:elements[11]], elements[11]);
-		XCTAssertEqual([result member:elements[12]], elements[12]);	//NSMutableCharacterSet
+		XCTAssertEqual([self memberOf:result equalTo:elements[11]], elements[11]);
+		XCTAssertEqual([self memberOf:result equalTo:elements[12]], elements[12]);	//NSMutableCharacterSet
 	}
 	
-	XCTAssertNotEqual([result member:elements[13]], elements[13]);
-	XCTAssertEqualObjects([result member:elements[13]], elements[13]);
-	XCTAssertNotEqual([result member:elements[14]], elements[14]);
-	XCTAssertEqualObjects([result member:elements[14]], elements[14]);
-	XCTAssertNotEqual([result member:elements[15]], elements[15]);
-	XCTAssertEqualObjects([result member:elements[15]], elements[15]);
-	XCTAssertNotEqual([result member:elements[16]], elements[16]);
-	XCTAssertEqualObjects([result member:elements[16]], elements[16]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[13]], elements[13]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[13]], elements[13]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[14]], elements[14]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[14]], elements[14]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[15]], elements[15]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[15]], elements[15]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[16]], elements[16]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[16]], elements[16]);
 	
-	XCTAssertEqual([result member:elements[17]], elements[17]);
-	XCTAssertEqual([result member:elements[18]], elements[18]);
-	XCTAssertEqual([result member:elements[19]], elements[19]);
-	XCTAssertEqual([result member:elements[20]], elements[20]);
-	XCTAssertEqual([result member:elements[21]], elements[21]);
-	XCTAssertEqual([result member:elements[22]], elements[22]);
+	XCTAssertEqual([self memberOf:result equalTo:elements[17]], elements[17]);
+	XCTAssertEqual([self memberOf:result equalTo:elements[18]], elements[18]);
+	XCTAssertEqual([self memberOf:result equalTo:elements[19]], elements[19]);
+	XCTAssertEqual([self memberOf:result equalTo:elements[20]], elements[20]);
+	XCTAssertEqual([self memberOf:result equalTo:elements[21]], elements[21]);
+	XCTAssertEqual([self memberOf:result equalTo:elements[22]], elements[22]);
 	
-	XCTAssertEqual([result member:elements[23]], elements[23]);
-	XCTAssertEqual([result member:elements[24]], elements[24]);
+	XCTAssertEqual([self memberOf:result equalTo:elements[23]], elements[23]);
+	XCTAssertEqual([self memberOf:result equalTo:elements[24]], elements[24]);
 }
 
 - (void)testNSMutableOrderedSet_copyCollectionRecursive_Correctness {
@@ -1880,7 +1904,7 @@
 		
 		XCTAssertTrue(contains);
 		if (contains) {
-			id obj = [result member:ref];
+			id obj = [self memberOf:result equalTo:ref];
 			XCTAssertNotNil(obj);
 			if([obj conformsToProtocol:@protocol(BECollectionAbstract)]) {
 				// All Collections must be immutable
@@ -1889,72 +1913,72 @@
 		}
 	}];
 	
-	XCTAssertNotEqual([result member:elements[0]], elements[0]);
-	XCTAssertEqualObjects([result member:elements[0]], elements[0]);
-	XCTAssertNotEqual([result member:elements[1]], elements[1]);
-	XCTAssertEqualObjects([result member:elements[1]], elements[1]);
-	XCTAssertNotEqual([result member:elements[2]], elements[2]);
-	XCTAssertEqualObjects([result member:elements[2]], elements[2]);
-	XCTAssertNotEqual([result member:elements[3]], elements[3]);
-	XCTAssertEqualObjects([result member:elements[3]], elements[3]);
-	XCTAssertNotEqual([result member:elements[4]], elements[4]);
-	XCTAssertEqualObjects([result member:elements[4]], elements[4]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[0]], elements[0]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[0]], elements[0]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[1]], elements[1]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[1]], elements[1]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[2]], elements[2]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[2]], elements[2]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[3]], elements[3]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[3]], elements[3]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[4]], elements[4]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[4]], elements[4]);
 	
 	//Immutable objects become mutable, not the same
 	{
-		XCTAssertNotEqual([result member:elements[5]], elements[5]);
-		XCTAssertEqualObjects([result member:elements[5]], elements[5]);
-		XCTAssertNotEqual([result member:elements[6]], elements[6]);
-		XCTAssertEqualObjects([result member:elements[6]], elements[6]);
-		XCTAssertNotEqual([result member:elements[7]], elements[7]);
-		XCTAssertEqualObjects([result member:elements[7]], elements[7]);
-		XCTAssertNotEqual([result member:elements[8]], elements[8]);
-		XCTAssertEqualObjects([result member:elements[8]], elements[8]);
-		XCTAssertNotEqual([result member:elements[9]], elements[9]);
-		XCTAssertEqualObjects([result member:elements[9]], elements[9]);
-		XCTAssertNotEqual([result member:elements[10]], elements[10]);
-		XCTAssertEqualObjects([result member:elements[10]], elements[10]);
+		XCTAssertNotEqual([self memberOf:result equalTo:elements[5]], elements[5]);
+		XCTAssertEqualObjects([self memberOf:result equalTo:elements[5]], elements[5]);
+		XCTAssertNotEqual([self memberOf:result equalTo:elements[6]], elements[6]);
+		XCTAssertEqualObjects([self memberOf:result equalTo:elements[6]], elements[6]);
+		XCTAssertNotEqual([self memberOf:result equalTo:elements[7]], elements[7]);
+		XCTAssertEqualObjects([self memberOf:result equalTo:elements[7]], elements[7]);
+		XCTAssertNotEqual([self memberOf:result equalTo:elements[8]], elements[8]);
+		XCTAssertEqualObjects([self memberOf:result equalTo:elements[8]], elements[8]);
+		XCTAssertNotEqual([self memberOf:result equalTo:elements[9]], elements[9]);
+		XCTAssertEqualObjects([self memberOf:result equalTo:elements[9]], elements[9]);
+		XCTAssertNotEqual([self memberOf:result equalTo:elements[10]], elements[10]);
+		XCTAssertEqualObjects([self memberOf:result equalTo:elements[10]], elements[10]);
 		
-		XCTAssertNotEqual([result member:elements[11]], elements[11]);
-		XCTAssertEqualObjects([result member:elements[11]], elements[11]);
-		XCTAssertNotEqual([result member:elements[12]], elements[12]);
-		XCTAssertEqualObjects([result member:elements[12]], elements[12]);	//NSMutableCharacterSet
+		XCTAssertNotEqual([self memberOf:result equalTo:elements[11]], elements[11]);
+		XCTAssertEqualObjects([self memberOf:result equalTo:elements[11]], elements[11]);
+		XCTAssertNotEqual([self memberOf:result equalTo:elements[12]], elements[12]);
+		XCTAssertEqualObjects([self memberOf:result equalTo:elements[12]], elements[12]);	//NSMutableCharacterSet
 	}
 	
-	XCTAssertNotEqual([result member:elements[13]], elements[13]);
-	XCTAssertEqualObjects([result member:elements[13]], elements[13]);
-	XCTAssertNotEqual([result member:elements[14]], elements[14]);
-	XCTAssertEqualObjects([result member:elements[14]], elements[14]);
-	XCTAssertNotEqual([result member:elements[15]], elements[15]);
-	XCTAssertEqualObjects([result member:elements[15]], elements[15]);
-	XCTAssertNotEqual([result member:elements[16]], elements[16]);
-	XCTAssertEqualObjects([result member:elements[16]], elements[16]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[13]], elements[13]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[13]], elements[13]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[14]], elements[14]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[14]], elements[14]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[15]], elements[15]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[15]], elements[15]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[16]], elements[16]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[16]], elements[16]);
 	
-	XCTAssertNotEqual([result member:elements[17]], elements[17]);
-	XCTAssertEqualObjects([result member:elements[17]], elements[17]);
-	XCTAssertNotEqual([result member:elements[18]], elements[18]);
-	XCTAssertEqualObjects([result member:elements[18]], elements[18]);
-	XCTAssertNotEqual([result member:elements[19]], elements[19]);
-	XCTAssertEqualObjects([result member:elements[19]], elements[19]);
-	XCTAssertNotEqual([result member:elements[20]], elements[20]);
-	XCTAssertEqualObjects([result member:elements[20]], elements[20]);
-	XCTAssertNotEqual([result member:elements[21]], elements[21]);
-	XCTAssertEqualObjects([result member:elements[21]], elements[21]);
-	XCTAssertNotEqual([result member:elements[22]], elements[22]);
-	XCTAssertEqualObjects([result member:elements[22]], elements[22]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[17]], elements[17]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[17]], elements[17]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[18]], elements[18]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[18]], elements[18]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[19]], elements[19]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[19]], elements[19]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[20]], elements[20]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[20]], elements[20]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[21]], elements[21]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[21]], elements[21]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[22]], elements[22]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[22]], elements[22]);
 	
-	NSArray *resultElements = [result allObjects];
+	__unused NSArray *resultElements = [result allObjects];
 	
 	XCTAssertNotNil(elements[23], @"Element 23 is missing.");
-	XCTAssertEqualObjects([elements[23] className], @"BECharacterSet");
-	XCTAssertNotNil([result member:elements[23]], @"Element 23 is not found in the result");
-	XCTAssertNotEqual([result member:elements[23]], elements[23]);
-	BOOL same = [[result member:elements[23]] isEqual:elements[23]];
-	XCTAssertTrue([[result member:elements[23]] isEqual:elements[23]]);
-	XCTAssertEqualObjects([result member:elements[23]], elements[23]);
+	XCTAssertEqualObjects(NSStringFromClass([elements[23] class]), @"BECharacterSet");
+	XCTAssertNotNil([self memberOf:result equalTo:elements[23]], @"Element 23 is not found in the result");
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[23]], elements[23]);
+	__unused BOOL same = [[self memberOf:result equalTo:elements[23]] isEqual:elements[23]];
+	XCTAssertTrue([[self memberOf:result equalTo:elements[23]] isEqual:elements[23]]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[23]], elements[23]);
 	
-	XCTAssertNotEqual([result member:elements[24]], elements[24]);
-	XCTAssertEqualObjects([result member:elements[24]], elements[24]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[24]], elements[24]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[24]], elements[24]);
 }
 
 - (void)testNSOrderedSet_mutableCopyRecursive_Correctness {
@@ -2226,7 +2250,7 @@
 		
 		XCTAssertTrue(contains);
 		if (contains) {
-			id obj = [result member:ref];
+			id obj = [self memberOf:result equalTo:ref];
 			XCTAssertNotNil(obj);
 			if([obj conformsToProtocol:@protocol(BECollectionAbstract)]) {
 				// All Collections must be immutable
@@ -2235,68 +2259,68 @@
 		}
 	}];
 	
-	XCTAssertNotEqual([result member:elements[0]], elements[0]);
-	XCTAssertEqualObjects([result member:elements[0]], elements[0]);
-	XCTAssertNotEqual([result member:elements[1]], elements[1]);
-	XCTAssertEqualObjects([result member:elements[1]], elements[1]);
-	XCTAssertNotEqual([result member:elements[2]], elements[2]);
-	XCTAssertEqualObjects([result member:elements[2]], elements[2]);
-	XCTAssertNotEqual([result member:elements[3]], elements[3]);
-	XCTAssertEqualObjects([result member:elements[3]], elements[3]);
-	XCTAssertNotEqual([result member:elements[4]], elements[4]);
-	XCTAssertEqualObjects([result member:elements[4]], elements[4]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[0]], elements[0]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[0]], elements[0]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[1]], elements[1]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[1]], elements[1]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[2]], elements[2]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[2]], elements[2]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[3]], elements[3]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[3]], elements[3]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[4]], elements[4]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[4]], elements[4]);
 	
 	//Immutable objects are the same
 	{
-		XCTAssertNotEqual([result member:elements[5]], elements[5]);
-		XCTAssertEqualObjects([result member:elements[5]], elements[5]);
-		XCTAssertNotEqual([result member:elements[6]], elements[6]);
-		XCTAssertEqualObjects([result member:elements[6]], elements[6]);
-		XCTAssertNotEqual([result member:elements[7]], elements[7]);
-		XCTAssertEqualObjects([result member:elements[7]], elements[7]);
-		XCTAssertNotEqual([result member:elements[8]], elements[8]);
-		XCTAssertEqualObjects([result member:elements[8]], elements[8]);
-		XCTAssertNotEqual([result member:elements[9]], elements[9]);
-		XCTAssertEqualObjects([result member:elements[9]], elements[9]);
-		XCTAssertNotEqual([result member:elements[10]], elements[10]);
-		XCTAssertEqualObjects([result member:elements[10]], elements[10]);
+		XCTAssertNotEqual([self memberOf:result equalTo:elements[5]], elements[5]);
+		XCTAssertEqualObjects([self memberOf:result equalTo:elements[5]], elements[5]);
+		XCTAssertNotEqual([self memberOf:result equalTo:elements[6]], elements[6]);
+		XCTAssertEqualObjects([self memberOf:result equalTo:elements[6]], elements[6]);
+		XCTAssertNotEqual([self memberOf:result equalTo:elements[7]], elements[7]);
+		XCTAssertEqualObjects([self memberOf:result equalTo:elements[7]], elements[7]);
+		XCTAssertNotEqual([self memberOf:result equalTo:elements[8]], elements[8]);
+		XCTAssertEqualObjects([self memberOf:result equalTo:elements[8]], elements[8]);
+		XCTAssertNotEqual([self memberOf:result equalTo:elements[9]], elements[9]);
+		XCTAssertEqualObjects([self memberOf:result equalTo:elements[9]], elements[9]);
+		XCTAssertNotEqual([self memberOf:result equalTo:elements[10]], elements[10]);
+		XCTAssertEqualObjects([self memberOf:result equalTo:elements[10]], elements[10]);
 		
-		XCTAssertNotEqual([result member:elements[11]], elements[11]);
-		XCTAssertEqualObjects([result member:elements[11]], elements[11]);
-		XCTAssertNotEqual([result member:elements[12]], elements[12]);	//NSMutableCharacterSet
-		XCTAssertEqualObjects([result member:elements[12]], elements[12]);
+		XCTAssertNotEqual([self memberOf:result equalTo:elements[11]], elements[11]);
+		XCTAssertEqualObjects([self memberOf:result equalTo:elements[11]], elements[11]);
+		XCTAssertNotEqual([self memberOf:result equalTo:elements[12]], elements[12]);	//NSMutableCharacterSet
+		XCTAssertEqualObjects([self memberOf:result equalTo:elements[12]], elements[12]);
 	}
 	
-	XCTAssertNotEqual([result member:elements[13]], elements[13]);
-	XCTAssertEqualObjects([result member:elements[13]], elements[13]);
-	XCTAssertNotEqual([result member:elements[14]], elements[14]);
-	XCTAssertEqualObjects([result member:elements[14]], elements[14]);
-	XCTAssertNotEqual([result member:elements[15]], elements[15]);
-	XCTAssertEqualObjects([result member:elements[15]], elements[15]);
-	XCTAssertNotEqual([result member:elements[16]], elements[16]);
-	XCTAssertEqualObjects([result member:elements[16]], elements[16]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[13]], elements[13]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[13]], elements[13]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[14]], elements[14]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[14]], elements[14]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[15]], elements[15]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[15]], elements[15]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[16]], elements[16]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[16]], elements[16]);
 	
-	XCTAssertNotEqual([result member:elements[17]], elements[17]);
-	XCTAssertEqualObjects([result member:elements[17]], elements[17]);
-	XCTAssertNotEqual([result member:elements[18]], elements[18]);
-	XCTAssertEqualObjects([result member:elements[18]], elements[18]);
-	XCTAssertNotEqual([result member:elements[19]], elements[19]);
-	XCTAssertEqualObjects([result member:elements[19]], elements[19]);
-	XCTAssertNotEqual([result member:elements[20]], elements[20]);
-	XCTAssertEqualObjects([result member:elements[20]], elements[20]);
-	XCTAssertNotEqual([result member:elements[21]], elements[21]);
-	XCTAssertEqualObjects([result member:elements[21]], elements[21]);
-	XCTAssertNotEqual([result member:elements[22]], elements[22]);
-	XCTAssertEqualObjects([result member:elements[22]], elements[22]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[17]], elements[17]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[17]], elements[17]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[18]], elements[18]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[18]], elements[18]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[19]], elements[19]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[19]], elements[19]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[20]], elements[20]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[20]], elements[20]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[21]], elements[21]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[21]], elements[21]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[22]], elements[22]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[22]], elements[22]);
 	
 	
 	XCTAssertNotNil(elements[23], @"Element 23 is missing.");
-	XCTAssertNotNil([result member:elements[23]], @"Element 23 is not found in the result");
-	XCTAssertNotEqual([result member:elements[23]], elements[23]);
-	XCTAssertEqualObjects([result member:elements[23]], elements[23]);
+	XCTAssertNotNil([self memberOf:result equalTo:elements[23]], @"Element 23 is not found in the result");
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[23]], elements[23]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[23]], elements[23]);
 	
-	XCTAssertNotEqual([result member:elements[24]], elements[24]);
-	XCTAssertEqualObjects([result member:elements[24]], elements[24]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[24]], elements[24]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[24]], elements[24]);
 }
 
 - (void)testNSMutableOrderedSet_mutableCopyRecursive_Correctness {
@@ -2570,7 +2594,7 @@
 		
 		XCTAssertTrue(contains);
 		if (contains) {
-			id obj = [result member:ref];
+			id obj = [self memberOf:result equalTo:ref];
 			XCTAssertNotNil(obj);
 			if([obj conformsToProtocol:@protocol(BECollectionAbstract)]) {
 				// All Collections must be immutable
@@ -2579,48 +2603,48 @@
 		}
 	}];
 	
-	XCTAssertNotEqual([result member:elements[0]], elements[0]);
-	XCTAssertEqualObjects([result member:elements[0]], elements[0]);
-	XCTAssertNotEqual([result member:elements[1]], elements[1]);
-	XCTAssertEqualObjects([result member:elements[1]], elements[1]);
-	XCTAssertNotEqual([result member:elements[2]], elements[2]);
-	XCTAssertEqualObjects([result member:elements[2]], elements[2]);
-	XCTAssertNotEqual([result member:elements[3]], elements[3]);
-	XCTAssertEqualObjects([result member:elements[3]], elements[3]);
-	XCTAssertNotEqual([result member:elements[4]], elements[4]);
-	XCTAssertEqualObjects([result member:elements[4]], elements[4]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[0]], elements[0]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[0]], elements[0]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[1]], elements[1]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[1]], elements[1]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[2]], elements[2]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[2]], elements[2]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[3]], elements[3]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[3]], elements[3]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[4]], elements[4]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[4]], elements[4]);
 	
 	//Immutable objects become mutable, not the same
 	{
-		XCTAssertEqual([result member:elements[5]], elements[5]);
-		XCTAssertEqual([result member:elements[6]], elements[6]);
-		XCTAssertEqual([result member:elements[7]], elements[7]);
-		XCTAssertEqual([result member:elements[8]], elements[8]);
-		XCTAssertEqual([result member:elements[9]], elements[9]);
-		XCTAssertEqual([result member:elements[10]], elements[10]);
+		XCTAssertEqual([self memberOf:result equalTo:elements[5]], elements[5]);
+		XCTAssertEqual([self memberOf:result equalTo:elements[6]], elements[6]);
+		XCTAssertEqual([self memberOf:result equalTo:elements[7]], elements[7]);
+		XCTAssertEqual([self memberOf:result equalTo:elements[8]], elements[8]);
+		XCTAssertEqual([self memberOf:result equalTo:elements[9]], elements[9]);
+		XCTAssertEqual([self memberOf:result equalTo:elements[10]], elements[10]);
 		
-		XCTAssertEqual([result member:elements[11]], elements[11]);
-		XCTAssertEqual([result member:elements[12]], elements[12]);
+		XCTAssertEqual([self memberOf:result equalTo:elements[11]], elements[11]);
+		XCTAssertEqual([self memberOf:result equalTo:elements[12]], elements[12]);
 	}
 	
-	XCTAssertNotEqual([result member:elements[13]], elements[13]);
-	XCTAssertEqualObjects([result member:elements[13]], elements[13]);
-	XCTAssertNotEqual([result member:elements[14]], elements[14]);
-	XCTAssertEqualObjects([result member:elements[14]], elements[14]);
-	XCTAssertNotEqual([result member:elements[15]], elements[15]);
-	XCTAssertEqualObjects([result member:elements[15]], elements[15]);
-	XCTAssertNotEqual([result member:elements[16]], elements[16]);
-	XCTAssertEqualObjects([result member:elements[16]], elements[16]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[13]], elements[13]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[13]], elements[13]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[14]], elements[14]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[14]], elements[14]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[15]], elements[15]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[15]], elements[15]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[16]], elements[16]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[16]], elements[16]);
 	
-	XCTAssertEqual([result member:elements[17]], elements[17]);
-	XCTAssertEqual([result member:elements[18]], elements[18]);
-	XCTAssertEqual([result member:elements[19]], elements[19]);
-	XCTAssertEqual([result member:elements[20]], elements[20]);
-	XCTAssertEqual([result member:elements[21]], elements[21]);
-	XCTAssertEqual([result member:elements[22]], elements[22]);
+	XCTAssertEqual([self memberOf:result equalTo:elements[17]], elements[17]);
+	XCTAssertEqual([self memberOf:result equalTo:elements[18]], elements[18]);
+	XCTAssertEqual([self memberOf:result equalTo:elements[19]], elements[19]);
+	XCTAssertEqual([self memberOf:result equalTo:elements[20]], elements[20]);
+	XCTAssertEqual([self memberOf:result equalTo:elements[21]], elements[21]);
+	XCTAssertEqual([self memberOf:result equalTo:elements[22]], elements[22]);
 	
-	XCTAssertEqual([result member:elements[23]], elements[23]);
-	XCTAssertEqual([result member:elements[24]], elements[24]);
+	XCTAssertEqual([self memberOf:result equalTo:elements[23]], elements[23]);
+	XCTAssertEqual([self memberOf:result equalTo:elements[24]], elements[24]);
 }
 
 - (void)testNSOrderedSet_mutableCopyCollectionRecursive_Correctness {
@@ -2845,7 +2869,7 @@
 		
 		XCTAssertTrue(contains);
 		if (contains) {
-			id obj = [result member:ref];
+			id obj = [self memberOf:result equalTo:ref];
 			XCTAssertNotNil(obj);
 			if([obj conformsToProtocol:@protocol(BECollectionAbstract)]) {
 				// All Collections must be immutable
@@ -2854,48 +2878,48 @@
 		}
 	}];
 	
-	XCTAssertNotEqual([result member:elements[0]], elements[0]);
-	XCTAssertEqualObjects([result member:elements[0]], elements[0]);
-	XCTAssertNotEqual([result member:elements[1]], elements[1]);
-	XCTAssertEqualObjects([result member:elements[1]], elements[1]);
-	XCTAssertNotEqual([result member:elements[2]], elements[2]);
-	XCTAssertEqualObjects([result member:elements[2]], elements[2]);
-	XCTAssertNotEqual([result member:elements[3]], elements[3]);
-	XCTAssertEqualObjects([result member:elements[3]], elements[3]);
-	XCTAssertNotEqual([result member:elements[4]], elements[4]);
-	XCTAssertEqualObjects([result member:elements[4]], elements[4]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[0]], elements[0]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[0]], elements[0]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[1]], elements[1]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[1]], elements[1]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[2]], elements[2]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[2]], elements[2]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[3]], elements[3]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[3]], elements[3]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[4]], elements[4]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[4]], elements[4]);
 	
 	//Immutable objects are the same
 	{
-		XCTAssertEqual([result member:elements[5]], elements[5]);
-		XCTAssertEqual([result member:elements[6]], elements[6]);
-		XCTAssertEqual([result member:elements[7]], elements[7]);
-		XCTAssertEqual([result member:elements[8]], elements[8]);
-		XCTAssertEqual([result member:elements[9]], elements[9]);
-		XCTAssertEqual([result member:elements[10]], elements[10]);
+		XCTAssertEqual([self memberOf:result equalTo:elements[5]], elements[5]);
+		XCTAssertEqual([self memberOf:result equalTo:elements[6]], elements[6]);
+		XCTAssertEqual([self memberOf:result equalTo:elements[7]], elements[7]);
+		XCTAssertEqual([self memberOf:result equalTo:elements[8]], elements[8]);
+		XCTAssertEqual([self memberOf:result equalTo:elements[9]], elements[9]);
+		XCTAssertEqual([self memberOf:result equalTo:elements[10]], elements[10]);
 		
-		XCTAssertEqual([result member:elements[11]], elements[11]);
-		XCTAssertEqual([result member:elements[12]], elements[12]);	//NSMutableCharacterSet
+		XCTAssertEqual([self memberOf:result equalTo:elements[11]], elements[11]);
+		XCTAssertEqual([self memberOf:result equalTo:elements[12]], elements[12]);	//NSMutableCharacterSet
 	}
 	
-	XCTAssertNotEqual([result member:elements[13]], elements[13]);
-	XCTAssertEqualObjects([result member:elements[13]], elements[13]);
-	XCTAssertNotEqual([result member:elements[14]], elements[14]);
-	XCTAssertEqualObjects([result member:elements[14]], elements[14]);
-	XCTAssertNotEqual([result member:elements[15]], elements[15]);
-	XCTAssertEqualObjects([result member:elements[15]], elements[15]);
-	XCTAssertNotEqual([result member:elements[16]], elements[16]);
-	XCTAssertEqualObjects([result member:elements[16]], elements[16]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[13]], elements[13]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[13]], elements[13]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[14]], elements[14]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[14]], elements[14]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[15]], elements[15]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[15]], elements[15]);
+	XCTAssertNotEqual([self memberOf:result equalTo:elements[16]], elements[16]);
+	XCTAssertEqualObjects([self memberOf:result equalTo:elements[16]], elements[16]);
 	
-	XCTAssertEqual([result member:elements[17]], elements[17]);
-	XCTAssertEqual([result member:elements[18]], elements[18]);
-	XCTAssertEqual([result member:elements[19]], elements[19]);
-	XCTAssertEqual([result member:elements[20]], elements[20]);
-	XCTAssertEqual([result member:elements[21]], elements[21]);
-	XCTAssertEqual([result member:elements[22]], elements[22]);
+	XCTAssertEqual([self memberOf:result equalTo:elements[17]], elements[17]);
+	XCTAssertEqual([self memberOf:result equalTo:elements[18]], elements[18]);
+	XCTAssertEqual([self memberOf:result equalTo:elements[19]], elements[19]);
+	XCTAssertEqual([self memberOf:result equalTo:elements[20]], elements[20]);
+	XCTAssertEqual([self memberOf:result equalTo:elements[21]], elements[21]);
+	XCTAssertEqual([self memberOf:result equalTo:elements[22]], elements[22]);
 	
-	XCTAssertEqual([result member:elements[23]], elements[23]);
-	XCTAssertEqual([result member:elements[24]], elements[24]);
+	XCTAssertEqual([self memberOf:result equalTo:elements[23]], elements[23]);
+	XCTAssertEqual([self memberOf:result equalTo:elements[24]], elements[24]);
 }
 
 - (void)testNSMutableOrderedSet_mutableCopyCollectionRecursive_Correctness {
@@ -3098,6 +3122,121 @@
 	
 	XCTAssertEqual(result[@"BEcharset"], reference[@"BEcharset"]);
 	XCTAssertEqual(result[@"mutable_BEcharset"], reference[@"mutable_BEcharset"]);
+}
+
+#pragma mark - Edge cases and regressions
+
+- (void)testCopyRecursive_EmptyCollections
+{
+	NSArray *emptyArray = [@[] copyRecursive];
+	XCTAssertEqual(emptyArray.count, 0u);
+	XCTAssertTrue([emptyArray isKindOfClass:NSArray.class]);
+	XCTAssertFalse([emptyArray isKindOfClass:NSMutableArray.class]);
+
+	NSSet *emptySet = [[NSSet set] copyRecursive];
+	XCTAssertEqual(emptySet.count, 0u);
+	XCTAssertFalse([emptySet isKindOfClass:NSMutableSet.class]);
+
+	NSOrderedSet *emptyOrdered = [[NSOrderedSet orderedSet] copyRecursive];
+	XCTAssertEqual(emptyOrdered.count, 0u);
+	XCTAssertFalse([emptyOrdered isKindOfClass:NSMutableOrderedSet.class]);
+
+	NSDictionary *emptyDict = [@{} copyRecursive];
+	XCTAssertEqual(emptyDict.count, 0u);
+	XCTAssertFalse([emptyDict isKindOfClass:NSMutableDictionary.class]);
+
+	NSMutableArray *mutableEmpty = [@[] mutableCopyRecursive];
+	XCTAssertEqual(mutableEmpty.count, 0u);
+	XCTAssertTrue([mutableEmpty isKindOfClass:NSMutableArray.class]);
+}
+
+- (void)testCopyRecursive_PreservesNSNull
+{
+	NSArray *source = @[NSNull.null, @"value"];
+	NSArray *result = [source copyRecursive];
+
+	XCTAssertEqual(result.count, 2u);
+	// NSNull is a singleton; copying it must yield the same instance, not drop or duplicate it.
+	XCTAssertEqual(result[0], NSNull.null);
+	XCTAssertEqualObjects(result[1], @"value");
+}
+
+- (void)testCopyRecursive_DeepNestingProducesImmutableTree
+{
+	NSMutableString *leaf = [NSMutableString stringWithString:@"leaf"];
+	NSMutableArray *inner = [NSMutableArray arrayWithObject:leaf];
+	NSMutableArray *mid = [NSMutableArray arrayWithObject:inner];
+	NSArray *outer = @[mid];
+
+	NSArray *result = [outer copyRecursive];
+
+	// Every level is deep-copied to an immutable collection.
+	XCTAssertFalse([result isKindOfClass:NSMutableArray.class]);
+	XCTAssertFalse([result[0] isKindOfClass:NSMutableArray.class]);
+	XCTAssertFalse([result[0][0] isKindOfClass:NSMutableArray.class]);
+	XCTAssertFalse([result[0][0][0] isKindOfClass:NSMutableString.class]);
+	XCTAssertEqualObjects(result[0][0][0], @"leaf");
+
+	// The source graph is left untouched.
+	XCTAssertTrue([inner isKindOfClass:NSMutableArray.class]);
+	XCTAssertTrue([leaf isKindOfClass:NSMutableString.class]);
+}
+
+- (void)testCopyCollectionRecursive_SharesLeafObjects
+{
+	NSMutableString *leaf = [NSMutableString stringWithString:@"leaf"];
+	NSArray *outer = @[[NSMutableArray arrayWithObject:leaf]];
+
+	NSArray *result = [outer copyCollectionRecursive];
+
+	// Collections are recursed into and rebuilt immutable...
+	XCTAssertFalse([result[0] isKindOfClass:NSMutableArray.class]);
+	// ...but leaf (non-collection) objects are shared, not copied.
+	XCTAssertEqual(result[0][0], leaf);
+}
+
+- (void)testMutableCopyRecursive_SelfReferentialArrayTerminates
+{
+	NSMutableArray *cyclic = [NSMutableArray array];
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wobjc-circular-container"
+	[cyclic addObject:cyclic];
+#pragma clang diagnostic pop
+
+	NSMutableArray *result = [cyclic mutableCopyRecursive];
+
+	XCTAssertNotEqual(result, cyclic);
+	XCTAssertEqual(result.count, 1u);
+	// The cycle is broken by referencing the original node rather than recursing forever.
+	XCTAssertEqual(result[0], cyclic);
+}
+
+- (void)testMutableCopyRecursive_SelfReferentialDictionaryTerminates
+{
+	NSMutableDictionary *cyclic = [NSMutableDictionary dictionary];
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wobjc-circular-container"
+	cyclic[@"self"] = cyclic;
+#pragma clang diagnostic pop
+
+	NSMutableDictionary *result = [cyclic mutableCopyRecursive];
+
+	XCTAssertNotEqual(result, cyclic);
+	XCTAssertEqual(result.count, 1u);
+	XCTAssertEqual(result[@"self"], cyclic);
+}
+
+- (void)testCopyRecursive_MutuallyReferentialArraysTerminate
+{
+	NSMutableArray *a = [NSMutableArray array];
+	NSMutableArray *b = [NSMutableArray array];
+	[a addObject:b];
+	[b addObject:a];
+
+	NSArray *result = [a copyRecursive];
+
+	XCTAssertEqual(result.count, 1u);
+	XCTAssertEqual([result[0] count], 1u);
 }
 
 #pragma mark - Performance

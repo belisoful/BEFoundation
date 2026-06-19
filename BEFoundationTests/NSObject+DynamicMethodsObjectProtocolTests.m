@@ -411,6 +411,28 @@
 }
 
 
+// A selector handled only via a no-protocol forward target is reported as a dynamic
+// method, matching dynamicRespondsToSelector: (previously isDynamicMethod: returned NO).
+- (void)testIsDynamicMethod_forwardTargetHandledSelector
+{
+	ProtocolTargetObject *object = ProtocolTargetObject.new;
+	SEL forwardedSelector = @selector(addObject:);   // not native to the receiver
+
+	XCTAssertTrue([object.class enableDynamicMethods]);
+
+	XCTAssertFalse([object isDynamicMethod:forwardedSelector]);
+
+	NSMutableArray *target = NSMutableArray.new;     // responds to addObject:
+	XCTAssertTrue([object addObjectForwardTarget:target]);
+	XCTAssertTrue([object isDynamicMethod:forwardedSelector]);
+
+	XCTAssertTrue([object removeObjectForwardTarget:target]);
+	XCTAssertFalse([object isDynamicMethod:forwardedSelector]);
+
+	XCTAssertTrue([object.class disableDynamicMethods]);
+}
+
+
 - (void)testForwardTarget_target_second
 {
 	ProtocolTargetObject *object = ProtocolTargetObject.new;

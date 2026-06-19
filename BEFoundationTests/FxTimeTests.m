@@ -102,9 +102,9 @@
 }
 
 - (void)testAccessorUtilities {
-	// Test accessor utilities
-	FxTime *time = [FxTime time:CMTimeMake(500, 50)];
-	
+	// Test accessor utilities. Component setters now live on FxMutableTime.
+	FxMutableTime *time = [FxMutableTime time:CMTimeMake(500, 50)];
+
 	XCTAssertTrue(time.value == 500);
 	time.value = 600;
 	XCTAssertTrue(time.value == 600);
@@ -145,8 +145,8 @@
 }
 
 - (void)testMathFunctions {
-	// Test math functions
-	FxTime *time = [FxTime time:CMTimeMake(700, 70)];
+	// In-place arithmetic lives on FxMutableTime; `time` is the mutated receiver.
+	FxMutableTime *time = [FxMutableTime time:CMTimeMake(700, 70)];
 	FxTime *negativeTime = [FxTime time:CMTimeMake(-700, 70)];
 	
 	[time convertTimeScale:80 roundingMethod:kCMTimeRoundingMethod_Default];
@@ -176,14 +176,16 @@
 	[time multiplyByRatio:3 divisor:2];
 	XCTAssertTrue(CMTimeGetSeconds(time.time) == 15.0);
 	
-	FxTime *time3 = [FxTime time:CMTimeMake(2000, 100)];
-	XCTAssertTrue([time compare:time3] == 1);
-	XCTAssertTrue([time compare:time] == 0);
-	XCTAssertTrue([time compare:negativeTime] == -1);
-	
-	XCTAssertTrue([time compareTime:time3.time] == 1);
+	// compare: now follows the Cocoa NSComparisonResult convention (result describes the
+	// receiver relative to the argument). time == 15s here.
+	FxTime *time3 = [FxTime time:CMTimeMake(2000, 100)]; // 20s
+	XCTAssertTrue([time compare:time3] == -1);           // 15 < 20
+	XCTAssertTrue([time compare:time] == 0);             // equal
+	XCTAssertTrue([time compare:negativeTime] == 1);     // 15 > -10
+
+	XCTAssertTrue([time compareTime:time3.time] == -1);
 	XCTAssertTrue([time compareTime:time.time] == 0);
-	XCTAssertTrue([time compareTime:negativeTime.time] == -1);
+	XCTAssertTrue([time compareTime:negativeTime.time] == 1);
 	
 	FxTime *minTime = [FxTime time:CMTimeMake(500, 70)];
 	[time minimum:time3];
@@ -302,7 +304,118 @@
 	rational = [FxTime rationalize:2000000000.0 + sqrt(5) tolerance:0]; // Phi
 	XCTAssertEqual(rational.multiplier, 2000000002);
 	XCTAssertEqual(rational.divisor, 1);
-	
+
+}
+
+#pragma mark - Regression Tests (equality / hash contract)
+
+- (void)testHash_EqualValuesProduceEqualHashes {
+	// 300/30 and 400/40 are both 10s, so (value-based equality) they must hash equally.
+	FxTime *a = [FxTime time:CMTimeMake(300, 30)];
+	FxTime *b = [FxTime time:CMTimeMake(400, 40)];
+	XCTAssertTrue([a isEqual:b], @"300/30 and 400/40 are both 10s and should be equal.");
+	XCTAssertEqual(a.hash, b.hash, @"Equal FxTime values must produce equal hashes.");
+}
+
+- (void)testHash_UsableAsSetMembers {
+	FxTime *a = [FxTime time:CMTimeMake(300, 30)];
+	FxTime *b = [FxTime time:CMTimeMake(400, 40)]; // value-equal to a
+	NSSet *set = [NSSet setWithObjects:a, b, nil];
+	XCTAssertEqual(set.count, (NSUInteger)1, @"Value-equal FxTimes should collapse to one set member.");
+	XCTAssertTrue([set containsObject:[FxTime time:CMTimeMake(10, 1)]], @"Set lookup must succeed for an equal value.");
+}
+
+- (void)testIsEqual_NilAndForeignTypeAreSafe {
+	FxTime *a = [FxTime time:CMTimeMake(10, 1)];
+	XCTAssertFalse([a isEqual:nil], @"isEqual:nil must be NO.");
+	XCTAssertFalse([a isEqual:@"not an FxTime"], @"isEqual: with a foreign type must be NO, not crash.");
+	XCTAssertTrue([a isEqual:a], @"An object must equal itself.");
+}
+
+- (void)testHash_SpecialValuesAreStable {
+	XCTAssertEqual([FxTime infinity].hash, [FxTime infinity].hash, @"Infinity hash must be stable.");
+	XCTAssertEqual([FxTime minusInfinity].hash, [FxTime minusInfinity].hash, @"-Infinity hash must be stable.");
+	XCTAssertEqual([FxTime indefinite].hash, [FxTime indefinite].hash, @"Indefinite hash must be stable.");
+	XCTAssertEqual([FxTime invalid].hash, [FxTime invalid].hash, @"Invalid hash must be stable.");
+}
+
+#pragma mark - Regression Tests (immutable / mutable split)
+
+- (void)testCopyReturnsImmutableFxTime {
+	FxMutableTime *mutable = [FxMutableTime time:CMTimeMake(100, 10)];
+	id snapshot = [mutable copy];
+	XCTAssertTrue([snapshot isKindOfClass:[FxTime class]], @"copy must be an FxTime.");
+	XCTAssertFalse([snapshot isKindOfClass:[FxMutableTime class]], @"copy must NOT be mutable.");
+	XCTAssertFalse([snapshot respondsToSelector:@selector(add:)], @"Immutable copy must not expose mutators.");
+}
+
+- (void)testMutableCopyReturnsIndependentMutable {
+	FxTime *original = [FxTime time:CMTimeMake(100, 10)]; // 10s
+	FxMutableTime *mutable = [original mutableCopy];
+	XCTAssertTrue([mutable isKindOfClass:[FxMutableTime class]], @"mutableCopy must be an FxMutableTime.");
+
+	// Mutating the copy must not affect the immutable original.
+	[mutable addTime:CMTimeMake(50, 10)]; // +5s → 15s
+	XCTAssertEqualWithAccuracy(mutable.seconds, 15.0, 0.001);
+	XCTAssertEqualWithAccuracy(original.seconds, 10.0, 0.001, @"Original must be unchanged by mutating its copy.");
+}
+
+- (void)testFactoryProducesCorrectClass {
+	// +time: must honor the receiving class so the mutable factory yields a mutable object.
+	XCTAssertTrue([[FxTime time:kCMTimeZero] isKindOfClass:[FxTime class]]);
+	XCTAssertFalse([[FxTime time:kCMTimeZero] isKindOfClass:[FxMutableTime class]]);
+	XCTAssertTrue([[FxMutableTime time:kCMTimeZero] isKindOfClass:[FxMutableTime class]]);
+	XCTAssertTrue([[FxMutableTime zero] isKindOfClass:[FxMutableTime class]], @"Mutable constant factory should be mutable.");
+}
+
+- (void)testMutableSubclassIsAnFxTime {
+	FxMutableTime *mutable = [FxMutableTime time:CMTimeMake(300, 30)]; // 10s
+	FxTime *immutable = [FxTime time:CMTimeMake(400, 40)];             // 10s
+	// Equality/hash work across the class boundary (value-based).
+	XCTAssertTrue([mutable isEqual:immutable]);
+	XCTAssertEqual(mutable.hash, immutable.hash);
+}
+
+#pragma mark - Regression Tests (compare: inversion + rationalize edge)
+
+- (void)testCompareFollowsCocoaConvention {
+	// NSComparisonResult convention: the result describes the receiver relative to the argument.
+	FxTime *five = [FxTime time:CMTimeMake(5, 1)];
+	FxTime *ten  = [FxTime time:CMTimeMake(10, 1)];
+
+	XCTAssertEqual([five compare:ten], -1, @"5 < 10 must be -1 (NSOrderedAscending).");
+	XCTAssertEqual([ten compare:five], 1,  @"10 > 5 must be 1 (NSOrderedDescending).");
+	XCTAssertEqual([five compare:five], 0, @"5 == 5 must be 0.");
+
+	// compareTime: must agree with compare:.
+	XCTAssertEqual([five compareTime:ten.time], -1);
+	XCTAssertEqual([ten compareTime:five.time], 1);
+	XCTAssertEqual([five compareTime:five.time], 0);
+}
+
+- (void)testRationalizeNegativeInfinityIsINT32_MIN {
+	SRational32 r = [FxTime rationalize:-INFINITY];
+	XCTAssertEqual(r.multiplier, INT32_MIN);
+	XCTAssertEqual(r.multiplier, (int32_t)0x80000000);
+	XCTAssertEqual(r.divisor, 1);
+
+	// And the positive-infinity counterpart for symmetry.
+	SRational32 p = [FxTime rationalize:INFINITY];
+	XCTAssertEqual(p.multiplier, INT32_MAX);
+	XCTAssertEqual(p.divisor, 1);
+}
+
+- (void)testHashIsStableForDegenerateZeroTimescale {
+	// A "numeric" CMTime with timescale 0 yields non-finite seconds (NaN). -hash must not
+	// route NaN through @(NaN).hash in a way that could violate equal-objects-hash-equal;
+	// it collapses all such degenerate numerics to one constant. Two identical degenerate
+	// values must hash equally and not crash.
+	FxMutableTime *a = [FxMutableTime time:kCMTimeZero];
+	a.timescale = 0; // degenerate but Valid flag remains set
+	FxMutableTime *b = [FxMutableTime time:kCMTimeZero];
+	b.timescale = 0;
+	XCTAssertNoThrow((void)a.hash);
+	XCTAssertEqual(a.hash, b.hash, @"Two identical degenerate (timescale 0) values must hash equally.");
 }
 
 @end

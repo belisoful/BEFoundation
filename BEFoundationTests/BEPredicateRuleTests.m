@@ -389,6 +389,82 @@
 	XCTAssertTrue([reference2 isEqual:reference]);
 }
 
+- (void)testBEPredicateRule_hashEqualContractAcrossUniqueFlag
+{
+	// A unique-priority rule and a non-unique rule are NOT equal even with the same predicate,
+	// outcome, and priority — the flag is part of identity. This keeps -hash/-isEqual: consistent
+	// (equal rules always agree on whether priority participates).
+	BEPredicateRule *notUnique = [BEPredicateRule ruleWithFormat:@"age >= %d", 30];
+	notUnique.itemPriorityInteger = 5;
+	BEPredicateRule *unique = [BEPredicateRule ruleWithFormat:@"age >= %d", 30];
+	unique.itemPriorityInteger = 5;
+	unique.isUniqueItemPriority = YES;
+
+	XCTAssertFalse([unique isEqual:notUnique]);
+	XCTAssertFalse([notUnique isEqual:unique]);
+
+	// They can coexist in a set; the hash/isEqual contract holds.
+	NSSet *set = [NSSet setWithObjects:notUnique, unique, nil];
+	XCTAssertEqual(set.count, 2);
+}
+
+- (void)testBEPredicateRule_copyPreservesIsUniqueItemPriority
+{
+	BEPredicateRule *reference = [BEPredicateRule ruleWithFormat:@"age >= %d", 30];
+	reference.itemPriorityInteger = 7;
+	reference.isUniqueItemPriority = YES;
+
+	BEPredicateRule *copy = [reference copy];
+	XCTAssertTrue(copy.isUniqueItemPriority, @"copy must preserve isUniqueItemPriority");
+	XCTAssertEqualObjects(copy.itemPriority, reference.itemPriority);
+	XCTAssertTrue([copy isEqual:reference]);
+	XCTAssertEqual(copy.hash, reference.hash);
+}
+
+- (void)testBEPredicateRule_codingPreservesIsUniqueItemPriority
+{
+	BEPredicateRule *reference = [BEPredicateRule ruleWithFormat:@"age >= %d", 30];
+	reference.itemPriorityInteger = 9;
+	reference.isUniqueItemPriority = YES;
+
+	NSError *error = nil;
+	NSData *data = [NSKeyedArchiver archivedDataWithRootObject:reference requiringSecureCoding:YES error:&error];
+	XCTAssertNil(error);
+	BEPredicateRule *decoded = [NSKeyedUnarchiver unarchivedObjectOfClass:BEPredicateRule.class fromData:data error:&error];
+	XCTAssertNil(error);
+
+	XCTAssertTrue(decoded.isUniqueItemPriority, @"coding must preserve isUniqueItemPriority");
+	XCTAssertEqualObjects(decoded.itemPriority, reference.itemPriority);
+	XCTAssertTrue([decoded isEqual:reference]);
+	XCTAssertEqual(decoded.hash, reference.hash);
+}
+
+- (void)testBEPredicateRule_blockRuleEvaluates
+{
+	BEPredicateRule *rule = [BEPredicateRule ruleWithBlock:^BOOL(id evaluatedObject, NSDictionary<NSString *,id> *bindings) {
+		return [evaluatedObject[@"age"] integerValue] >= 18;
+	}];
+	XCTAssertTrue([rule evaluateWithObject:@{@"age": @21}]);
+	XCTAssertFalse([rule evaluateWithObject:@{@"age": @16}]);
+}
+
+- (void)testBEPredicateRule_valueRuleEvaluates
+{
+	XCTAssertTrue([[BEPredicateRule ruleWithValue:YES] evaluateWithObject:NSObject.new]);
+	XCTAssertFalse([[BEPredicateRule ruleWithValue:NO] evaluateWithObject:NSObject.new]);
+}
+
+- (void)testBEPredicateRule_ruleOutcomeRespectsPriorityForRejectVsAccept
+{
+	// Rules are evaluated in ascending priority order; a matching Reject at lower priority wins.
+	NSArray *rules = @[
+		[BEPredicateRule ruleWithOutcome:BEPredicateRuleAccept priorityInteger:10 format:@"age >= %d", 0],
+		[BEPredicateRule ruleWithOutcome:BEPredicateRuleReject priorityInteger:0 format:@"age < %d", 18],
+	];
+	XCTAssertEqual([rules ruleOutcomeWithObject:@{@"age": @16}], BEPredicateRuleReject);
+	XCTAssertEqual([rules ruleOutcomeWithObject:@{@"age": @25}], BEPredicateRuleAccept);
+}
+
 
 - (void)testBEPredicateRule_ruleWithSubstitutionVariables
 {

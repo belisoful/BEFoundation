@@ -5,6 +5,14 @@
 ## User settings
 xcuserdata/
 
+## Build generated
+build/
+DerivedData/
+
+## Profile-guided optimization / coverage (raw, transient — the committed OptimizationProfiles/*.profdata is kept)
+*.profraw
+default.profraw
+
 ## Obj-C/Swift specific
 *.hmap
 

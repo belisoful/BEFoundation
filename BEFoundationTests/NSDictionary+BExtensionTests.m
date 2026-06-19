@@ -248,7 +248,7 @@
 		NSDictionary *result = [input objectsClassNames];
 		
 		
-		NSDictionary *reference = @{@0: @"NSObject".className, @1: @"NSNumber".className, @2: @(11).className, @3: @[@1, @2].className, @4: [NSNull null].className, @5: @{@"A": @1, @"B": @2}.className};
+		NSDictionary *reference = @{@0: NSStringFromClass(@"NSObject".class), @1: NSStringFromClass(@"NSNumber".class), @2: NSStringFromClass(@(11).class), @3: NSStringFromClass(@[@1, @2].class), @4: NSStringFromClass([NSNull null].class), @5: NSStringFromClass(@{@"A": @1, @"B": @2}.class)};
 		// Verify that each element has been converted to the correct Class object
 		XCTAssertEqualObjects(result, reference);
 	}
@@ -301,7 +301,7 @@
 		NSCountedSet *result = [input objectsUniqueClassNames];
 		
 		
-		NSCountedSet *reference = [NSCountedSet setWithObjects:@"NSObject".className, @"NSNumber".className, @(11).className, @[@1, @2].className, [NSNull null].className, @{@"A": @1, @"B": @2}.className, nil];
+		NSCountedSet *reference = [NSCountedSet setWithObjects:NSStringFromClass(@"NSObject".class), NSStringFromClass(@"NSNumber".class), NSStringFromClass(@(11).class), NSStringFromClass(@[@1, @2].class), NSStringFromClass([NSNull null].class), NSStringFromClass(@{@"A": @1, @"B": @2}.class), nil];
 		// Verify that each element has been converted to the correct Class object
 		XCTAssertTrue([result isKindOfClass:reference.class]);
 		XCTAssertEqualObjects(result, reference);

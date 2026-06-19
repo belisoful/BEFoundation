@@ -59,7 +59,7 @@
 		NSOrderedSet *result = [input objectsClassNames];
 		
 		
-		NSOrderedSet *reference = [NSOrderedSet orderedSetWithObjects:@"NSObject".className, @"NSNumber".className, @(11).className, @[@1, @2].className, [NSNull null].className, @{@"A": @1, @"B": @2}.className, nil];
+		NSOrderedSet *reference = [NSOrderedSet orderedSetWithObjects:NSStringFromClass(@"NSObject".class), NSStringFromClass(@"NSNumber".class), NSStringFromClass(@(11).class), NSStringFromClass(@[@1, @2].class), NSStringFromClass([NSNull null].class), NSStringFromClass(@{@"A": @1, @"B": @2}.class), nil];
 		// Verify that each element has been converted to the correct Class object
 		XCTAssertEqualObjects(result, reference);
 	}
@@ -111,7 +111,7 @@
 		NSCountedSet *result = [input objectsUniqueClassNames];
 		
 		
-		NSCountedSet *reference = [NSCountedSet setWithObjects:@"NSObject".className, @(11).className, @[@1, @2].className, [NSNull null].className, @{@"A": @1, @"B": @2}.className, nil];
+		NSCountedSet *reference = [NSCountedSet setWithObjects:NSStringFromClass(@"NSObject".class), NSStringFromClass(@(11).class), NSStringFromClass(@[@1, @2].class), NSStringFromClass([NSNull null].class), NSStringFromClass(@{@"A": @1, @"B": @2}.class), nil];
 		// Verify that each element has been converted to the correct Class object
 		XCTAssertTrue([result isKindOfClass:reference.class]);
 		XCTAssertEqualObjects(result, reference);

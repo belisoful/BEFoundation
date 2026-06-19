@@ -225,7 +225,17 @@
 	XCTAssertEqual([NSPooledPriorityNotification unusedNotificationCount], 1);
 	[NSPooledPriorityNotification clearNotificationPool];
 	XCTAssertEqual([NSPooledPriorityNotification unusedNotificationCount], 0);
-	
+
+}
+
+- (void)testUnusedNotificationCountSafeWhenEmpty {
+	[NSPooledPriorityNotification clearNotificationPool];
+	XCTAssertNoThrow([NSPooledPriorityNotification unusedNotificationCount]);
+	XCTAssertEqual([NSPooledPriorityNotification unusedNotificationCount], 0);
+}
+
+- (void)testPooledNotificationSupportsSecureCoding {
+	XCTAssertTrue([NSPooledPriorityNotification supportsSecureCoding]);
 }
 
 #pragma mark - Concurrency Tests

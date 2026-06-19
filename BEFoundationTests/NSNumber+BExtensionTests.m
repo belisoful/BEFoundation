@@ -446,6 +446,21 @@
 	XCTAssertTrue(isinf([fpResult doubleValue]), @"Floating point division by zero should be infinity.");
 }
 
+- (void)testModulusNumber_ByZero {
+	// Integer modulus by zero must NOT crash (SIGFPE); it mirrors divide-by-zero → NaN.
+	NSNumber *result = [@10 modulusNumber:@0];
+	XCTAssertTrue(isnan([result doubleValue]), @"Integer modulus by zero should result in NAN.");
+	XCTAssertEqualObjects(result, @(NAN));
+
+	// Unsigned integer modulus by zero.
+	NSNumber *uResult = [@(10U) modulusNumber:@(0U)];
+	XCTAssertTrue(isnan([uResult doubleValue]), @"Unsigned modulus by zero should result in NAN.");
+
+	// Floating point modulus by zero (fmod) is already NaN.
+	NSNumber *fpResult = [@10.5 modulusNumber:@0.0];
+	XCTAssertTrue(isnan([fpResult doubleValue]), @"Floating point modulus by zero should be NaN.");
+}
+
 - (void)testDivideNumber_Integers {
 	// Test adding two integers
 	SInt64 aInt, bInt;
@@ -1561,6 +1576,38 @@
 	
 	result = [checkNumber addNumber:ullNumber];
 	XCTAssertEqual(result.longLongValue, checkNumber.longLongValue + ullNumber.longLongValue);
+}
+
+#pragma mark - floatToFpXX
+
+- (void)testFloatToFpXX_Fp16CanonicalVectors {
+	// Default params (0/0 -> 5/10, INT_MIN -> auto bias 15) produce IEEE half-float (fp16).
+	XCTAssertEqual(floatToFpXX(0,        0, 0, INT_MIN, YES), 0x0000);
+	XCTAssertEqual(floatToFpXX(1,        0, 0, INT_MIN, YES), 0x3C00);
+	XCTAssertEqual(floatToFpXX(-2,       0, 0, INT_MIN, YES), 0xC000);
+	XCTAssertEqual(floatToFpXX(65504.0,  0, 0, INT_MIN, YES), 0x7BFF);  // largest normal
+	XCTAssertEqual(floatToFpXX(-0.0,     0, 0, INT_MIN, YES), 0x8000);  // negative zero
+	XCTAssertEqual(floatToFpXX(INFINITY, 0, 0, INT_MIN, YES), 0x7C00);
+	XCTAssertEqual(floatToFpXX(-INFINITY,0, 0, INT_MIN, YES), 0xFC00);
+	XCTAssertEqual(floatToFpXX(NAN,      0, 0, INT_MIN, YES), 0x7E00);
+	XCTAssertEqual(floatToFpXX(90000.0,  0, 0, INT_MIN, YES), 0x7C00);  // overflow -> inf
+	XCTAssertEqual(floatToFpXX(-5.960464477539063E-8, 0, 0, INT_MIN, YES), 0x8001); // smallest subnormal
+	XCTAssertEqual(floatToFpXX(6.097555160522461E-5,  0, 0, INT_MIN, YES), 0x03FF); // largest subnormal
+	XCTAssertEqual(floatToFpXX(6.103515625E-5,        0, 0, INT_MIN, YES), 0x0400); // smallest normal
+	XCTAssertEqual(floatToFpXX(0.49999, 0, 0, INT_MIN, YES), 0x3800);  // rounds up to 0.5
+}
+
+- (void)testFloatToFpXX_NonConformantSaturationAndFormats {
+	// Non-conformant fp16: no inf/subnormals; magnitudes saturate.
+	XCTAssertEqual(floatToFpXX(1e9,    5, 10, INT_MIN, NO), 0x7FFF);  // saturate to largest
+	XCTAssertEqual(floatToFpXX(1e-9,   5, 10, INT_MIN, NO), 0x0000);  // saturate to smallest
+	XCTAssertEqual(floatToFpXX(70016.0,5, 10, INT_MIN, NO), 0x7C46);  // max exponent keeps mantissa
+	// bf16 (8 exponent, 7 mantissa).
+	XCTAssertEqual(floatToFpXX(1,  8, 7, INT_MIN, YES), 0x3F80);
+	XCTAssertEqual(floatToFpXX(-2, 8, 7, INT_MIN, YES), 0xC000);
+	// Invalid configurations return 0.
+	XCTAssertEqual(floatToFpXX(1, -3, 10, INT_MIN, YES), 0);
+	XCTAssertEqual(floatToFpXX(1, 40, 30, INT_MIN, YES), 0);  // exceeds 64 bits
 }
 
 @end

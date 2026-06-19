@@ -177,13 +177,13 @@
 	XCTAssertEqual([self.universalRegistry registeredCountForObject:obj], 2);
 	
 	// First unregister
-	int result1 = [self.universalRegistry unregisterObject:obj];
-	XCTAssertEqual(result1, 1); // Still registered but count decremented
+	BEUnregisterStatus result1 = [self.universalRegistry unregisterObject:obj];
+	XCTAssertEqual(result1, BEUnregisterStatus_Decremented); // Still registered but count decremented
 	XCTAssertTrue([self.universalRegistry isObjectRegistered:obj]);
 	
 	// Second unregister
-	int result2 = [self.universalRegistry unregisterObject:obj];
-	XCTAssertEqual(result2, 2); // Completely removed
+	BEUnregisterStatus result2 = [self.universalRegistry unregisterObject:obj];
+	XCTAssertEqual(result2, BEUnregisterStatus_Unregistered); // Completely removed
 	XCTAssertFalse([self.universalRegistry isObjectRegistered:obj]);
 }
 
@@ -327,8 +327,8 @@
 	XCTAssertNotNil(retrievedObj);
 	
 	// Unregister should release the object
-	int result = [self.storageRegistry unregisterObject:retrievedObj];
-	XCTAssertEqual(result, 2); // Completely removed
+	BEUnregisterStatus result = [self.storageRegistry unregisterObject:retrievedObj];
+	XCTAssertEqual(result, BEUnregisterStatus_Unregistered); // Completely removed
 	
 	// Object should no longer be available
 	XCTAssertNil([self.storageRegistry registeredObjectForUUID:uuid]);
@@ -359,8 +359,8 @@
 	XCTAssertNotNil([self.storageRegistry registeredObjectForUUID:uuid]);
 	
 	// Final unregister
-	int result = [self.storageRegistry unregisterObject:retrievedObj];
-	XCTAssertEqual(result, 2); // Completely removed
+	BEUnregisterStatus result = [self.storageRegistry unregisterObject:retrievedObj];
+	XCTAssertEqual(result, BEUnregisterStatus_Unregistered); // Completely removed
 	
 	// Object should no longer be available
 	XCTAssertNil([self.storageRegistry registeredObjectForUUID:uuid]);

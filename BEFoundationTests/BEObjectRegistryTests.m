@@ -10,6 +10,14 @@
 #import "BEObjectRegistry.h"
 #import "NSObject+GlobalRegistry.h"
 
+@interface BEObjectRegistry (private_tests)
+- (NSString *)simpleRegistryUUIDForObject:(id<BERegistryProtocol, NSObject>)object;
+- (NSString *)setSimpleRegistryUUID:(NSString *)uuid forObject:(id<BERegistryProtocol, NSObject>)object;
+- (NSUInteger)simpleCountForObject:(id<BERegistryProtocol, NSObject>)object;
+- (void)setSimpleCount:(NSUInteger)count forObject:(id<BERegistryProtocol, NSObject>)object;
+@end
+
+
 // Test class that conforms to ObjectRegistryProtocol
 @interface TestObjectRegistryObject : NSObject <BERegistryProtocol>
 @property (nonatomic, strong) NSString *testValue;
@@ -176,7 +184,8 @@
 }
 
 - (void)testRegistryCustomObject {
-	NSString *referenceUUID = [self.testCustomObject1 objectRegistryUUID:nil];
+	BEObjectRegistry *nilRegistry = nil;
+	NSString *referenceUUID = [self.testCustomObject1 objectRegistryUUID:nilRegistry];
 	NSString *uuid = [self.registry registerObject:self.testCustomObject1];
 	NSString *retrievedUUID = [self.registry registryUUIDForObject:self.testCustomObject1];
 	
@@ -278,10 +287,11 @@
 
 - (void)testSetRegistryUUIDOnCustomUUID {
 	NSString *staticUUID = [[NSUUID UUID] UUIDString];
+	BEObjectRegistry *nilRegistry = nil;
 	
 	[self.registry setRegistryUUID:staticUUID forObject:self.testCustomObject1];
 	
-	NSString *customUUID = [self.testCustomObject1 objectRegistryUUID:nil];
+	NSString *customUUID = [self.testCustomObject1 objectRegistryUUID:nilRegistry];
 	XCTAssertEqualObjects([self.registry registryUUIDForObject:self.testCustomObject1], customUUID,
 						 	@"CustomUUID object should retain it's custom UUID");
 }
@@ -329,6 +339,13 @@
 								NSException,
 								NSInvalidArgumentException,
 								@"Should throw exception for non-string UUID");
+}
+
+- (void)testSimpleRegistry_PrivateMethods_InvalidInput {
+	XCTAssertNil([self.registry setSimpleRegistryUUID:(NSString *)@123 forObject:nil]);
+	XCTAssertNil([self.registry simpleRegistryUUIDForObject:nil]);
+	[self.registry setSimpleCount:123 forObject:nil];
+	XCTAssertEqual([self.registry simpleCountForObject:nil], 0);
 }
 
 #pragma mark - Registration Count Tests
@@ -509,12 +526,12 @@
 	NSString *uuida = [self.registry registerObject:self.testObject1];
 	[self.registry registerObject:self.testObject1];
 	
-	int success = [self.registry unregisterObjectByUUID:uuida];
-	XCTAssertEqual(success, 1, @"Unregistration by UUID should succeed");
-	
+	BEUnregisterStatus success = [self.registry unregisterObjectByUUID:uuida];
+	XCTAssertEqual(success, BEUnregisterStatus_Decremented, @"first unregister of a twice-registered object should decrement");
+
 	success = [self.registry unregisterObjectByUUID:uuida];
-	XCTAssertEqual(success, 2, @"Unregistration by UUID should succeed");
-	
+	XCTAssertEqual(success, BEUnregisterStatus_Unregistered, @"final unregister should fully unregister (same code as unregisterObject:)");
+
 	XCTAssertFalse([self.registry isObjectRegistered:self.testObject1], @"Object should not be registered");
 }
 
@@ -598,11 +615,18 @@
 	XCTAssertFalse(success, @"Unregistering with nil UUID should return NO");
 }
 
+
+- (void)testUnregisterObject_nil {
+	id object = nil;
+	BEUnregisterStatus success = [self.registry unregisterObject:object];
+	XCTAssertEqual(success, BEUnregisterStatus_NotRegistered, @"Cannot unregister a nil object");
+}
+
 #pragma mark - Clear Operations Tests
 
 - (void)testClearObjectsWithoutRegistryProtocol_Default {
 	self.registry.requireRegistryProtocol = NO;
-	NSString *uuid1 = [self.registry registerObject:self.testObject1];
+	__unused NSString *uuid1 = [self.registry registerObject:self.testObject1];
 	NSString *uuid2 = [self.registry registerObject:self.nonConformingObject1];
 	
 	XCTAssertEqual(self.registry.registeredObjectsCount, 2, @"Registry should contain one object");
@@ -629,7 +653,7 @@
 
 - (void)testClearObjectsWithoutRegistryProtocol_ClearUUIDNO {
 	self.registry.requireRegistryProtocol = NO;
-	NSString *uuid1 = [self.registry registerObject:self.testObject1];
+	__unused NSString *uuid1 = [self.registry registerObject:self.testObject1];
 	NSString *uuid2 = [self.registry registerObject:self.nonConformingObject1];
 	
 	XCTAssertEqual(self.registry.registeredObjectsCount, 2, @"Registry should contain one object");
@@ -657,7 +681,7 @@
 
 - (void)testClearObjectsWithoutRegistryProtocol_ClearUUIDYES {
 	self.registry.requireRegistryProtocol = NO;
-	NSString *uuid1 = [self.registry registerObject:self.testObject1];
+	__unused NSString *uuid1 = [self.registry registerObject:self.testObject1];
 	NSString *uuid2 = [self.registry registerObject:self.nonConformingObject1];
 	
 	XCTAssertEqual(self.registry.registeredObjectsCount, 2, @"Registry should contain one object");
@@ -770,7 +794,8 @@
 }
 
 - (void)testClearObject_BadArgument {
-	XCTAssertFalse([self.registry clearObject:nil]);
+	id nilObject = nil;
+	XCTAssertFalse([self.registry clearObject:nilObject]);
 	XCTAssertFalse([self.registry clearObject:(id)NSObject.new]);
 }
 
@@ -797,7 +822,8 @@
 }
 
 - (void)testClearObjectByUUID_BadArgument {
-	XCTAssertFalse([self.registry clearObjectByUUID:nil]);
+	id nilObject = nil;
+	XCTAssertFalse([self.registry clearObjectByUUID:nilObject]);
 	XCTAssertFalse([self.registry clearObjectByUUID:(NSString*)NSObject.new]);
 	XCTAssertFalse([self.registry clearObjectByUUID:@""]);
 }
@@ -811,6 +837,31 @@
 	XCTAssertEqual(self.registry.registeredObjectsCount, 0, @"Registry should be empty");
 	NSString *retrievedUUID = [self.registry registryUUIDForObject:self.testObject1];
 	XCTAssertEqualObjects(uuid, retrievedUUID, @"UUID should still be associated with object");
+	
+	XCTAssertEqual([self.registry countForObject:self.testObject1], 0);
+}
+
+- (void)testClearAllRegisteredObjectsDefault_GC {
+	id testObject1 = [[TestObjectRegistryObject alloc] initWithTestValue:@"test1"];
+	[self.registry registerObject:testObject1];
+	
+	
+	testObject1 = nil;
+	
+	if (YES) { // delay should be YES
+		XCTestExpectation *delay = [self expectationWithDescription:@"loop for GC with "];
+		dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+			[delay fulfill];
+		});
+		[self waitForExpectations:@[delay] timeout:2.0];
+	}
+	testObject1 = [[TestObjectRegistryObject alloc] initWithTestValue:@"test1"];
+	
+	[self.registry clearAllRegisteredObjects];
+	
+	XCTAssertEqual(self.registry.registeredObjectsCount, 0, @"Registry should be empty");
+	
+	XCTAssertEqual([self.registry countForObject:testObject1], 0);
 }
 
 - (void)testClearAllRegisteredObjects_WithoutClearingUUIDs {
@@ -904,10 +955,8 @@
 		XCTAssertNotNil([self.registry registeredObjectForUUID:uuid], @"Object should be in registry");
 	}
 	
-	// Force garbage collection to ensure weak reference is cleared
-	[[NSRunLoop currentRunLoop] runUntilDate:[NSDate dateWithTimeIntervalSinceNow:0.1]];
-	
-	// Object should be removed from registry due to weak reference
+	// The object deallocates synchronously when the autoreleasepool drains, and the registry holds
+	// it through an NSMapTable weak value, so the entry reads back nil immediately. No wait needed.
 	XCTAssertNil([self.registry registeredObjectForUUID:uuid], @"Object should be removed from registry when deallocated");
 }
 
@@ -942,6 +991,58 @@
 	// Verify all UUIDs are unique
 	NSSet *uniqueUUIDs = [NSSet setWithArray:objects.allKeys];
 	XCTAssertEqual(uniqueUUIDs.count, objects.count, @"All UUIDs should be unique");
+}
+
+- (void)testConcurrentCountAndRegisterDoesNotDeadlock {
+	XCTestExpectation *done = [self expectationWithDescription:@"no deadlock between register and count"];
+	done.expectedFulfillmentCount = 2;
+
+	dispatch_queue_t queue = dispatch_queue_create("test.registry.deadlock", DISPATCH_QUEUE_CONCURRENT);
+
+	dispatch_async(queue, ^{
+		for (int i = 0; i < 5000; i++) {
+			[self.registry registerObject:self.testObject1];
+			[self.registry unregisterObject:self.testObject1];
+		}
+		[done fulfill];
+	});
+
+	// countForObject: acquires saltLock + registryTable; registerObject: acquires them too.
+	// If the two methods take the locks in opposite orders this stress will wedge AB-BA.
+	dispatch_async(queue, ^{
+		for (int i = 0; i < 5000; i++) {
+			(void)[self.registry countForObject:self.testObject1];
+			(void)[self.registry registeredCountForObject:self.testObject1];
+			(void)[self.registry allRegisteredObjects];
+		}
+		[done fulfill];
+	});
+
+	[self waitForExpectationsWithTimeout:30.0 handler:nil];
+}
+
+- (void)testUnregisterByUUIDReturnsSameStatusAsUnregisterObject {
+	NSString *uuid = [self.registry registerObject:self.testObject1];
+	[self.registry registerObject:self.testObject1];
+
+	XCTAssertEqual([self.registry unregisterObjectByUUID:uuid], BEUnregisterStatus_Decremented);
+	XCTAssertEqual([self.registry unregisterObjectByUUID:uuid], BEUnregisterStatus_Unregistered);
+	// After full removal the UUID is no longer in the table.
+	XCTAssertEqual([self.registry unregisterObjectByUUID:uuid], BEUnregisterStatus_NotRegistered);
+}
+
+- (void)testFreshObjectHasNoInheritedCountAfterPriorDealloc {
+	@autoreleasepool {
+		TestObjectRegistryObject *temp = [[TestObjectRegistryObject alloc] initWithTestValue:@"temp"];
+		[self.registry registerObject:temp];
+		[self.registry registerObject:temp];
+		XCTAssertEqual([self.registry registeredCountForObject:temp], 2);
+		// temp deallocates without unregistering; its per-instance count is stored on temp and
+		// released with it, so nothing stale is left behind in the registry.
+	}
+	TestObjectRegistryObject *fresh = [[TestObjectRegistryObject alloc] initWithTestValue:@"fresh"];
+	XCTAssertEqual([self.registry registeredCountForObject:fresh], 0);
+	XCTAssertFalse([self.registry isObjectRegistered:fresh]);
 }
 
 @end

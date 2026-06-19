@@ -2,7 +2,7 @@
 //  Copyright © 2025 Delicense - @belisoful. All rights released.
 
 #import <XCTest/XCTest.h>
-#import "NSDateFormatterRFC3339.h" // Import your category header
+#import "NSDateFormatter+RFC3339.h" // Import your category header
 
 // Define the expected RFC3339 date format string for convenience in tests
 #define kExpectedRFC3339_DateFormat @"yyyy-MM-dd'T'HH:mm:ssZZZZZ"
@@ -162,6 +162,86 @@
 	NSString *actualFormattedString = [formatter stringFromDate:date];
 
 	XCTAssertEqualObjects(actualFormattedString, expectedFormattedString, @"The formatted date string should match the expected RFC3339 format after applying rfc3339Format.");
+}
+
+#pragma mark - Parsing
+
+- (void)testRfc3339ParsesZuluAndOffsetEquivalently {
+	NSDateFormatter *formatter = [NSDateFormatter rfc3339DateFormatter];
+	NSDate *zulu = [formatter dateFromString:@"2025-06-23T10:30:00Z"];
+	NSDate *offset = [formatter dateFromString:@"2025-06-23T10:30:00+00:00"];
+	XCTAssertNotNil(zulu);
+	XCTAssertNotNil(offset);
+	XCTAssertEqualObjects(zulu, offset, @"'Z' and '+00:00' denote the same instant");
+}
+
+- (void)testRfc3339ParsesNonUTCOffsetToCorrectInstant {
+	NSDateFormatter *formatter = [NSDateFormatter rfc3339DateFormatter];
+	NSDate *minus8 = [formatter dateFromString:@"2025-06-23T10:30:00-08:00"];
+	NSDate *utc = [formatter dateFromString:@"2025-06-23T18:30:00Z"];
+	XCTAssertNotNil(minus8);
+	XCTAssertEqualObjects(minus8, utc, @"-08:00 must resolve to the same UTC instant as 18:30Z");
+}
+
+- (void)testRfc3339RoundTrip {
+	NSDateFormatter *formatter = [NSDateFormatter rfc3339DateFormatter];
+	NSString *iso = @"2025-06-23T14:45:30Z";
+	NSDate *date = [formatter dateFromString:iso];
+	XCTAssertNotNil(date);
+	XCTAssertEqualObjects([formatter stringFromDate:date], iso);
+}
+
+// The fixed format has no fractional-seconds field, so sub-second timestamps do not parse.
+- (void)testRfc3339RejectsFractionalSeconds {
+	NSDateFormatter *formatter = [NSDateFormatter rfc3339DateFormatter];
+	XCTAssertNil([formatter dateFromString:@"2025-06-23T14:45:30.5Z"]);
+}
+
+// RFC 3339 §5.6 lets applications replace the 'T' with a space "by mutual agreement"; the fixed
+// format uses a literal 'T', so the space-separated variant is not accepted.
+- (void)testRfc3339RejectsSpaceSeparator {
+	NSDateFormatter *formatter = [NSDateFormatter rfc3339DateFormatter];
+	XCTAssertNil([formatter dateFromString:@"2025-06-23 10:30:00Z"]);
+}
+
+// RFC 3339 permits a leap second (":60"); the fixed format does not accept it.
+- (void)testRfc3339RejectsLeapSecond {
+	NSDateFormatter *formatter = [NSDateFormatter rfc3339DateFormatter];
+	XCTAssertNil([formatter dateFromString:@"2025-06-30T23:59:60Z"]);
+}
+
+// RFC 3339 §5.6 also allows a lowercase 't' separator. Unlike the zone designator (where 'z' is
+// accepted), the 'T' is a literal in the format string and stays case-sensitive, so 't' is rejected.
+- (void)testRfc3339RejectsLowercaseTSeparator {
+	NSDateFormatter *formatter = [NSDateFormatter rfc3339DateFormatter];
+	XCTAssertNil([formatter dateFromString:@"2025-06-23t10:30:00Z"]);
+}
+
+// RFC 3339 restricts the hour to 00-23 (no 24:00 end-of-day form that ISO 8601 permits).
+- (void)testRfc3339RejectsHour24 {
+	NSDateFormatter *formatter = [NSDateFormatter rfc3339DateFormatter];
+	XCTAssertNil([formatter dateFromString:@"2025-06-23T24:00:00Z"]);
+}
+
+// Parsing is a full-string match: trailing content is not tolerated.
+- (void)testRfc3339RejectsTrailingContent {
+	NSDateFormatter *formatter = [NSDateFormatter rfc3339DateFormatter];
+	XCTAssertNil([formatter dateFromString:@"2025-06-23T10:30:00Z and more"]);
+}
+
+// RFC 3339 §5.6 permits a lowercase 'z' for the zero offset; the formatter accepts it.
+- (void)testRfc3339ParsesLowercaseZulu {
+	NSDateFormatter *formatter = [NSDateFormatter rfc3339DateFormatter];
+	NSDate *lower = [formatter dateFromString:@"2025-06-23T10:30:00z"];
+	NSDate *upper = [formatter dateFromString:@"2025-06-23T10:30:00Z"];
+	XCTAssertNotNil(lower);
+	XCTAssertEqualObjects(lower, upper);
+}
+
+- (void)testRfc3339RejectsMalformedString {
+	NSDateFormatter *formatter = [NSDateFormatter rfc3339DateFormatter];
+	XCTAssertNil([formatter dateFromString:@"not a date"]);
+	XCTAssertNil([formatter dateFromString:@""]);
 }
 
 @end

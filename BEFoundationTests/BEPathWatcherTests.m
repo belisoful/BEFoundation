@@ -5,6 +5,10 @@
 // This class has methods that match the various signatures now supported by BEPathWatcher.
 @interface MockTarget : NSObject
 @property (nonatomic, strong) XCTestExpectation *expectation;
+// When non-zero, the expectation is fulfilled only once every one of these bits has been
+// observed. A single write can arrive as several VNODE callbacks (e.g. truncate then write,
+// or WRITE split from EXTEND), so a test that wants a specific bit must wait for it.
+@property (nonatomic, assign) unsigned long expectedFlags;
 @property (nonatomic, assign) unsigned long lastReceivedFlags;
 @property (nonatomic, weak) BEPathWatcher *lastReceivedWatcher;
 @property (nonatomic, assign) BOOL zeroArgMethodCalled;
@@ -17,32 +21,45 @@
 @end
 
 @implementation MockTarget
+// VNODE events for one file change can be delivered across multiple callbacks; accumulate.
+- (void)recordFlags:(unsigned long)flags {
+	self.lastReceivedFlags |= flags;
+}
+
+- (void)fulfillIfReady {
+	if (!self.expectation) {
+		return;
+	}
+	if (self.expectedFlags && (self.lastReceivedFlags & self.expectedFlags) != self.expectedFlags) {
+		return;
+	}
+	XCTestExpectation *toFulfill = self.expectation;
+	self.expectation = nil;	// fulfill exactly once even if more callbacks arrive
+	[toFulfill fulfill];
+}
+
 - (void)pathDidChange {
 	self.zeroArgMethodCalled = YES;
-	if (self.expectation)
-		[self.expectation fulfill];
+	[self fulfillIfReady];
 }
 
 - (void)pathDidChange:(BEPathWatcher *)watcher {
 	self.oneArgMethodCalled = YES;
 	self.lastReceivedWatcher = watcher;
-	if (self.expectation)
-		[self.expectation fulfill];
+	[self fulfillIfReady];
 }
 
 - (void)pathDidChangeWithFlags:(unsigned long)flags {
 	self.oneArgMethodCalled = YES;
-	self.lastReceivedFlags = flags;
-	if (self.expectation)
-		[self.expectation fulfill];
+	[self recordFlags:flags];
+	[self fulfillIfReady];
 }
 
 - (void)pathDidChange:(BEPathWatcher *)watcher withFlags:(unsigned long)flags {
 	self.twoArgMethodCalled = YES;
 	self.lastReceivedWatcher = watcher;
-	self.lastReceivedFlags = flags;
-	if (self.expectation)
-		[self.expectation fulfill];
+	[self recordFlags:flags];
+	[self fulfillIfReady];
 }
 @end
 
@@ -67,6 +84,7 @@
 @property (nonatomic, strong) NSString *tempDirectory;
 @property (nonatomic, strong) NSString *testFilePath;
 @property (nonatomic, strong) NSFileManager *fileManager;
+@property (assign)				double	waitTime;
 
 @end
 
@@ -74,6 +92,10 @@
 
 - (void)setUp {
 	[super setUp];
+	
+	//Timeout value
+	self.waitTime = 5.0;
+	
 	// Set up a temporary directory and a file for testing file system events.
 	self.fileManager = [NSFileManager defaultManager];
 	NSString *tempDir = [NSTemporaryDirectory() stringByAppendingPathComponent:[[NSUUID UUID] UUIDString]];
@@ -117,7 +139,7 @@
 	// Trigger an event
 	[@"new content" writeToFile:self.testFilePath atomically:YES encoding:NSUTF8StringEncoding error:nil];
 	
-	[self waitForExpectationsWithTimeout:1.0 handler:nil];
+	[self waitForExpectationsWithTimeout:self.waitTime handler:nil];
 }
 
 
@@ -135,7 +157,7 @@
 	// Trigger an event
 	[@"new content" writeToFile:self.testFilePath atomically:NO encoding:NSUTF8StringEncoding error:nil];
 	
-	[self waitForExpectationsWithTimeout:1.0 handler:nil];
+	[self waitForExpectationsWithTimeout:self.waitTime handler:nil];
 }
 
 - (void)testFactoryWatcherForPathWithTargetSelector {
@@ -145,11 +167,12 @@
 	
 	self.watcher = [BEPathWatcher watcherForPath:self.testFilePath target:target selector:@selector(pathDidChange:withFlags:)];
 	XCTAssertTrue(self.watcher.isActive);
+	target.expectedFlags = DISPATCH_VNODE_WRITE;
 
 	// Trigger an event
 	[@"new content" writeToFile:self.testFilePath atomically:NO encoding:NSUTF8StringEncoding error:nil];
-	
-	[self waitForExpectationsWithTimeout:1.0 handler:nil];
+
+	[self waitForExpectationsWithTimeout:self.waitTime handler:nil];
 	XCTAssertNotNil(target.lastReceivedWatcher);
 	XCTAssertTrue(target.lastReceivedFlags & DISPATCH_VNODE_WRITE);
 }
@@ -171,7 +194,7 @@
 	dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
 		[delay fulfill];
 	});
-	[self waitForExpectations:@[delay, noAttribExpectation] timeout:1.0];
+	[self waitForExpectations:@[delay, noAttribExpectation] timeout:self.waitTime];
 	XCTAssertNil(target.lastReceivedWatcher);
 	XCTAssertEqual(target.lastReceivedFlags, 0);
 	
@@ -183,7 +206,7 @@
 	NSDictionary *attributes = @{NSFileModificationDate: [NSDate date]};
 	[self.fileManager setAttributes:attributes ofItemAtPath:self.testFilePath error:nil];
 	
-	[self waitForExpectationsWithTimeout:1.0 handler:nil];
+	[self waitForExpectationsWithTimeout:self.waitTime handler:nil];
 	XCTAssertNotNil(target.lastReceivedWatcher);
 	XCTAssertTrue(target.lastReceivedFlags & DISPATCH_VNODE_ATTRIB);
 }
@@ -284,7 +307,7 @@
 	XCTAssertTrue(self.watcher.isActive, "Watcher should be active.");
 	[@"updated test file" writeToFile:self.testFilePath atomically:NO encoding:NSUTF8StringEncoding error:nil];
 	
-	[self waitForExpectations:@[expectation1] timeout:1.0];
+	[self waitForExpectations:@[expectation1] timeout:self.waitTime];
 	
 	NSString *newPath = [self.tempDirectory stringByAppendingPathComponent:@"newfile.txt"];
 	[@"new" writeToFile:newPath atomically:NO encoding:NSUTF8StringEncoding error:nil];
@@ -330,7 +353,7 @@
 	NSDictionary *attributes = @{NSFileModificationDate: [NSDate date]};
 	[self.fileManager setAttributes:attributes ofItemAtPath:self.testFilePath error:nil];
 
-	[self waitForExpectations:@[expectation] timeout:1.0];
+	[self waitForExpectations:@[expectation] timeout:self.waitTime];
 }
 
 - (void)testSetIsActive {
@@ -352,7 +375,7 @@
 	dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
 		[delay fulfill];
 	});
-	[self waitForExpectations:@[delay, expectation] timeout:1.0];
+	[self waitForExpectations:@[delay, expectation] timeout:self.waitTime];
 	
 	self.watcher.isActive = NO;
 	XCTAssertFalse(self.watcher.isActive, "Setting isActive to NO should stop monitoring.");
@@ -420,7 +443,7 @@
 	dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
 		[delay fulfill];
 	});
-	[self waitForExpectations:@[delay, expectation] timeout:1.0];
+	[self waitForExpectations:@[delay, expectation] timeout:self.waitTime];
 	
 	[self.watcher stopMonitoring];
 	XCTAssertFalse(self.watcher.isActive, "Watcher should be inactive after stopping.");
@@ -428,12 +451,15 @@
 
 - (void)testWatchPathBlock_CallbackOnWrite {
 	XCTestExpectation *expectation = [self expectationWithDescription:@"Block callback on write"];
+	expectation.assertForOverFulfill = NO;
 	__block unsigned long receivedFlags = 0;
-	
+
 	self.watcher = [[BEPathWatcher alloc] init];
 	XCTAssertTrue([self.watcher watchPath:self.testFilePath withBlock:^(BEPathWatcher *watcher, unsigned long flags) {
-		receivedFlags = flags;
-		[expectation fulfill];
+		receivedFlags |= flags;	// VNODE events may split across callbacks; wait for WRITE
+		if (receivedFlags & DISPATCH_VNODE_WRITE) {
+			[expectation fulfill];
+		}
 	}]);
 	
 	XCTAssertTrue(self.watcher.isActive);
@@ -443,7 +469,7 @@
 	[@"some new data" writeToFile:self.testFilePath atomically:NO encoding:NSUTF8StringEncoding error:&error];
 	XCTAssertNil(error);
 	
-	[self waitForExpectationsWithTimeout:1.0 handler:nil];
+	[self waitForExpectationsWithTimeout:self.waitTime handler:nil];
 	XCTAssertTrue(receivedFlags & DISPATCH_VNODE_WRITE, "The correct event flag should be received.");
 }
 
@@ -466,7 +492,7 @@
 	[@"some new data" writeToFile:self.testFilePath atomically:NO encoding:NSUTF8StringEncoding error:&error];
 	XCTAssertNil(error);
 
-	[self waitForExpectationsWithTimeout:1.0 handler:nil];
+	[self waitForExpectationsWithTimeout:self.waitTime handler:nil];
 	XCTAssertTrue(receivedFlags & DISPATCH_VNODE_WRITE, "The correct event flag should be received.");
 }
 
@@ -477,13 +503,14 @@
 
 	self.watcher = [[BEPathWatcher alloc] init];
 	XCTAssertTrue([self.watcher watchPath:self.testFilePath target:target selector:@selector(pathDidChange:withFlags:)]);
-	
+
 	XCTAssertTrue(self.watcher.isActive);
+	target.expectedFlags = DISPATCH_VNODE_WRITE;
 
 	// Trigger a write event
 	[@"some new data" writeToFile:self.testFilePath atomically:NO encoding:NSUTF8StringEncoding error:nil];
 
-	[self waitForExpectationsWithTimeout:1.0 handler:nil];
+	[self waitForExpectationsWithTimeout:self.waitTime handler:nil];
 	XCTAssertTrue(target.twoArgMethodCalled);
 	XCTAssertFalse(target.oneArgMethodCalled);
 	XCTAssertFalse(target.zeroArgMethodCalled);
@@ -504,7 +531,7 @@
 	// Trigger a write event
 	[@"some new data" writeToFile:self.testFilePath atomically:NO encoding:NSUTF8StringEncoding error:nil];
 
-	[self waitForExpectationsWithTimeout:1.0 handler:nil];
+	[self waitForExpectationsWithTimeout:self.waitTime handler:nil];
 	XCTAssertTrue(target.oneArgMethodCalled);
 	XCTAssertFalse(target.twoArgMethodCalled);
 	XCTAssertFalse(target.zeroArgMethodCalled);
@@ -518,13 +545,14 @@
 
 	self.watcher = [[BEPathWatcher alloc] init];
 	XCTAssertTrue([self.watcher watchPath:self.testFilePath target:target selector:@selector(pathDidChangeWithFlags:)]);
-	
+
 	XCTAssertTrue(self.watcher.isActive);
+	target.expectedFlags = DISPATCH_VNODE_WRITE;
 
 	// Trigger a write event
 	[@"some new data" writeToFile:self.testFilePath atomically:NO encoding:NSUTF8StringEncoding error:nil];
 
-	[self waitForExpectationsWithTimeout:1.0 handler:nil];
+	[self waitForExpectationsWithTimeout:self.waitTime handler:nil];
 	XCTAssertTrue(target.oneArgMethodCalled);
 	XCTAssertFalse(target.twoArgMethodCalled);
 	XCTAssertFalse(target.zeroArgMethodCalled);
@@ -545,7 +573,7 @@
 	// Trigger a write event
 	[@"some new data" writeToFile:self.testFilePath atomically:YES encoding:NSUTF8StringEncoding error:nil];
 
-	[self waitForExpectationsWithTimeout:1.0 handler:nil];
+	[self waitForExpectationsWithTimeout:self.waitTime handler:nil];
 	XCTAssertTrue(target.zeroArgMethodCalled);
 	XCTAssertFalse(target.oneArgMethodCalled);
 	XCTAssertFalse(target.twoArgMethodCalled);
@@ -564,7 +592,7 @@
 	// Trigger delete event
 	[self.fileManager removeItemAtPath:self.testFilePath error:nil];
 	
-	[self waitForExpectationsWithTimeout:1.0 handler:nil];
+	[self waitForExpectationsWithTimeout:self.waitTime handler:nil];
 	
 	// The watcher should have stopped automatically. We need to wait briefly for the cancellation handler to run.
 	XCTestExpectation *stopExpectation = [self expectationWithDescription:@"Watcher stopped expectation"];
@@ -573,7 +601,7 @@
 		[stopExpectation fulfill];
 	});
 	
-	[self waitForExpectations:@[stopExpectation] timeout:1.0];
+	[self waitForExpectations:@[stopExpectation] timeout:self.waitTime];
 }
 
 - (void)testwatchPathEventMaskBlock_AutomaticStopOnRename {
@@ -590,7 +618,7 @@
 	NSString *newPath = [self.tempDirectory stringByAppendingPathComponent:@"renamed.txt"];
 	[self.fileManager moveItemAtPath:self.testFilePath toPath:newPath error:nil];
 	
-	[self waitForExpectationsWithTimeout:1.0 handler:nil];
+	[self waitForExpectationsWithTimeout:self.waitTime handler:nil];
 	
 	// The watcher should have stopped automatically.
 	XCTestExpectation *stopExpectation = [self expectationWithDescription:@"Watcher stopped expectation"];
@@ -599,25 +627,30 @@
 		[stopExpectation fulfill];
 	});
 	
-	[self waitForExpectations:@[stopExpectation] timeout:1.0];
+	[self waitForExpectations:@[stopExpectation] timeout:self.waitTime];
 }
 
 - (void)testWatchPath_WithoutInitialPath {
 	XCTestExpectation *expectation = [self expectationWithDescription:@"Directory watcher callback"];
+	expectation.assertForOverFulfill = NO;
+	__block unsigned long receivedFlags = 0;
 	self.watcher = [[BEPathWatcher alloc] initWithBlock:^(BEPathWatcher * _Nonnull watcher, unsigned long event) {
-		XCTAssertTrue(event & DISPATCH_VNODE_WRITE);
-		[expectation fulfill];
+		receivedFlags |= event;	// VNODE events may split across callbacks; wait for WRITE
+		if (receivedFlags & DISPATCH_VNODE_WRITE) {
+			[expectation fulfill];
+		}
 	}];
-	
+
 	XCTAssertNil(self.watcher.path, @"Path not initialized");
 	XCTAssertNotNil(self.watcher.eventHandler, @"eventHandler should filled in");
-	
+
 	XCTAssertTrue([self.watcher watchPath:self.testFilePath], @"Should be watching with an event handler and path");
-	
+
 	// Trigger a write event
 	[@"some new data" writeToFile:self.testFilePath atomically:NO encoding:NSUTF8StringEncoding error:nil];
-	
-	[self waitForExpectations:@[expectation] timeout:1.0];
+
+	[self waitForExpectations:@[expectation] timeout:self.waitTime];
+	XCTAssertTrue(receivedFlags & DISPATCH_VNODE_WRITE, "WRITE should have been received.");
 }
 
 - (void)testWatchWithTargetSelector {
@@ -637,7 +670,7 @@
 	// Trigger a write event
 	[@"some new data" writeToFile:self.testFilePath atomically:NO encoding:NSUTF8StringEncoding error:nil];
 	
-	[self waitForExpectations:@[expectation] timeout:1.0];
+	[self waitForExpectations:@[expectation] timeout:self.waitTime];
 }
 
 
@@ -659,7 +692,7 @@
 	// Trigger a write event
 	[@"some new data" writeToFile:self.testFilePath atomically:NO encoding:NSUTF8StringEncoding error:nil];
 	
-	[self waitForExpectations:@[expectation] timeout:1.0];
+	[self waitForExpectations:@[expectation] timeout:self.waitTime];
 }
 
 #pragma mark - Protocol Hook Test
@@ -702,22 +735,26 @@
 
 - (void)testWatchingADirectory {
 	XCTestExpectation *expectation = [self expectationWithDescription:@"Directory watcher callback"];
+	expectation.assertForOverFulfill = NO;
+	__block unsigned long receivedFlags = 0;
 	self.watcher = [[BEPathWatcher alloc] init];
-	
-	// Watch the directory itself
+
+	// Watch the directory itself. Creating a file in the directory triggers a WRITE event on it.
 	[self.watcher watchPath:self.tempDirectory withBlock:^(BEPathWatcher * _Nonnull watcher, unsigned long event) {
-		// Creating a file in the directory triggers a WRITE event on the directory
-		XCTAssertTrue(event & DISPATCH_VNODE_WRITE);
-		[expectation fulfill];
+		receivedFlags |= event;	// VNODE events may split across callbacks; wait for WRITE
+		if (receivedFlags & DISPATCH_VNODE_WRITE) {
+			[expectation fulfill];
+		}
 	}];
-	
+
 	XCTAssertTrue(self.watcher.isActive);
-	
+
 	// Create a new file in the directory to trigger the event
 	NSString *newFileInDir = [self.tempDirectory stringByAppendingPathComponent:@"anotherfile.txt"];
 	[@"hello" writeToFile:newFileInDir atomically:YES encoding:NSUTF8StringEncoding error:nil];
-	
-	[self waitForExpectationsWithTimeout:1.0 handler:nil];
+
+	[self waitForExpectationsWithTimeout:self.waitTime handler:nil];
+	XCTAssertTrue(receivedFlags & DISPATCH_VNODE_WRITE, "WRITE should have been received.");
 }
 
 - (void)testWeakTargetDeallocation {
@@ -749,7 +786,7 @@
 	dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
 		[delay fulfill];
 	});
-	[self waitForExpectations:@[delay, expectation] timeout:1.0];
+	[self waitForExpectations:@[delay, expectation] timeout:self.waitTime];
 	
 	// If we reach here without crashing, the test is considered passed.
 }
@@ -790,9 +827,71 @@
 	dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
 		[delay fulfill];
 	});
-	[self waitForExpectations:@[delay, expectation] timeout:1.0];
-	
+	[self waitForExpectations:@[delay, expectation] timeout:self.waitTime];
+
 	// If we reach here without crashing, the test is considered passed.
+}
+
+#pragma mark - Regressions
+
+- (void)testCallbackReenteringWatcherFromAnotherThreadDoesNotDeadlock {
+	XCTestExpectation *fired = [self expectationWithDescription:@"callback completed without deadlock"];
+
+	self.watcher = [BEPathWatcher watcherForPath:self.testFilePath withBlock:^(BEPathWatcher * _Nonnull w, unsigned long event) {
+		// Re-enter the watcher from a genuinely separate thread and wait for it. If the watcher
+		// held its internal lock across this callback, the background thread would block acquiring
+		// that lock while this thread waits on the semaphore — a deadlock. (dispatch_async to a
+		// global queue runs on another thread, unlike dispatch_sync, which can run inline.)
+		dispatch_semaphore_t sem = dispatch_semaphore_create(0);
+		dispatch_async(dispatch_get_global_queue(QOS_CLASS_DEFAULT, 0), ^{
+			(void)w.path;
+			(void)w.isActive;
+			[w stopMonitoring];
+			dispatch_semaphore_signal(sem);
+		});
+		dispatch_semaphore_wait(sem, DISPATCH_TIME_FOREVER);
+		[fired fulfill];
+	}];
+
+	[@"trigger" writeToFile:self.testFilePath atomically:YES encoding:NSUTF8StringEncoding error:nil];
+
+	[self waitForExpectations:@[fired] timeout:self.waitTime];
+	XCTAssertFalse(self.watcher.isActive, @"stopMonitoring from within the callback should have taken effect");
+}
+
+- (void)testDeleteDoesNotStopAWatcherReconfiguredDuringTheCallback {
+	NSString *pathA = self.testFilePath;
+	NSString *pathB = [self.tempDirectory stringByAppendingPathComponent:@"fileB.txt"];
+	[@"b" writeToFile:pathB atomically:YES encoding:NSUTF8StringEncoding error:nil];
+
+	XCTestExpectation *deleteFired = [self expectationWithDescription:@"delete callback fired"];
+
+	self.watcher = [BEPathWatcher watcherForPath:pathA eventMask:DISPATCH_VNODE_DELETE withBlock:^(BEPathWatcher * _Nonnull w, unsigned long event) {
+		// Reconfigure to a new path (new dispatch source) from inside the old source's delete
+		// callback. The old source's auto-stop must not cancel this new source.
+		[w watchPath:pathB eventMask:DISPATCH_VNODE_WRITE withBlock:^(BEPathWatcher * _Nonnull w2, unsigned long e2) {}];
+		[deleteFired fulfill];
+	}];
+
+	[self.fileManager removeItemAtPath:pathA error:nil];
+	[self waitForExpectations:@[deleteFired] timeout:self.waitTime];
+
+	// Let the auto-stop step run.
+	XCTestExpectation *settle = [self expectationWithDescription:@"settle"];
+	dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.2 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{ [settle fulfill]; });
+	[self waitForExpectations:@[settle] timeout:self.waitTime];
+
+	XCTAssertTrue(self.watcher.isActive, @"a delete on the old source must not stop the watcher now monitoring a new path");
+}
+
+- (void)testStartMonitoringClearsPathOnOpenFailure {
+	self.watcher = [[BEPathWatcher alloc] init];
+	self.watcher.eventHandler = ^(BEPathWatcher * _Nonnull w, unsigned long event) {};
+	self.watcher.path = [self.tempDirectory stringByAppendingPathComponent:@"does-not-exist.xyzzy"];
+
+	XCTAssertFalse([self.watcher startMonitoring], @"start should fail for a path that cannot be opened");
+	XCTAssertNil(self.watcher.path, @"a failed open() clears the path");
+	XCTAssertFalse(self.watcher.isActive);
 }
 
 @end

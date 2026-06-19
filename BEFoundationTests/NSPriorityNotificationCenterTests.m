@@ -511,10 +511,13 @@
 
 - (void)testAddObserverWithNilObserver {
 	// This should not crash and should log a warning
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wnonnull"
 	[self.notificationCenter addObserver:nil
 								selector:@selector(handleNotification:)
 									name:@"TestNotification"
 								  object:nil];
+#pragma clang diagnostic pop
 	
 	// Posting should not crash
 	[self.notificationCenter postNotificationName:@"TestNotification" object:nil];
@@ -522,10 +525,13 @@
 
 - (void)testAddObserverWithNilSelector {
 	// This should not crash and should log a warning
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wnonnull"
 	[self.notificationCenter addObserver:self.observer1
 								selector:NULL
 									name:@"TestNotification"
 								  object:nil];
+#pragma clang diagnostic pop
 	
 	[self.notificationCenter postNotificationName:@"TestNotification" object:nil];
 }
@@ -542,10 +548,13 @@
 
 - (void)testAddObserverWithNilBlock {
 	// This should return a dummy observer and log a warning
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wnonnull"
 	id observer = [self.notificationCenter addObserverForName:@"TestNotification"
 													   object:nil
 														queue:nil
 												   usingBlock:nil];
+#pragma clang diagnostic pop
 	
 	XCTAssertNotNil(observer);
 	[self.notificationCenter removeObserver:observer];
@@ -615,7 +624,10 @@
 
 - (void)testRemoveNilObserver {
 	// Should not crash
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wnonnull"
 	[self.notificationCenter removeObserver:nil];
+#pragma clang diagnostic pop
 }
 
 #pragma mark - Weak Reference Tests
@@ -965,15 +977,33 @@
 
 - (void)testInvalidSelector {
 	// This should log an error but not crash
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wundeclared-selector"
 	[self.notificationCenter addObserver:self.observer1
 								selector:@selector(nonExistentMethod:)
 									name:@"TestNotification"
 								  object:nil];
+#pragma clang diagnostic pop
 	
 	[self.notificationCenter postNotificationName:@"TestNotification" object:nil];
-	
+
 	// Observer count should remain 0 due to method not existing
 	XCTAssertEqual(self.observer1.receivedCount, 0);
+}
+
+- (void)testThrowingObserverLeavesCenterUsableAndUnflagged {
+	[self.notificationCenter addObserverForName:@"Boom" object:nil queue:nil usingBlock:^(NSNotification *note) {
+		@throw [NSException exceptionWithName:@"BoomException" reason:@"observer raised" userInfo:nil];
+	}];
+
+	NSPriorityNotification *notification = [NSPriorityNotification notificationWithName:@"Boom" object:nil];
+	XCTAssertThrows([self.notificationCenter postNotification:notification]);
+	XCTAssertFalse(notification.isPriorityPost, @"a throwing handler must not leave the notification flagged");
+
+	// The center must remain usable for subsequent posts.
+	[self.notificationCenter addObserver:self.observer1 selector:@selector(handleNotification:) name:@"After" object:nil];
+	[self.notificationCenter postNotificationName:@"After" object:nil];
+	XCTAssertEqual(self.observer1.receivedCount, 1);
 }
 
 #pragma mark - Thread Safety Tests
@@ -1128,10 +1158,135 @@
 		[obj cleanup];
 		// use obj
 	}
-	[[NSRunLoop currentRunLoop] runUntilDate:[NSDate dateWithTimeIntervalSinceNow:0.1]];
-
-	// At this point, if obj was properly released, weakRef should be nil
+	// The object deallocates synchronously when the autoreleasepool drains, so the weak reference
+	// reads back nil immediately. No wait needed.
 	XCTAssertNil(weakRef, @"NSPriorityNotificationCenter was not deallocated");
+}
+
+#pragma mark - Regressions
+
+- (void)testCleanupStopsSystemInterception {
+	NSPriorityNotificationCenter *center = [[NSPriorityNotificationCenter alloc] init];
+	__block NSInteger count = 0;
+	id token = [center addObserverForName:@"SysProbe" object:nil queue:nil usingBlock:^(NSNotification *note) {
+		count++;
+	}];
+
+	[NSNotificationCenter.defaultCenter postNotificationName:@"SysProbe" object:nil];
+	XCTAssertEqual(count, 1, @"an active priority center should intercept system posts");
+
+	[center cleanup];
+
+	[NSNotificationCenter.defaultCenter postNotificationName:@"SysProbe" object:nil];
+	XCTAssertEqual(count, 1, @"after cleanup the center must stop intercepting system posts");
+
+	[center removeObserver:token];
+}
+
+- (void)testCenterDoesNotRetainObserver {
+	__weak TestObserver *weakObserver;
+	@autoreleasepool {
+		TestObserver *observer = [[TestObserver alloc] init];
+		weakObserver = observer;
+		[self.notificationCenter addObserver:observer
+									selector:@selector(handleNotification:)
+										name:@"TestNotification"
+									  object:nil];
+		XCTAssertNotNil(weakObserver);
+	}
+	XCTAssertNil(weakObserver, @"NSPriorityNotificationCenter must not strongly retain its observers");
+}
+
+- (void)testEqualPriorityPreservesRegistrationOrder {
+	[self.notificationCenter addObserver:self.observer1 selector:@selector(handleNotification:) name:@"TestNotification" object:nil priority:10];
+	[self.notificationCenter addObserver:self.observer2 selector:@selector(handleNotification:) name:@"TestNotification" object:nil priority:10];
+	[self.notificationCenter addObserver:self.observer3 selector:@selector(handleNotification:) name:@"TestNotification" object:nil priority:10];
+
+	NSMutableDictionary *userInfo = [NSMutableDictionary dictionaryWithObject:@0 forKey:@"index"];
+	[self.notificationCenter postNotificationName:@"TestNotification" object:nil userInfo:userInfo];
+
+	XCTAssertEqual(self.observer1.handlingIndex, 1);
+	XCTAssertEqual(self.observer2.handlingIndex, 2);
+	XCTAssertEqual(self.observer3.handlingIndex, 3);
+}
+
+- (void)testExtremePriorityOrderingDoesNotOverflow {
+	[self.notificationCenter addObserver:self.observer1 selector:@selector(handleNotification:) name:@"TestNotification" object:nil priority:NSIntegerMax];
+	[self.notificationCenter addObserver:self.observer2 selector:@selector(handleNotification:) name:@"TestNotification" object:nil priority:NSIntegerMin];
+
+	NSMutableDictionary *userInfo = [NSMutableDictionary dictionaryWithObject:@0 forKey:@"index"];
+	[self.notificationCenter postNotificationName:@"TestNotification" object:nil userInfo:userInfo];
+
+	// NSIntegerMin is the highest priority, so observer2 must be delivered before observer1.
+	XCTAssertEqual(self.observer2.handlingIndex, 1);
+	XCTAssertEqual(self.observer1.handlingIndex, 2);
+}
+
+- (void)testRemoveObserverWithNilNameRemovesAllNames {
+	[self.notificationCenter addObserver:self.observer1 selector:@selector(handleNotification:) name:@"A" object:nil];
+	[self.notificationCenter addObserver:self.observer1 selector:@selector(handleNotification:) name:@"B" object:nil];
+
+	[self.notificationCenter removeObserver:self.observer1 name:nil object:nil];
+
+	[self.notificationCenter postNotificationName:@"A" object:nil];
+	[self.notificationCenter postNotificationName:@"B" object:nil];
+
+	XCTAssertEqual(self.observer1.receivedCount, 0, @"a nil name must remove every observation for the observer");
+}
+
+- (void)testCenterDoesNotRetainNotificationObject {
+	__weak id weakObject;
+	@autoreleasepool {
+		NSObject *filterObject = [[NSObject alloc] init];
+		weakObject = filterObject;
+		[self.notificationCenter addObserver:self.observer1
+									selector:@selector(handleNotification:)
+										name:@"TestNotification"
+									  object:filterObject];
+		XCTAssertNotNil(weakObject);
+	}
+	XCTAssertNil(weakObject, @"the center must not strongly retain the notification object filter");
+}
+
+- (void)testDeallocatedObjectFilterDoesNotWildcardMatch {
+	NSObject *otherObject = [[NSObject alloc] init];
+	@autoreleasepool {
+		NSObject *filterObject = [[NSObject alloc] init];
+		[self.notificationCenter addObserver:self.observer1
+									selector:@selector(handleNotification:)
+										name:@"TestNotification"
+									  object:filterObject];
+	}
+	// filterObject has deallocated; a post about a different object must not reach observer1.
+	[self.notificationCenter postNotificationName:@"TestNotification" object:otherObject];
+	XCTAssertEqual(self.observer1.receivedCount, 0, @"an observer whose object filter deallocated must not match other objects");
+}
+
+- (void)testQueuedSelectorObserverSurvivesObserverRelease {
+	NSOperationQueue *queue = [[NSOperationQueue alloc] init];
+	queue.maxConcurrentOperationCount = 1;
+	queue.suspended = YES;
+
+	__weak TestObserver *weakObserver;
+	@autoreleasepool {
+		TestObserver *observer = [[TestObserver alloc] init];
+		weakObserver = observer;
+		[self.notificationCenter addObserver:observer
+									selector:@selector(handleNotification:)
+										name:@"TestNotification"
+									  object:nil
+									   queue:queue];
+		[self.notificationCenter postNotificationName:@"TestNotification" object:nil];
+		// Drop the caller's strong reference while the operation is still queued (suspended).
+		observer = nil;
+	}
+
+	// The queued invocation must own its target across the async boundary; without
+	// retainArguments the weakly-held observer would be freed here and invoked on resume.
+	XCTAssertNotNil(weakObserver, @"the queued invocation must keep its target alive");
+
+	queue.suspended = NO;
+	[queue waitUntilAllOperationsAreFinished];
 }
 
 @end

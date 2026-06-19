@@ -8,10 +8,37 @@
 #import <XCTest/XCTest.h>
 #import <BEFoundation/NSObject+DynamicMethods.h>
 #import <simd/simd.h>
-#import <arm_neon.h>
+#if defined(__arm64__) || defined(__aarch64__)
+#import <arm_neon.h>		// arm-only; x86_64 slice cannot import the NEON builtin module
+#endif
+
+@interface BEDynamicMethodInstanceProtocolMeta : NSObject
+- (instancetype)initWithProtocol:(nullable Protocol *)protocol impClass:(Class)impClass;
+@end
+
+@interface BEDynamicMethodProtocolTargetMeta : NSObject
+
+- (instancetype)initWithProtocol:(nullable Protocol *)protocol target:(id)target instanceMeta:(nullable BEDynamicMethodInstanceProtocolMeta*)instanceMeta;
+@end
+
+@interface NSObject (private_tests)
++ (BOOL)isSelfDynamicMethodsEnabled;
++ (BEDynamicMethodMeta *)dynamicClassMethodMeta:(nonnull SEL)selector;
+- (BEDynamicMethodMeta *)dynamicObjectMethodMeta:(nonnull SEL)selector;
+- (id)dynamicObjectTargetForSelector:(SEL _Nonnull)selector returnSignature:(BOOL)returnSignature;
 
 
+- (BOOL)dynamicConformsToProtocol:(nonnull Protocol *)aProtocol;
+- (nullable NSMethodSignature *)dynamicMethodSignatureForSelector:(nonnull SEL)aSelector;
+- (BOOL)dynamicRespondsToSelector:(nonnull SEL)aSelector;
+- (BOOL)dynamicForwardInvocation:(nonnull NSInvocation *)invocation;
 
++ (BOOL)dynamicInstancesRespondToSelector:(nonnull SEL)aSelector;
++ (BOOL)dynamicClassConformsToProtocol:(nonnull Protocol *)aProtocol;
++ (nullable NSMethodSignature *)dynamicClassMethodSignatureForSelector:(nonnull SEL)aSelector;
++ (BOOL)dynamicClassRespondsToSelector:(nonnull SEL)aSelector;
++ (BOOL)dynamicClassForwardInvocation:(nonnull NSInvocation *)invocation;
+@end
 
 
 
@@ -97,9 +124,9 @@
 - (NSInteger)instanceProperty;
 + (NSInteger)classProperty;
 
-- (NSInteger)instanceMethod3;
+- (NSInteger)classMethod3;
 + (NSInteger)classMethod3;
-+ (NSInteger)classInstanceMethod3;
++ (NSInteger)classClassMethod3;
 @end
 
 
@@ -147,13 +174,13 @@
 }
 
 
-- (NSInteger)instanceMethod1 {
+- (NSInteger)classMethod1 {
 	return 10;
 }
-- (NSInteger)instanceMethod2 {
+- (NSInteger)classMethod2 {
 	return 100;
 }
-- (NSInteger)_instanceMethod3 {
+- (NSInteger)_classMethod3 {
 	return 1000;
 }
 
@@ -169,13 +196,13 @@
 }
 
 
-+ (NSInteger)classInstanceMethod1 {
++ (NSInteger)classClassMethod1 {
 	return 12;
 }
-+ (NSInteger)classInstanceMethod2 {
++ (NSInteger)classClassMethod2 {
 	return 102;
 }
-+ (NSInteger)_classInstanceMethod3 {
++ (NSInteger)_classClassMethod3 {
 	return 1002;
 }
 @end
@@ -192,13 +219,13 @@
 @end
 @implementation AltBasicNonDynamicObject
 
-- (NSInteger)instanceMethod1 {
+- (NSInteger)classMethod1 {
 	return 10;
 }
-- (NSInteger)instanceMethod2 {
+- (NSInteger)classMethod2 {
 	return 100;
 }
-- (NSInteger)_instanceMethod3 {
+- (NSInteger)_classMethod3 {
 	return 1000;
 }
 
@@ -214,13 +241,13 @@
 }
 
 
-+ (NSInteger)classInstanceMethod1 {
++ (NSInteger)classClassMethod1 {
 	return 12;
 }
-+ (NSInteger)classInstanceMethod2 {
++ (NSInteger)classClassMethod2 {
 	return 102;
 }
-+ (NSInteger)_classInstanceMethod3 {
++ (NSInteger)_classClassMethod3 {
 	return 1002;
 }
 @end
@@ -239,7 +266,7 @@
 @optional
 
 - (int)objectMethod;
-- (int)instanceMethod;
+- (int)classMethod;
 + (int)classMethod;
 
 @end
@@ -347,6 +374,19 @@
 	XCTAssertEqualObjects(metaMetaClassName, @"NSObject");
 }
 
+#pragma mark - Helper classes
+
+- (void)testBEDynamicMethodInstanceProtocolMeta
+{
+	Class nilClass = nil;
+	BEDynamicMethodInstanceProtocolMeta *meta = [BEDynamicMethodInstanceProtocolMeta.alloc initWithProtocol:@protocol(NSNoProtocol) impClass:nilClass];
+	XCTAssertNil(meta);
+}
+- (void)testBEDynamicMethodProtocolTargetMeta
+{
+	BEDynamicMethodProtocolTargetMeta *meta = [BEDynamicMethodProtocolTargetMeta.alloc initWithProtocol:@protocol(NSNoProtocol) target:nil instanceMeta:nil];
+	XCTAssertNil(meta);
+}
 
 
 #pragma mark - NSObject Dynamic Methods Properties
@@ -524,7 +564,7 @@
 	__block NSInteger classReturnValue = 1000;
 	
 	[ndObject addObjectMethod:objectSelector block:^NSInteger(id _self) {return objectReturnValue;}];
-	[ndObject.class addInstanceMethod:instanceSelector block:^NSInteger(id _self) {return instanceReturnValue;}];
+	[ndObject.class addClassMethod:instanceSelector block:^NSInteger(id _self) {return instanceReturnValue;}];
 	[ndObject.class addObjectMethod:classSelector block:^NSInteger(id _self) {return classReturnValue;}];
 	
 	
@@ -639,7 +679,7 @@
 	
 	
 	
-	[ndObject.class removeInstanceMethod:instanceSelector];
+	[ndObject.class removeClassMethod:instanceSelector];
 	XCTAssertTrue([ndObject respondsToSelector:objectSelector]);
 	XCTAssertFalse([ndObject respondsToSelector:instanceSelector]);
 	XCTAssertTrue([ndObject.class respondsToSelector:classSelector]);
@@ -668,6 +708,27 @@
 	XCTAssertFalse([SubBasicNonDynamicObject respondsToSelector:classSelector]);
 	
 	//reset
+	[BasicNonDynamicObject resetDynamicMethods];
+}
+
+// Replacing a dynamic method on the same selector: the new block must win, and the prior meta's IMP
+// must be released without crashing. Run under AddressSanitizer to exercise the dealloc-based teardown.
+- (void)testAddObjectMethod_ReplaceUpdatesBlockAndFreesPrior
+{
+	SEL objectSelector = NSSelectorFromString(@"objectProperty");
+	BasicNonDynamicObject *ndObject = BasicNonDynamicObject.new;
+	[BasicNonDynamicObject enableDynamicMethods];
+
+	XCTAssertTrue([ndObject addObjectMethod:objectSelector block:^NSInteger(id _self) { return 11; }]);
+	XCTAssertEqual([ndObject objectProperty], 11);
+
+	// Replace the implementation on the same selector.
+	XCTAssertTrue([ndObject addObjectMethod:objectSelector block:^NSInteger(id _self) { return 22; }]);
+	XCTAssertEqual([ndObject objectProperty], 22, @"the replacement block wins");
+
+	XCTAssertTrue([ndObject removeObjectMethod:objectSelector]);
+	XCTAssertThrowsSpecificNamed([ndObject objectProperty], NSException, NSInvalidArgumentException);
+
 	[BasicNonDynamicObject resetDynamicMethods];
 }
 
@@ -718,11 +779,11 @@
 	__block NSInteger classReturnValue = 1000;
 	
 	XCTAssertTrue([ndObject addObjectMethod:objectSelector block:^NSInteger(id _self) {return objectReturnValue;}]);
-	XCTAssertTrue([ndObject.class addInstanceMethod:instanceSelector block:^NSInteger(id _self) {return instanceReturnValue;}]);
+	XCTAssertTrue([ndObject.class addClassMethod:instanceSelector block:^NSInteger(id _self) {return instanceReturnValue;}]);
 	XCTAssertTrue([ndObject.class addObjectMethod:classSelector block:^NSInteger(id _self) {return classReturnValue;}]);
 	
 	// Add the same methods to subclass to override
-	XCTAssertTrue([ndSubObject.class addInstanceMethod:instanceSelector block:^NSInteger(id _self) {return instanceReturnValue * 2;}]);
+	XCTAssertTrue([ndSubObject.class addClassMethod:instanceSelector block:^NSInteger(id _self) {return instanceReturnValue * 2;}]);
 	XCTAssertTrue([ndSubObject.class addObjectMethod:classSelector block:^NSInteger(id _self) {return classReturnValue * 2;}]);
 	
 	
@@ -931,9 +992,9 @@
 	XCTAssertTrue([SubBasicNonDynamicObject respondsToSelector:classSelector]);
 	
 	
-	[ndObject.class removeInstanceMethod:instanceSelector];
+	[ndObject.class removeClassMethod:instanceSelector];
 	[ndObject.class removeObjectMethod:classSelector];
-	[ndSubObject.class removeInstanceMethod:instanceSelector];
+	[ndSubObject.class removeClassMethod:instanceSelector];
 	[ndSubObject.class removeObjectMethod:classSelector];
 }
 
@@ -963,12 +1024,12 @@
 	__block NSInteger classReturnValue = 1000;
 	
 	[ndObject addObjectMethod:objectSelector block:^NSInteger(id _self) {return objectReturnValue;}];
-	[ndObject.class addInstanceMethod:instanceSelector block:^NSInteger(id _self) {return instanceReturnValue;}];
+	[ndObject.class addClassMethod:instanceSelector block:^NSInteger(id _self) {return instanceReturnValue;}];
 	[ndObject.class addObjectMethod:classSelector block:^NSInteger(id _self) {return classReturnValue;}];
 	
 	// Add the same methods to subclass to override
 	[ndSubObject addObjectMethod:objectSelector block:^NSInteger(id _self) {return objectReturnValue * 2;}];
-	[ndSubObject.class addInstanceMethod:instanceSelector block:^NSInteger(id _self) {return instanceReturnValue * 2;}];
+	[ndSubObject.class addClassMethod:instanceSelector block:^NSInteger(id _self) {return instanceReturnValue * 2;}];
 	[ndSubObject.class addObjectMethod:classSelector block:^NSInteger(id _self) {return classReturnValue * 2;}];
 	
 	
@@ -1151,9 +1212,9 @@
 	XCTAssertFalse([SubBasicNonDynamicObject respondsToSelector:classSelector]);
 	
 	
-	[ndObject.class removeInstanceMethod:instanceSelector];
+	[ndObject.class removeClassMethod:instanceSelector];
 	[ndObject.class removeObjectMethod:classSelector];
-	[ndSubObject.class removeInstanceMethod:instanceSelector];
+	[ndSubObject.class removeClassMethod:instanceSelector];
 	[ndSubObject.class removeObjectMethod:classSelector];
 	
 	[BasicNonDynamicObject resetDynamicMethods];
@@ -1163,7 +1224,10 @@
 - (void)testInheritanceChain
 {
 	SEL objectSelector = @selector(objectMethod);
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wundeclared-selector"
 	SEL instanceSelector = @selector(instanceMethod);
+#pragma clang diagnostic pop
 	SEL classSelector = @selector(classMethod);
 	
 	SuperDynamicTestObject		*superObject = SuperDynamicTestObject.new;
@@ -1187,29 +1251,29 @@
 	
 	
 	[superObject addObjectMethod:objectSelector block:^NSNumber*(id _self) {return @(objectReturnValue);}];
-	[SuperDynamicTestObject addInstanceMethod:instanceSelector block:^NSNumber*(id _self) {return @(instanceReturnValue);}];
+	[SuperDynamicTestObject addClassMethod:instanceSelector block:^NSNumber*(id _self) {return @(instanceReturnValue);}];
 	[SuperDynamicTestObject addObjectMethod:classSelector block:^NSNumber*(id _self) {return @(classReturnValue);}];
 	
 	[superSubObject addObjectMethod:objectSelector block:^NSNumber*(id _self) {return @(objectReturnValue * 2);}];
-	[SuperSubDynamicTestObject addInstanceMethod:instanceSelector block:^NSNumber*(id _self) {return @(instanceReturnValue * 2);}];
+	[SuperSubDynamicTestObject addClassMethod:instanceSelector block:^NSNumber*(id _self) {return @(instanceReturnValue * 2);}];
 	[SuperSubDynamicTestObject addObjectMethod:classSelector block:^NSNumber*(id _self) {return @(classReturnValue * 2);}];
 	
 	
 	[parentObject addObjectMethod:objectSelector block:^NSNumber*(id _self) {return @(objectReturnValue * 3);}];
-	[ParentDynamicTestObject addInstanceMethod:instanceSelector block:^NSNumber*(id _self) {return @(instanceReturnValue * 3);}];
+	[ParentDynamicTestObject addClassMethod:instanceSelector block:^NSNumber*(id _self) {return @(instanceReturnValue * 3);}];
 	[ParentDynamicTestObject addObjectMethod:classSelector block:^NSNumber*(id _self) {return @(classReturnValue * 3);}];
 	
 	[parentSubObject addObjectMethod:objectSelector block:^NSNumber*(id _self) {return @(objectReturnValue * 4);}];
-	[ParentSubDynamicTestObject addInstanceMethod:instanceSelector block:^NSNumber*(id _self) {return @(instanceReturnValue * 4);}];
+	[ParentSubDynamicTestObject addClassMethod:instanceSelector block:^NSNumber*(id _self) {return @(instanceReturnValue * 4);}];
 	[ParentSubDynamicTestObject addObjectMethod:classSelector block:^NSNumber*(id _self) {return @(classReturnValue * 4);}];
 	
 	
 	[childObject addObjectMethod:objectSelector block:^NSNumber*(id _self) {return @(objectReturnValue * 5);}];
-	[ChildDynamicTestObject addInstanceMethod:instanceSelector block:^NSNumber*(id _self) {return @(instanceReturnValue * 5);}];
+	[ChildDynamicTestObject addClassMethod:instanceSelector block:^NSNumber*(id _self) {return @(instanceReturnValue * 5);}];
 	[ChildDynamicTestObject addObjectMethod:classSelector block:^NSNumber*(id _self) {return @(classReturnValue * 5);}];
 	
 	[childSubObject addObjectMethod:objectSelector block:^NSNumber*(id _self) {return @(objectReturnValue * 6);}];
-	[ChildSubDynamicTestObject addInstanceMethod:instanceSelector block:^NSNumber*(id _self) {return @(instanceReturnValue * 6);}];
+	[ChildSubDynamicTestObject addClassMethod:instanceSelector block:^NSNumber*(id _self) {return @(instanceReturnValue * 6);}];
 	[ChildSubDynamicTestObject addObjectMethod:classSelector block:^NSNumber*(id _self) {return @(classReturnValue * 6);}];
 	
 	{ //	methodSignatureForSelector
@@ -1258,7 +1322,7 @@
 		XCTAssertFalse([childSubObject.class respondsToSelector:classSelector]);
 	}
 	
-	{ //	instanceMethodSignatureForSelector
+	{ //	classMethodSignatureForSelector
 		XCTAssertNil([superObject.class instanceMethodSignatureForSelector:objectSelector]);
 		XCTAssertNil([superSubObject.class instanceMethodSignatureForSelector:objectSelector]);
 		XCTAssertNil([parentObject.class instanceMethodSignatureForSelector:objectSelector]);
@@ -1387,7 +1451,7 @@
 		XCTAssertTrue([childSubObject.class respondsToSelector:classSelector]);
 	}
 	
-	{ //	instanceMethodSignatureForSelector
+	{ //	classMethodSignatureForSelector
 		XCTAssertNil([superObject.class instanceMethodSignatureForSelector:objectSelector]);
 		XCTAssertNil([superSubObject.class instanceMethodSignatureForSelector:objectSelector]);
 		XCTAssertNil([parentObject.class instanceMethodSignatureForSelector:objectSelector]);
@@ -1487,7 +1551,7 @@
 		XCTAssertTrue([childSubObject.class respondsToSelector:classSelector]);
 	}
 	
-	{ //	instanceMethodSignatureForSelector
+	{ //	classMethodSignatureForSelector
 		XCTAssertNil([superObject.class instanceMethodSignatureForSelector:objectSelector]);
 		XCTAssertNil([superSubObject.class instanceMethodSignatureForSelector:objectSelector]);
 		XCTAssertNil([parentObject.class instanceMethodSignatureForSelector:objectSelector]);
@@ -1543,7 +1607,7 @@
 {
 	BasicDynamicObject *dObject = BasicDynamicObject.new;
 	
-	SEL dynamicMethodSelector = NSSelectorFromString(@"my_isDynamicInstanceMethod:");
+	SEL dynamicMethodSelector = NSSelectorFromString(@"my_isDynamicClassMethod:");
 	SEL nilSelector = nil;
 	
 	XCTAssertFalse([dObject isDynamicMethod:nilSelector]);
@@ -1555,8 +1619,8 @@
 	XCTAssertFalse([dObject.class isDynamicMethod:dynamicMethodSelector]);
 	XCTAssertFalse([dObject.class isDynamicObjectMethod:nilSelector]);
 	XCTAssertFalse([dObject.class isDynamicObjectMethod:dynamicMethodSelector]);
-	XCTAssertFalse([dObject.class isDynamicInstanceMethod:nilSelector]);
-	XCTAssertFalse([dObject.class isDynamicInstanceMethod:dynamicMethodSelector]);
+	XCTAssertFalse([dObject.class isDynamicClassMethod:nilSelector]);
+	XCTAssertFalse([dObject.class isDynamicClassMethod:dynamicMethodSelector]);
 	
 	XCTAssertTrue([dObject addObjectMethod:dynamicMethodSelector block:^NSNumber*(id _self, NSNumber* input) {
 		return @(input.intValue * 2);
@@ -1569,7 +1633,7 @@
 	XCTAssertTrue([dObject isDynamicObjectMethod:dynamicMethodSelector]);
 	XCTAssertFalse([dObject.class isDynamicMethod:dynamicMethodSelector]);
 	XCTAssertFalse([dObject.class isDynamicObjectMethod:dynamicMethodSelector]);
-	XCTAssertFalse([dObject.class isDynamicInstanceMethod:dynamicMethodSelector]);
+	XCTAssertFalse([dObject.class isDynamicClassMethod:dynamicMethodSelector]);
 	
 	XCTAssertTrue([dObject removeObjectMethod:dynamicMethodSelector]);
 	
@@ -1577,7 +1641,7 @@
 	XCTAssertFalse([dObject isDynamicObjectMethod:dynamicMethodSelector]);
 	XCTAssertFalse([dObject.class isDynamicMethod:dynamicMethodSelector]);
 	XCTAssertFalse([dObject.class isDynamicObjectMethod:dynamicMethodSelector]);
-	XCTAssertFalse([dObject.class isDynamicInstanceMethod:dynamicMethodSelector]);
+	XCTAssertFalse([dObject.class isDynamicClassMethod:dynamicMethodSelector]);
 }
 
 
@@ -1594,7 +1658,7 @@
 	
 	XCTAssertFalse([dObject.class isDynamicMethod:methodSelector]);
 	XCTAssertFalse([dObject.class isDynamicObjectMethod:methodSelector]);
-	XCTAssertFalse([dObject.class isDynamicInstanceMethod:methodSelector]);
+	XCTAssertFalse([dObject.class isDynamicClassMethod:methodSelector]);
 	
 	
 	XCTAssertFalse([dObject respondsToSelector:methodSelector]);
@@ -1605,17 +1669,17 @@
 	XCTAssertFalse([dObject.class respondsToSelector:methodSelector]);
 	XCTAssertNil([dObject.class methodSignatureForSelector:methodSelector]);
 	
-	NSObject *objParam = NSObject.new;
-	
+	__unused NSObject *objParam = NSObject.new;
+
 	int counter = 2;
 	__block id __self = nil;
-	
+
 	__block int blockExecutionCount = 0;
-	__block SEL blockCommand = nil;
-	__block int blockParam2 = 0;
-	__block double blockParam3 = 0;
-	__block id blockObject = nil;
-	
+	__block __unused SEL blockCommand = nil;
+	__block __unused int blockParam2 = 0;
+	__block __unused double blockParam3 = 0;
+	__block __unused id blockObject = nil;
+
 	XCTAssertTrue([dObject addObjectMethod:methodSelector block:^(id _self) {
 		__self = _self;
 		//blockCommand = __cmd;
@@ -1630,7 +1694,7 @@
 	XCTAssertTrue([dObject isDynamicObjectMethod:methodSelector]);
 	XCTAssertFalse([dObject.class isDynamicMethod:methodSelector]);
 	XCTAssertFalse([dObject.class isDynamicObjectMethod:methodSelector]);
-	XCTAssertFalse([dObject.class isDynamicInstanceMethod:methodSelector]);
+	XCTAssertFalse([dObject.class isDynamicClassMethod:methodSelector]);
 	
 	
 	XCTAssertTrue([dObject respondsToSelector:methodSelector]);
@@ -1660,7 +1724,7 @@
 	
 	XCTAssertFalse([dObject.class isDynamicMethod:methodSelector]);
 	XCTAssertFalse([dObject.class isDynamicObjectMethod:methodSelector]);
-	XCTAssertFalse([dObject.class isDynamicInstanceMethod:methodSelector]);
+	XCTAssertFalse([dObject.class isDynamicClassMethod:methodSelector]);
 	
 	
 	XCTAssertFalse([dObject respondsToSelector:methodSelector]);
@@ -1671,17 +1735,17 @@
 	XCTAssertFalse([dObject.class respondsToSelector:methodSelector]);
 	XCTAssertNil([dObject.class methodSignatureForSelector:methodSelector]);
 	
-	NSObject *objParam = NSObject.new;
-	
+	__unused NSObject *objParam = NSObject.new;
+
 	int counter = 2;
 	__block id __self = nil;
-	
+
 	__block int blockExecutionCount = 0;
 	__block SEL blockCommand = nil;
-	__block int blockParam2 = 0;
-	__block double blockParam3 = 0;
-	__block id blockObject = nil;
-	
+	__block __unused int blockParam2 = 0;
+	__block __unused double blockParam3 = 0;
+	__block __unused id blockObject = nil;
+
 	XCTAssertTrue([dObject addObjectMethod:methodSelector block:^(id _self, SEL __cmd) {
 		__self = _self;
 		blockCommand = __cmd;
@@ -1696,7 +1760,7 @@
 	XCTAssertTrue([dObject isDynamicObjectMethod:methodSelector]);
 	XCTAssertFalse([dObject.class isDynamicMethod:methodSelector]);
 	XCTAssertFalse([dObject.class isDynamicObjectMethod:methodSelector]);
-	XCTAssertFalse([dObject.class isDynamicInstanceMethod:methodSelector]);
+	XCTAssertFalse([dObject.class isDynamicClassMethod:methodSelector]);
 	
 	
 	XCTAssertTrue([dObject respondsToSelector:methodSelector]);
@@ -1729,7 +1793,7 @@
 	
 	XCTAssertFalse([dObject.class isDynamicMethod:methodSelector]);
 	XCTAssertFalse([dObject.class isDynamicObjectMethod:methodSelector]);
-	XCTAssertFalse([dObject.class isDynamicInstanceMethod:methodSelector]);
+	XCTAssertFalse([dObject.class isDynamicClassMethod:methodSelector]);
 	
 	
 	XCTAssertFalse([dObject respondsToSelector:methodSelector]);
@@ -1765,7 +1829,7 @@
 	XCTAssertTrue([dObject isDynamicObjectMethod:methodSelector]);
 	XCTAssertFalse([dObject.class isDynamicMethod:methodSelector]);
 	XCTAssertFalse([dObject.class isDynamicObjectMethod:methodSelector]);
-	XCTAssertFalse([dObject.class isDynamicInstanceMethod:methodSelector]);
+	XCTAssertFalse([dObject.class isDynamicClassMethod:methodSelector]);
 	
 	
 	XCTAssertTrue([dObject respondsToSelector:methodSelector]);
@@ -1821,7 +1885,7 @@
 	
 	XCTAssertFalse([dObject.class isDynamicMethod:methodSelector]);
 	XCTAssertFalse([dObject.class isDynamicObjectMethod:methodSelector]);
-	XCTAssertFalse([dObject.class isDynamicInstanceMethod:methodSelector]);
+	XCTAssertFalse([dObject.class isDynamicClassMethod:methodSelector]);
 	
 	
 	XCTAssertFalse([dObject respondsToSelector:methodSelector]);
@@ -1857,7 +1921,7 @@
 	XCTAssertTrue([dObject isDynamicObjectMethod:methodSelector]);
 	XCTAssertFalse([dObject.class isDynamicMethod:methodSelector]);
 	XCTAssertFalse([dObject.class isDynamicObjectMethod:methodSelector]);
-	XCTAssertFalse([dObject.class isDynamicInstanceMethod:methodSelector]);
+	XCTAssertFalse([dObject.class isDynamicClassMethod:methodSelector]);
 	
 	
 	XCTAssertTrue([dObject respondsToSelector:methodSelector]);
@@ -1971,9 +2035,9 @@ typedef union myUnion {
 
 
 
-#pragma mark - Instance Dynamic Methods
+#pragma mark - Class Dynamic Methods
 
-- (void)testBasicDynamicObject_isDynamicInstanceMethod
+- (void)testBasicDynamicObject_isDynamicClassMethod
 {
 	BasicDynamicObject *dObject = BasicDynamicObject.new;
 	
@@ -1983,9 +2047,9 @@ typedef union myUnion {
 	XCTAssertFalse([dObject isDynamicObjectMethod:dynamicMethodSelector]);
 	XCTAssertFalse([dObject.class isDynamicMethod:dynamicMethodSelector]);
 	XCTAssertFalse([dObject.class isDynamicObjectMethod:dynamicMethodSelector]);
-	XCTAssertFalse([dObject.class isDynamicInstanceMethod:dynamicMethodSelector]);
+	XCTAssertFalse([dObject.class isDynamicClassMethod:dynamicMethodSelector]);
 	
-	XCTAssertTrue([dObject.class addInstanceMethod:dynamicMethodSelector block:^NSNumber*(id _self, NSNumber* input) {
+	XCTAssertTrue([dObject.class addClassMethod:dynamicMethodSelector block:^NSNumber*(id _self, NSNumber* input) {
 		return @(input.intValue * 2);
 	}
 	]);
@@ -1996,15 +2060,15 @@ typedef union myUnion {
 	XCTAssertFalse([dObject isDynamicObjectMethod:dynamicMethodSelector]);
 	XCTAssertFalse([dObject.class isDynamicMethod:dynamicMethodSelector]);
 	XCTAssertFalse([dObject.class isDynamicObjectMethod:dynamicMethodSelector]);
-	XCTAssertTrue([dObject.class isDynamicInstanceMethod:dynamicMethodSelector]);
+	XCTAssertTrue([dObject.class isDynamicClassMethod:dynamicMethodSelector]);
 	
-	XCTAssertTrue([dObject.class removeInstanceMethod:dynamicMethodSelector]);
+	XCTAssertTrue([dObject.class removeClassMethod:dynamicMethodSelector]);
 	
 	XCTAssertFalse([dObject isDynamicMethod:dynamicMethodSelector]);
 	XCTAssertFalse([dObject isDynamicObjectMethod:dynamicMethodSelector]);
 	XCTAssertFalse([dObject.class isDynamicMethod:dynamicMethodSelector]);
 	XCTAssertFalse([dObject.class isDynamicObjectMethod:dynamicMethodSelector]);
-	XCTAssertFalse([dObject.class isDynamicInstanceMethod:dynamicMethodSelector]);
+	XCTAssertFalse([dObject.class isDynamicClassMethod:dynamicMethodSelector]);
 }
 
 
@@ -2012,7 +2076,7 @@ typedef union myUnion {
 
 
 
-- (void)testBasicDynamicObject_AddInstanceMethod_NoCmdSelector_Minimal
+- (void)testBasicDynamicObject_AddClassMethod_NoCmdSelector_Minimal
 {
 	BasicDynamicObject<NSObjectTestDynamicMethod> *dObject = (BasicDynamicObject<NSObjectTestDynamicMethod> *)BasicDynamicObject.new;
 	
@@ -2025,7 +2089,7 @@ typedef union myUnion {
 	
 	XCTAssertFalse([dObject.class isDynamicMethod:methodSelector]);
 	XCTAssertFalse([dObject.class isDynamicObjectMethod:methodSelector]);
-	XCTAssertFalse([dObject.class isDynamicInstanceMethod:methodSelector]);
+	XCTAssertFalse([dObject.class isDynamicClassMethod:methodSelector]);
 	
 	
 	XCTAssertFalse([dObject respondsToSelector:methodSelector]);
@@ -2041,7 +2105,7 @@ typedef union myUnion {
 	
 	__block int blockExecutionCount = 0;
 	
-	XCTAssertTrue([dObject.class addInstanceMethod:methodSelector block:^(id _self) {
+	XCTAssertTrue([dObject.class addClassMethod:methodSelector block:^(id _self) {
 		__self = _self;
 		//blockCommand = __cmd;
 		//blockParam2 = param2;
@@ -2055,7 +2119,7 @@ typedef union myUnion {
 	XCTAssertFalse([dObject isDynamicObjectMethod:methodSelector]);
 	XCTAssertFalse([dObject.class isDynamicMethod:methodSelector]);
 	XCTAssertFalse([dObject.class isDynamicObjectMethod:methodSelector]);
-	XCTAssertTrue([dObject.class isDynamicInstanceMethod:methodSelector]);
+	XCTAssertTrue([dObject.class isDynamicClassMethod:methodSelector]);
 	
 	
 	XCTAssertTrue([dObject respondsToSelector:methodSelector]);
@@ -2074,10 +2138,10 @@ typedef union myUnion {
 	XCTAssertEqual(blockExecutionCount, counter);
 	
 	
-	XCTAssertTrue([dObject.class removeInstanceMethod:methodSelector]);
+	XCTAssertTrue([dObject.class removeClassMethod:methodSelector]);
 }
 	
-- (void)testBasicDynamicObject_AddInstanceMethod_WithCmdSelector_Minimal
+- (void)testBasicDynamicObject_AddClassMethod_WithCmdSelector_Minimal
 {
 	BasicDynamicObject<NSObjectTestDynamicMethod> *dObject = (BasicDynamicObject<NSObjectTestDynamicMethod> *)BasicDynamicObject.new;
 	
@@ -2088,7 +2152,7 @@ typedef union myUnion {
 	
 	XCTAssertFalse([dObject.class isDynamicMethod:methodSelector]);
 	XCTAssertFalse([dObject.class isDynamicObjectMethod:methodSelector]);
-	XCTAssertFalse([dObject.class isDynamicInstanceMethod:methodSelector]);
+	XCTAssertFalse([dObject.class isDynamicClassMethod:methodSelector]);
 	
 	
 	XCTAssertFalse([dObject respondsToSelector:methodSelector]);
@@ -2106,7 +2170,7 @@ typedef union myUnion {
 	__block int blockExecutionCount = 0;
 	__block SEL blockCommand = nil;
 	
-	XCTAssertTrue([dObject.class addInstanceMethod:methodSelector block:^(id _self, SEL __cmd) {
+	XCTAssertTrue([dObject.class addClassMethod:methodSelector block:^(id _self, SEL __cmd) {
 		__self = _self;
 		blockCommand = __cmd;
 		
@@ -2117,7 +2181,7 @@ typedef union myUnion {
 	XCTAssertFalse([dObject isDynamicObjectMethod:methodSelector]);
 	XCTAssertFalse([dObject.class isDynamicMethod:methodSelector]);
 	XCTAssertFalse([dObject.class isDynamicObjectMethod:methodSelector]);
-	XCTAssertTrue([dObject.class isDynamicInstanceMethod:methodSelector]);
+	XCTAssertTrue([dObject.class isDynamicClassMethod:methodSelector]);
 	
 	
 	XCTAssertTrue([dObject respondsToSelector:methodSelector]);
@@ -2135,10 +2199,10 @@ typedef union myUnion {
 	XCTAssertEqualObjects(NSStringFromSelector(blockCommand), NSStringFromSelector(methodSelector));
 	XCTAssertEqual(blockExecutionCount, counter);
 	
-	XCTAssertTrue([dObject.class removeInstanceMethod:methodSelector]);
+	XCTAssertTrue([dObject.class removeClassMethod:methodSelector]);
 }
 
-- (void)testBasicDynamicObject_AddInstanceMethod_NoCmdSelector
+- (void)testBasicDynamicObject_AddClassMethod_NoCmdSelector
 {
 	BasicDynamicObject<NSObjectTestDynamicMethod> *dObject = (BasicDynamicObject<NSObjectTestDynamicMethod> *)BasicDynamicObject.new;
 	
@@ -2151,7 +2215,7 @@ typedef union myUnion {
 	
 	XCTAssertFalse([dObject.class isDynamicMethod:methodSelector]);
 	XCTAssertFalse([dObject.class isDynamicObjectMethod:methodSelector]);
-	XCTAssertFalse([dObject.class isDynamicInstanceMethod:methodSelector]);
+	XCTAssertFalse([dObject.class isDynamicClassMethod:methodSelector]);
 	
 	XCTAssertFalse([dObject respondsToSelector:methodSelector]);
 	XCTAssertNil([dObject methodSignatureForSelector:methodSelector]);
@@ -2171,7 +2235,7 @@ typedef union myUnion {
 	__block int blockParam2 = 0;
 	__block double blockParam3 = 0;
 	__block id blockObject = nil;
-	XCTAssertTrue([dObject.class addInstanceMethod:methodSelector block:^(id _self, int param2, double param3, id object) {
+	XCTAssertTrue([dObject.class addClassMethod:methodSelector block:^(id _self, int param2, double param3, id object) {
 		__self = _self;
 		//blockCommand = __cmd;
 		blockParam2 = param2;
@@ -2185,7 +2249,7 @@ typedef union myUnion {
 	XCTAssertFalse([dObject isDynamicObjectMethod:methodSelector]);
 	XCTAssertFalse([dObject.class isDynamicMethod:methodSelector]);
 	XCTAssertFalse([dObject.class isDynamicObjectMethod:methodSelector]);
-	XCTAssertTrue([dObject.class isDynamicInstanceMethod:methodSelector]);
+	XCTAssertTrue([dObject.class isDynamicClassMethod:methodSelector]);
 	
 	
 	XCTAssertTrue([dObject respondsToSelector:methodSelector]);
@@ -2206,7 +2270,7 @@ typedef union myUnion {
 	XCTAssertEqual(blockObject, objParam);
 	XCTAssertEqual(blockExecutionCount, counter);
 	
-	XCTAssertTrue([dObject.class addInstanceMethod:methodSelector block:^(id _self, int param2, double param3, id object) {
+	XCTAssertTrue([dObject.class addClassMethod:methodSelector block:^(id _self, int param2, double param3, id object) {
 		__self = _self;
 		//blockCommand = __cmd;
 		blockParam2 = param2 * 2;
@@ -2234,10 +2298,10 @@ typedef union myUnion {
 	XCTAssertNil(blockObject);
 	XCTAssertEqual(blockExecutionCount, 22);
 	
-	XCTAssertTrue([dObject.class removeInstanceMethod:methodSelector]);
+	XCTAssertTrue([dObject.class removeClassMethod:methodSelector]);
 }
 	
-- (void)testBasicDynamicObject_AddInstanceMethod_WithCmdSelector
+- (void)testBasicDynamicObject_AddClassMethod_WithCmdSelector
 {
 	BasicDynamicObject<NSObjectTestDynamicMethod> *dObject = (BasicDynamicObject<NSObjectTestDynamicMethod> *)BasicDynamicObject.new;
 	
@@ -2248,7 +2312,7 @@ typedef union myUnion {
 	
 	XCTAssertFalse([dObject.class isDynamicMethod:methodSelector]);
 	XCTAssertFalse([dObject.class isDynamicObjectMethod:methodSelector]);
-	XCTAssertFalse([dObject.class isDynamicInstanceMethod:methodSelector]);
+	XCTAssertFalse([dObject.class isDynamicClassMethod:methodSelector]);
 	
 	
 	XCTAssertFalse([dObject respondsToSelector:methodSelector]);
@@ -2271,7 +2335,7 @@ typedef union myUnion {
 	__block double blockParam3 = 0;
 	__block id blockObject = nil;
 	
-	XCTAssertTrue([dObject.class addInstanceMethod:methodSelector block:^(id _self, SEL __cmd, int param2, double param3, id object) {
+	XCTAssertTrue([dObject.class addClassMethod:methodSelector block:^(id _self, SEL __cmd, int param2, double param3, id object) {
 		__self = _self;
 		blockCommand = __cmd;
 		blockParam2 = param2;
@@ -2285,7 +2349,7 @@ typedef union myUnion {
 	XCTAssertFalse([dObject isDynamicObjectMethod:methodSelector]);
 	XCTAssertFalse([dObject.class isDynamicMethod:methodSelector]);
 	XCTAssertFalse([dObject.class isDynamicObjectMethod:methodSelector]);
-	XCTAssertTrue([dObject.class isDynamicInstanceMethod:methodSelector]);
+	XCTAssertTrue([dObject.class isDynamicClassMethod:methodSelector]);
 	
 	
 	XCTAssertTrue([dObject respondsToSelector:methodSelector]);
@@ -2306,26 +2370,26 @@ typedef union myUnion {
 	XCTAssertEqual(blockObject, objParam);
 	XCTAssertEqual(blockExecutionCount, counter);
 	
-	XCTAssertTrue([dObject.class removeInstanceMethod:methodSelector]);
+	XCTAssertTrue([dObject.class removeClassMethod:methodSelector]);
 }
 
 
-- (void)testBasicDynamicObject_AddInstanceMethod_BadParameters
+- (void)testBasicDynamicObject_AddClassMethod_BadParameters
 {
 	__block int blockExecutionCount = 0;
 	
 	SEL newMethodSelector = NSSelectorFromString(@"newMethodTest_1001:");
 	SEL nullSelector = nil;
 	
-	XCTAssertFalse([BasicDynamicObject addInstanceMethod:nullSelector block:NULL]);
+	XCTAssertFalse([BasicDynamicObject addClassMethod:nullSelector block:NULL]);
 	
-	XCTAssertFalse([BasicDynamicObject addInstanceMethod:nullSelector block:^(id _self, SEL __cmd, int param2, double param3, id object) {
+	XCTAssertFalse([BasicDynamicObject addClassMethod:nullSelector block:^(id _self, SEL __cmd, int param2, double param3, id object) {
 		blockExecutionCount++;
 	}]);
 	
-	XCTAssertFalse([BasicDynamicObject addInstanceMethod:newMethodSelector block:NULL]);
+	XCTAssertFalse([BasicDynamicObject addClassMethod:newMethodSelector block:NULL]);
 	
-	XCTAssertFalse([BasicDynamicObject addInstanceMethod:newMethodSelector block:NSString.new]);
+	XCTAssertFalse([BasicDynamicObject addClassMethod:newMethodSelector block:NSString.new]);
 	
 	Block_literal blockLiteral = {
 		.isa = &_NSConcreteGlobalBlock,
@@ -2333,18 +2397,18 @@ typedef union myUnion {
 		.reserved = 0,
 		.invoke = 0,
 		.descriptor = 0};
-	XCTAssertFalse([BasicDynamicObject addInstanceMethod:NSSelectorFromString(@"customMethod:") block:(__bridge id)&blockLiteral]);
+	XCTAssertFalse([BasicDynamicObject addClassMethod:NSSelectorFromString(@"customMethod:") block:(__bridge id)&blockLiteral]);
 }
 
 
-- (void)testBasicDynamicObject_RemoveInstanceMethod
+- (void)testBasicDynamicObject_RemoveClassMethod
 {
 	BasicDynamicObject *dObject = BasicDynamicObject.new;
 	
 	SEL methodSelector = NSSelectorFromString(@"myDynamicClassMethod:");
 	
 	
-	XCTAssertTrue([dObject.class addInstanceMethod:methodSelector block:^NSNumber*(id _self, NSNumber* input) {
+	XCTAssertTrue([dObject.class addClassMethod:methodSelector block:^NSNumber*(id _self, NSNumber* input) {
 		return @(input.intValue * 2);
 	}
 	]);
@@ -2359,8 +2423,8 @@ typedef union myUnion {
 	
 	
 	
-	XCTAssertFalse([dObject.class removeInstanceMethod:@selector(init)]);
-	XCTAssertTrue([dObject.class removeInstanceMethod:methodSelector]);
+	XCTAssertFalse([dObject.class removeClassMethod:@selector(init)]);
+	XCTAssertTrue([dObject.class removeClassMethod:methodSelector]);
 	
 	
 	XCTAssertFalse([dObject respondsToSelector:methodSelector]);
@@ -2372,10 +2436,10 @@ typedef union myUnion {
 	XCTAssertNil([dObject.class methodSignatureForSelector:methodSelector]);
 }
 
-- (void)testBasicDynamicObject_RemoveInstanceMethod_BadArgument
+- (void)testBasicDynamicObject_RemoveClassMethod_BadArgument
 {
 	SEL nilSelector = nil;
-	XCTAssertFalse([NSDynamicObject removeInstanceMethod:nilSelector]);
+	XCTAssertFalse([NSDynamicObject removeClassMethod:nilSelector]);
 }
 
 
@@ -2460,7 +2524,7 @@ typedef union myUnion {
 		return @(-20);
 	}]);
 	
-	XCTAssertTrue([dObject.class addInstanceMethod:instanceSelector block:^NSNumber*(id _self) {
+	XCTAssertTrue([dObject.class addClassMethod:instanceSelector block:^NSNumber*(id _self) {
 		return @(-100);
 	}]);
 	
@@ -2578,8 +2642,8 @@ typedef union myUnion {
 	XCTAssertFalse([dObject.class removeObjectMethod:@selector(init)]);
 	XCTAssertFalse([dObject.class removeObjectMethod:objectSelector]);
 	XCTAssertFalse([dObject.class removeObjectMethod:instanceSelector]);
-	XCTAssertFalse([dObject.class removeInstanceMethod:objectSelector]);
-	XCTAssertFalse([dObject.class removeInstanceMethod:classSelector]);
+	XCTAssertFalse([dObject.class removeClassMethod:objectSelector]);
+	XCTAssertFalse([dObject.class removeClassMethod:classSelector]);
 	XCTAssertFalse([dObject removeObjectMethod:instanceSelector]);
 	XCTAssertFalse([dObject removeObjectMethod:classSelector]);
 	
@@ -2624,7 +2688,7 @@ typedef union myUnion {
 	
 	
 	// remove instance method
-	XCTAssertTrue([dObject.class removeInstanceMethod:instanceSelector]);
+	XCTAssertTrue([dObject.class removeClassMethod:instanceSelector]);
 	
 	{	// Object Selector
 		methodSelector = objectSelector;
@@ -2774,7 +2838,7 @@ typedef union myUnion {
 	
 	SEL dynamicMethodSelector = NSSelectorFromString(@"myDynamicClassMethodSignatureForSelector:");
 	
-	XCTAssertTrue([dObject.class addInstanceMethod:dynamicMethodSelector block:^NSNumber*(id _self, NSNumber* input) {
+	XCTAssertTrue([dObject.class addClassMethod:dynamicMethodSelector block:^NSNumber*(id _self, NSNumber* input) {
 		return @(input.intValue * 2);
 	}
 	]);
@@ -2797,7 +2861,7 @@ typedef union myUnion {
 	
 	XCTAssertNil(signature);
 	
-	XCTAssertTrue([dObject.class removeInstanceMethod:dynamicMethodSelector]);
+	XCTAssertTrue([dObject.class removeClassMethod:dynamicMethodSelector]);
 }
 
 - (void)testNSDynamicObject_methodSignatureForSelector_class_override
@@ -2806,7 +2870,7 @@ typedef union myUnion {
 	
 	SEL dynamicMethodSelector = NSSelectorFromString(@"myClassMethod:");
 	
-	XCTAssertTrue([dObject.class addInstanceMethod:dynamicMethodSelector block:^NSNumber*(id _self, NSNumber* input) {
+	XCTAssertTrue([dObject.class addClassMethod:dynamicMethodSelector block:^NSNumber*(id _self, NSNumber* input) {
 		return @(input.intValue * 2);
 	}
 	]);
@@ -2851,7 +2915,7 @@ typedef union myUnion {
 	signature = [dObject.class methodSignatureForSelector:dynamicMethodSelector];
 	XCTAssertNil(signature);
 	
-	XCTAssertTrue([dObject.class removeInstanceMethod:dynamicMethodSelector]);
+	XCTAssertTrue([dObject.class removeClassMethod:dynamicMethodSelector]);
 	
 	signature = [dObject methodSignatureForSelector:dynamicMethodSelector];
 	XCTAssertNotNil(signature);
@@ -2898,7 +2962,7 @@ typedef union myUnion {
 	
 	SEL dynamicMethodSelector = NSSelectorFromString(@"myDynamicClassForwardInvocation:");
 	
-	XCTAssertTrue([dObject.class addInstanceMethod:dynamicMethodSelector block:^NSNumber*(id _self, NSNumber* input) {
+	XCTAssertTrue([dObject.class addClassMethod:dynamicMethodSelector block:^NSNumber*(id _self, NSNumber* input) {
 		return @(input.intValue * 3);
 	}
 	]);
@@ -2911,7 +2975,7 @@ typedef union myUnion {
 	XCTAssertEqualObjects(result, @15);
 	
 	
-	// Instance Dynamic Method overrides Class
+	// Object Dynamic Method overrides Class
 	XCTAssertTrue([dObject addObjectMethod:dynamicMethodSelector block:^NSNumber*(id _self, NSNumber* input) {
 		return @(input.intValue * 2);
 	}
@@ -2934,8 +2998,8 @@ typedef union myUnion {
 	result = [dObject performSelector:dynamicMethodSelector withObject:@5];
 	XCTAssertEqualObjects(result, @10);
 	
-	XCTAssertTrue([dObject.class removeInstanceMethod:dynamicMethodSelector]);
-	XCTAssertFalse([dObject.class removeInstanceMethod:dynamicMethodSelector]);
+	XCTAssertTrue([dObject.class removeClassMethod:dynamicMethodSelector]);
+	XCTAssertFalse([dObject.class removeClassMethod:dynamicMethodSelector]);
 	
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Warc-performSelector-leaks"
@@ -2996,6 +3060,33 @@ typedef union myUnion {
 	
 	XCTAssertFalse([dObject respondsToSelector:dynamicMethodSelector]);
 	XCTAssertFalse([dObject.class respondsToSelector:dynamicMethodSelector]);
+}
+
+- (void)testNSDynamicObject_respondsToSelector_class_nil
+{
+	SEL nilSelector = nil;
+	Protocol *nilProtocol = nil;
+	
+	XCTAssertFalse([NSDynamicObject.class dynamicClassRespondsToSelector:nilSelector]);
+	XCTAssertFalse([NSDynamicObject.class dynamicClassMethodSignatureForSelector:nilSelector]);
+	XCTAssertFalse([NSDynamicObject.class dynamicClassConformsToProtocol:nilProtocol]);
+	XCTAssertFalse([NSDynamicObject.class dynamicInstancesRespondToSelector:nilSelector]);
+	XCTAssertNil([NSDynamicObject.class dynamicClassMethodMeta:nilSelector]);
+	
+	NSInvocation *nilInvocation = nil;
+	XCTAssertFalse([NSDynamicObject.class dynamicClassForwardInvocation:nilInvocation]);
+	
+	
+	NSDynamicObject *dObject = NSDynamicObject.new;
+	XCTAssertFalse([dObject dynamicRespondsToSelector:nilSelector]);
+	XCTAssertFalse([dObject dynamicMethodSignatureForSelector:nilSelector]);
+	XCTAssertFalse([dObject dynamicConformsToProtocol:nilProtocol]);
+	
+	XCTAssertFalse([dObject dynamicForwardInvocation:nilInvocation]);
+	XCTAssertNil([dObject dynamicObjectTargetForSelector:nilSelector returnSignature:NO]);
+	
+	
+	XCTAssertNil([dObject dynamicObjectMethodMeta:nilSelector]);
 }
 
 

@@ -107,9 +107,22 @@
 	
 	NSString *unconditionalDecoded = [self.unarchiver decodeObjectAtIndex:0];
 	NSString *conditionalDecoded = [self.unarchiver decodeObjectAtIndex:1];
-	
+
 	XCTAssertEqualObjects(unconditionalDecoded, testString);
 	XCTAssertEqualObjects(conditionalDecoded, testString);
+}
+
+// A conditionally-encoded object that is never encoded unconditionally decodes as nil.
+- (void)testEncodeConditionalObject_NeverUnconditional_DecodesNil {
+	self.archiver.requiresSecureCoding = NO;
+
+	NSString *onlyConditional = [[NSString alloc] initWithFormat:@"only-%d", 99];
+	[self.archiver encodeConditionalObject:onlyConditional atIndex:0];
+
+	[self finishEncodingAndCreateUnarchiver];
+	self.unarchiver.requiresSecureCoding = NO;
+
+	XCTAssertNil([self.unarchiver decodeObjectAtIndex:0]);
 }
 
 #pragma mark - Boolean Tests
@@ -600,6 +613,22 @@
 	const uint8_t *decodedBytes = [self.unarchiver decodeBytesAtIndex:5 returnedLength:&length];
 	XCTAssertEqual(length, sizeof(bytes));
 	XCTAssertEqual(memcmp(decodedBytes, bytes, length), 0);
+}
+
+- (void)testDecodePropertyListAtIndex {
+	self.archiver.requiresSecureCoding = NO;
+
+	NSDictionary *plist = @{ @"name": @"widget", @"count": @3, @"tags": @[@"a", @"b"] };
+	[self.archiver encodeObject:plist atIndex:7];
+
+	[self finishEncodingAndCreateUnarchiver];
+	self.unarchiver.requiresSecureCoding = NO;
+
+	id decoded = [self.unarchiver decodePropertyListAtIndex:7];
+	XCTAssertEqualObjects(decoded, plist);
+
+	// An index with nothing encoded returns nil.
+	XCTAssertNil([self.unarchiver decodePropertyListAtIndex:8]);
 }
 
 @end

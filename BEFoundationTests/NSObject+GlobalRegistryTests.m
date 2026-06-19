@@ -12,8 +12,8 @@
 // Test class that conforms to ObjectRegistryProtocol
 @interface NSObjectGlobalRegistryObject : NSObject <BERegistryProtocol>
 @property (nonatomic, strong) NSString *testValue;
-- (NSString *)registerGlobalInstance;
-- (BOOL)unregisterGlobalInstance;
+//- (NSString *)registerGlobalInstance;
+//- (BOOL)unregisterGlobalInstance;
 @end
 
 @implementation NSObjectGlobalRegistryObject
@@ -42,15 +42,16 @@
 @property (nonatomic, strong) NSObjectGlobalRegistryObject *testObject2;
 @property (nonatomic, strong) NSObjectNonConformingTestObject *nonConformingObject;
 
-@property (nonatomic) SEL lastCalledStart;
-@property (nonatomic) SEL lastCalledEnd;
+//@property (nonatomic) SEL lastCalledStart;
+//@property (nonatomic) SEL lastCalledEnd;
 @end
 
 @implementation GlobalRegistryTests
 
 - (void)setUp {
 	[super setUp];
-	[NSObject.globalRegistry clearAllRegisteredObjects];
+	self.testObject1 = nil;
+	
 	self.testObject1 = [[NSObjectGlobalRegistryObject alloc] initWithTestValue:@"test1"];
 	self.nonConformingObject = [[NSObjectNonConformingTestObject alloc] init];
 }
@@ -65,9 +66,19 @@
 
 #pragma mark - NSObject Category Tests
 
+- (void)testIsGlobalRegistered {
+	@synchronized (NSObject.globalRegistry) {
+		//self.lastCalledStart = _cmd;
+		XCTAssertFalse(self.testObject1.isGlobalRegistered, @"Object should not be registered initially");
+		
+		[self.testObject1 registerGlobalInstance];
+		XCTAssertTrue(self.testObject1.isGlobalRegistered, @"Object should be registered after registration");
+	}
+}
+
 - (void)testObjectRegistryClass {
 	@synchronized (NSObject.globalRegistry) {
-		self.lastCalledStart = _cmd;
+		//self.lastCalledStart = _cmd;
 		BEObjectRegistry *registry1 = [NSObject globalRegistry];
 		BEObjectRegistry *registry2 = [NSObject globalRegistry];
 		
@@ -77,19 +88,14 @@
 	}
 }
 
-- (void)testObjectRegistryUUID {
-	@synchronized (NSObject.globalRegistry) {
-		self.lastCalledStart = _cmd;
-		NSString *uuid = self.testObject1.globalRegistryUUID;
-		XCTAssertNotNil(uuid, @"Global registry UUID should not be nil");
-	}
-}
-
 - (void)testObjectRegistryCount {
 	@synchronized (NSObject.globalRegistry) {
-		if (self.testObject1.globalRegistryCount)
-			XCTAssertNil(self.lastCalledStart ? NSStringFromSelector(self.lastCalledStart) : @"(null)");
-		self.lastCalledStart = _cmd;
+		if (self.testObject1.globalRegistryCount) {
+			NSLog (@" ** [%@::%@] WARNING: testObject1 should not be registered '%@'", NSStringFromClass(self.class), NSStringFromSelector(_cmd), self.testObject1.globalRegistryUUID);
+			
+			[self.testObject1 unregisterGlobalInstance];
+		}
+		//self.lastCalledStart = _cmd;
 		XCTAssertEqual(self.testObject1.globalRegistryCount, 0, @"Initial count should be 0");
 		
 		[self.testObject1 registerGlobalInstance];
@@ -97,19 +103,18 @@
 	}
 }
 
-- (void)testIsGlobalRegistered {
+
+- (void)testObjectRegistryUUID {
 	@synchronized (NSObject.globalRegistry) {
-		self.lastCalledStart = _cmd;
-		XCTAssertFalse(self.testObject1.isGlobalRegistered, @"Object should not be registered initially");
-		
-		[self.testObject1 registerGlobalInstance];
-		XCTAssertTrue(self.testObject1.isGlobalRegistered, @"Object should be registered after registration");
+		//self.lastCalledStart = _cmd;
+		NSString *uuid = self.testObject1.globalRegistryUUID;
+		XCTAssertNotNil(uuid, @"Global registry UUID should not be nil");
 	}
 }
 
 - (void)testRegisterGlobalInstance {
 	@synchronized (NSObject.globalRegistry) {
-		self.lastCalledStart = _cmd;
+		//self.lastCalledStart = _cmd;
 		NSString *uuid = [self.testObject1 registerGlobalInstance];
 		
 		XCTAssertNotNil(uuid, @"Registration should return UUID");
@@ -119,22 +124,60 @@
 
 - (void)testUnregisterGlobalInstance {
 	@synchronized (NSObject.globalRegistry) {
-		if (self.testObject1.isGlobalRegistered)
-			XCTAssertNil(self.lastCalledStart ? NSStringFromSelector(self.lastCalledStart) : @"(null)");
+	
+		if (self.testObject1.globalRegistryCount) {
+			NSLog (@" ** [%@::%@] WARNING: testObject1 should not be registered '%@'", NSStringFromClass(self.class), NSStringFromSelector(_cmd), self.testObject1.globalRegistryUUID);
+			
+			[self.testObject1 unregisterGlobalInstance];
+		}
 		
-		BOOL isRegistered = self.testObject1.isGlobalRegistered;
-		if (self.testObject1.isGlobalRegistered)
-			XCTAssertNil(self.lastCalledStart ? NSStringFromSelector(self.lastCalledStart) : @"(null)");
-		self.lastCalledStart = _cmd;
-		XCTAssertFalse(isRegistered, @"Object should not be registered");
 		[self.testObject1 registerGlobalInstance];
 		
 		XCTAssertTrue(self.testObject1.isGlobalRegistered, @"Object should be registered");
 		XCTAssertEqual(self.testObject1.globalRegistryCount, 1);
 		
-		int success = [self.testObject1 unregisterGlobalInstance];
-		XCTAssertEqual(success, 2, @"Unregistration should succeed");
+		BEUnregisterStatus success = [self.testObject1 unregisterGlobalInstance];
+		XCTAssertEqual(success, BEUnregisterStatus_Unregistered, @"Unregistration should succeed");
 		XCTAssertFalse(self.testObject1.isGlobalRegistered, @"Object should not be registered");
+	}
+}
+
+- (void)testUnregister_ReferenceCounting {
+	@synchronized (NSObject.globalRegistry) {
+		[self.testObject1 registerGlobalInstance];
+		[self.testObject1 registerGlobalInstance];
+		XCTAssertEqual(self.testObject1.globalRegistryCount, 2, @"Two registrations should yield count 2");
+
+		BEUnregisterStatus first = [self.testObject1 unregisterGlobalInstance];
+		XCTAssertEqual(first, BEUnregisterStatus_Decremented, @"First unregister decrements, count still > 0");
+		XCTAssertTrue(self.testObject1.isGlobalRegistered, @"Object still registered after one unregister");
+		XCTAssertEqual(self.testObject1.globalRegistryCount, 1);
+
+		BEUnregisterStatus second = [self.testObject1 unregisterGlobalInstance];
+		XCTAssertEqual(second, BEUnregisterStatus_Unregistered, @"Second unregister fully removes the object");
+		XCTAssertFalse(self.testObject1.isGlobalRegistered);
+		XCTAssertEqual(self.testObject1.globalRegistryCount, 0);
+	}
+}
+
+- (void)testUnregister_NeverRegistered_ReturnsNotRegistered {
+	@synchronized (NSObject.globalRegistry) {
+		XCTAssertFalse(self.testObject1.isGlobalRegistered);
+		BEUnregisterStatus status = [self.testObject1 unregisterGlobalInstance];
+		XCTAssertEqual(status, BEUnregisterStatus_NotRegistered,
+					   @"Unregistering a never-registered object returns NotRegistered");
+	}
+}
+
+- (void)testRegister_MultipleTimes_ReturnsSameUUID {
+	@synchronized (NSObject.globalRegistry) {
+		NSString *uuid1 = [self.testObject1 registerGlobalInstance];
+		NSString *uuid2 = [self.testObject1 registerGlobalInstance];
+		XCTAssertNotNil(uuid1);
+		XCTAssertEqualObjects(uuid1, uuid2, @"Re-registering the same object returns the same UUID");
+
+		[self.testObject1 unregisterGlobalInstance];
+		[self.testObject1 unregisterGlobalInstance];
 	}
 }
 

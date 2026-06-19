@@ -164,9 +164,9 @@
 
 
 
-@interface ProtocolIMPRequiredInstanceMethod : NSObject <MyDMInstanceRequiredMethodProtocol>
+@interface InstanceProtocolIMPRequiredClassMethod : NSObject <MyDMInstanceRequiredMethodProtocol>
 @end
-@implementation ProtocolIMPRequiredInstanceMethod
+@implementation InstanceProtocolIMPRequiredClassMethod
 - (NSNumber*)protocolObjectMethod
 {
 	return @(30);
@@ -194,9 +194,9 @@
 
 
 
-@interface ProtocolIMPOptionalInstanceMethod : NSObject <MyDMInstanceOptionalMethodProtocol>
+@interface InstanceProtocolIMPOptionalClassMethod : NSObject <MyDMInstanceOptionalMethodProtocol>
 @end
-@implementation ProtocolIMPOptionalInstanceMethod
+@implementation InstanceProtocolIMPOptionalClassMethod
 
 - (NSNumber*)protocolOptionalObjectMethod
 {
@@ -241,9 +241,9 @@
 
 
 
-@interface ProtocolIMPGeneralInstanceMethod : NSObject <MyDMGeneralInstanceProtocol>
+@interface ProtocolIMPGeneralClassMethod : NSObject <MyDMGeneralInstanceProtocol>
 @end
-@implementation ProtocolIMPGeneralInstanceMethod
+@implementation ProtocolIMPGeneralClassMethod
 - (NSNumber*)protocolObjectMethod
 {
 	return @(30);
@@ -346,7 +346,7 @@
 	XCTAssertFalse([InstanceParentProtocolTargetObject instancesRespondToSelector:@selector(objectMethod)]);
 	
 	
-	XCTAssertTrue([object.class addInstanceForwardClass:ProtocolIMPGeneralInstanceMethod.class]);
+	XCTAssertTrue([object.class addInstanceForwardClass:ProtocolIMPGeneralClassMethod.class]);
 	XCTAssertNotNil([object.class methodSignatureForSelector:@selector(classMethod)]);
 	XCTAssertTrue([object.class respondsToSelector:@selector(classMethod)]);
 	XCTAssertNotNil([object.class instanceMethodSignatureForSelector:@selector(objectMethod)]);
@@ -371,7 +371,7 @@
 	XCTAssertEqualObjects(classResult, @(41));
 	
 	
-	XCTAssertTrue([object.class removeInstanceForwardClass:ProtocolIMPGeneralInstanceMethod.class]);
+	XCTAssertTrue([object.class removeInstanceForwardClass:ProtocolIMPGeneralClassMethod.class]);
 	XCTAssertNil([object.class methodSignatureForSelector:@selector(classMethod)]);
 	XCTAssertFalse([object.class respondsToSelector:@selector(classMethod)]);
 	XCTAssertNil([object.class instanceMethodSignatureForSelector:@selector(objectMethod)]);
@@ -592,7 +592,7 @@
 {
 	InstanceBaseProtocolTargetObject *object = InstanceBaseProtocolTargetObject.new;
 	InstanceProtocolMainTargetObject *mainObject = InstanceProtocolMainTargetObject.new;
-	//	ProtocolIMPRequiredInstanceMethod *target = ProtocolIMPRequiredInstanceMethod.new;
+	//	InstanceProtocolIMPRequiredClassMethod *target = InstanceProtocolIMPRequiredClassMethod.new;
 	
 	XCTAssertTrue([object.class enableDynamicMethods]);
 	
@@ -614,7 +614,7 @@
 	
 	
 	
-	XCTAssertTrue([object.class addInstanceProtocol:@protocol(MyDMInstanceRequiredMethodProtocol) withClass:ProtocolIMPRequiredInstanceMethod.class]);
+	XCTAssertTrue([object.class addInstanceProtocol:@protocol(MyDMInstanceRequiredMethodProtocol) withClass:InstanceProtocolIMPRequiredClassMethod.class]);
 	
 	XCTAssertTrue([object.class conformsToProtocol:@protocol(MyDMInstanceRequiredMethodProtocol)]);
 	XCTAssertFalse([object.class conformsToProtocol:@protocol(MyDMSubInstanceRequiredMethodProtocol)]);
@@ -659,7 +659,7 @@
 	
 	XCTAssertFalse([object.class removeInstanceProtocol:@protocol(MyDMInstanceRequiredMethodProtocol) withClass:ProtocolIMPRequiredInstanceClassMethod.class]);
 	
-	XCTAssertTrue([object.class removeInstanceProtocol:@protocol(MyDMInstanceRequiredMethodProtocol) withClass:ProtocolIMPRequiredInstanceMethod.class]);
+	XCTAssertTrue([object.class removeInstanceProtocol:@protocol(MyDMInstanceRequiredMethodProtocol) withClass:InstanceProtocolIMPRequiredClassMethod.class]);
 	
 	
 	XCTAssertFalse([object.class conformsToProtocol:@protocol(MyDMInstanceNoMethodProtocol)]);
@@ -706,7 +706,7 @@
 	XCTAssertFalse([mainObject conformsToProtocol:@protocol(MySubSubDMInstanceNoMethodProtocol)]);
 	
 	
-	XCTAssertTrue([object.class addInstanceProtocol:@protocol(MyDMSubInstanceRequiredMethodProtocol) withClass:ProtocolIMPRequiredInstanceMethod.class]);
+	XCTAssertTrue([object.class addInstanceProtocol:@protocol(MyDMSubInstanceRequiredMethodProtocol) withClass:InstanceProtocolIMPRequiredClassMethod.class]);
 	
 	XCTAssertTrue([object.class conformsToProtocol:@protocol(MyDMInstanceRequiredMethodProtocol)]);
 	XCTAssertTrue([object.class conformsToProtocol:@protocol(MyDMSubInstanceRequiredMethodProtocol)]);
@@ -794,7 +794,7 @@
 	XCTAssertFalse([mainObject conformsToProtocol:@protocol(MySubSubDMInstanceNoMethodProtocol)]);
 	
 	
-	XCTAssertTrue([object.class addInstanceProtocol:@protocol(MyDMSubSubInstanceRequiredMethodProtocol) withClass:ProtocolIMPRequiredInstanceMethod.class]);
+	XCTAssertTrue([object.class addInstanceProtocol:@protocol(MyDMSubSubInstanceRequiredMethodProtocol) withClass:InstanceProtocolIMPRequiredClassMethod.class]);
 	
 	XCTAssertTrue([object.class conformsToProtocol:@protocol(MyDMInstanceRequiredMethodProtocol)]);
 	XCTAssertTrue([object.class conformsToProtocol:@protocol(MyDMSubInstanceRequiredMethodProtocol)]);
@@ -862,7 +862,7 @@
 {
 	InstanceBaseProtocolTargetObject *object = InstanceBaseProtocolTargetObject.new;
 	InstanceProtocolMainTargetObject *mainObject = InstanceProtocolMainTargetObject.new;
-	//ProtocolIMPOptionalInstanceMethod *target = ProtocolIMPRequiredInstanceMethod.new;
+	//InstanceProtocolIMPOptionalClassMethod *target = InstanceProtocolIMPRequiredClassMethod.new;
 	
 	XCTAssertTrue([object.class enableDynamicMethods]);
 	
@@ -885,7 +885,7 @@
 	
 	
 	
-	XCTAssertTrue([object.class addInstanceProtocol:@protocol(MyDMInstanceOptionalMethodProtocol) withClass:ProtocolIMPOptionalInstanceMethod.class]);
+	XCTAssertTrue([object.class addInstanceProtocol:@protocol(MyDMInstanceOptionalMethodProtocol) withClass:InstanceProtocolIMPOptionalClassMethod.class]);
 	
 	XCTAssertTrue([object.class conformsToProtocol:@protocol(MyDMInstanceOptionalMethodProtocol)]);
 	XCTAssertFalse([object.class conformsToProtocol:@protocol(MyDMSubInstanceOptionalMethodProtocol)]);
@@ -927,7 +927,7 @@
 	
 	XCTAssertFalse([object.class removeInstanceProtocol:@protocol(MyDMInstanceOptionalMethodProtocol) withClass:ProtocolIMPOptionalInstanceClassMethod.class]);
 	
-	XCTAssertTrue([object.class removeInstanceProtocol:@protocol(MyDMInstanceOptionalMethodProtocol) withClass:ProtocolIMPOptionalInstanceMethod.class]);
+	XCTAssertTrue([object.class removeInstanceProtocol:@protocol(MyDMInstanceOptionalMethodProtocol) withClass:InstanceProtocolIMPOptionalClassMethod.class]);
 	
 	
 	XCTAssertFalse([object.class conformsToProtocol:@protocol(MyDMInstanceNoMethodProtocol)]);
@@ -975,7 +975,7 @@
 	XCTAssertFalse([mainObject conformsToProtocol:@protocol(MySubSubDMInstanceNoMethodProtocol)]);
 	
 	
-	XCTAssertTrue([object.class addInstanceProtocol:@protocol(MyDMSubInstanceOptionalMethodProtocol) withClass:ProtocolIMPOptionalInstanceMethod.class]);
+	XCTAssertTrue([object.class addInstanceProtocol:@protocol(MyDMSubInstanceOptionalMethodProtocol) withClass:InstanceProtocolIMPOptionalClassMethod.class]);
 	
 	XCTAssertTrue([object.class conformsToProtocol:@protocol(MyDMInstanceOptionalMethodProtocol)]);
 	XCTAssertTrue([object.class conformsToProtocol:@protocol(MyDMSubInstanceOptionalMethodProtocol)]);
@@ -1061,7 +1061,7 @@
 	XCTAssertFalse([mainObject conformsToProtocol:@protocol(MySubSubDMInstanceNoMethodProtocol)]);
 	
 	
-	XCTAssertTrue([object.class addInstanceProtocol:@protocol(MyDMSubSubInstanceOptionalMethodProtocol) withClass:ProtocolIMPOptionalInstanceMethod.class]);
+	XCTAssertTrue([object.class addInstanceProtocol:@protocol(MyDMSubSubInstanceOptionalMethodProtocol) withClass:InstanceProtocolIMPOptionalClassMethod.class]);
 	
 	XCTAssertTrue([object.class conformsToProtocol:@protocol(MyDMInstanceOptionalMethodProtocol)]);
 	XCTAssertTrue([object.class conformsToProtocol:@protocol(MyDMSubInstanceOptionalMethodProtocol)]);
@@ -1130,7 +1130,7 @@
 {
 	InstanceBaseProtocolTargetObject *object = InstanceBaseProtocolTargetObject.new;
 	InstanceProtocolMainTargetObject *mainObject = InstanceProtocolMainTargetObject.new;
-	//ProtocolIMPRequiredInstanceMethod *target = ProtocolIMPRequiredInstanceMethod.new;
+	//InstanceProtocolIMPRequiredClassMethod *target = InstanceProtocolIMPRequiredClassMethod.new;
 	
 	XCTAssertTrue([object.class enableDynamicMethods]);
 	
@@ -1191,7 +1191,7 @@
 	XCTAssertThrowsSpecificNamed([mainObject.class performSelector:@selector(classMethod)], NSException, NSInvalidArgumentException);
 	
 	
-	XCTAssertFalse([object.class removeInstanceProtocol:@protocol(MyDMInstanceClassRequiredMethodProtocol) withClass: ProtocolIMPRequiredInstanceMethod.class]);
+	XCTAssertFalse([object.class removeInstanceProtocol:@protocol(MyDMInstanceClassRequiredMethodProtocol) withClass: InstanceProtocolIMPRequiredClassMethod.class]);
 	
 	XCTAssertTrue([object.class removeInstanceProtocol:@protocol(MyDMInstanceClassRequiredMethodProtocol) withClass:ProtocolIMPRequiredInstanceClassMethod.class]);
 	
@@ -1395,7 +1395,7 @@
 {
 	InstanceBaseProtocolTargetObject *object = InstanceBaseProtocolTargetObject.new;
 	InstanceProtocolMainTargetObject *mainObject = InstanceProtocolMainTargetObject.new;
-	//ProtocolIMPOptionalInstanceMethod *target = ProtocolIMPRequiredInstanceMethod.new;
+	//InstanceProtocolIMPOptionalClassMethod *target = InstanceProtocolIMPRequiredClassMethod.new;
 	
 	XCTAssertTrue([object.class enableDynamicMethods]);
 	
@@ -1458,7 +1458,7 @@
 	
 	
 	
-	XCTAssertFalse([object.class removeInstanceProtocol:@protocol(MyDMInstanceClassOptionalMethodProtocol) withClass:ProtocolIMPOptionalInstanceMethod.class]);
+	XCTAssertFalse([object.class removeInstanceProtocol:@protocol(MyDMInstanceClassOptionalMethodProtocol) withClass:InstanceProtocolIMPOptionalClassMethod.class]);
 	
 	XCTAssertTrue([object.class removeInstanceProtocol:@protocol(MyDMInstanceClassOptionalMethodProtocol) withClass:ProtocolIMPOptionalInstanceClassMethod.class]);
 	
@@ -1662,7 +1662,7 @@
 	
 	XCTAssertTrue([object.class enableDynamicMethods]);
 	
-	XCTAssertTrue([object.class addInstanceProtocol:@protocol(MyDMInstanceRequiredMethodProtocol) withClass:ProtocolIMPGeneralInstanceMethod.class]);
+	XCTAssertTrue([object.class addInstanceProtocol:@protocol(MyDMInstanceRequiredMethodProtocol) withClass:ProtocolIMPGeneralClassMethod.class]);
 	
 	XCTAssertNotNil([object methodSignatureForSelector:@selector(protocolObjectMethod)]);
 	XCTAssertNotNil([childObject methodSignatureForSelector:@selector(protocolObjectMethod)]);
@@ -1683,7 +1683,7 @@
 	
 	XCTAssertTrue([object.class enableDynamicMethods]);
 	
-	XCTAssertTrue([object.class addInstanceProtocol:@protocol(MyDMInstanceRequiredMethodProtocol) withClass:ProtocolIMPGeneralInstanceMethod.class]);
+	XCTAssertTrue([object.class addInstanceProtocol:@protocol(MyDMInstanceRequiredMethodProtocol) withClass:ProtocolIMPGeneralClassMethod.class]);
 	
 	XCTAssertTrue([object respondsToSelector:@selector(protocolObjectMethod)]);
 	XCTAssertTrue([childObject respondsToSelector:@selector(protocolObjectMethod)]);
@@ -1704,7 +1704,7 @@
 	
 	XCTAssertTrue([object.class enableDynamicMethods]);
 	
-	XCTAssertTrue([object.class addInstanceProtocol:@protocol(MyDMInstanceRequiredMethodProtocol) withClass:ProtocolIMPGeneralInstanceMethod.class]);
+	XCTAssertTrue([object.class addInstanceProtocol:@protocol(MyDMInstanceRequiredMethodProtocol) withClass:ProtocolIMPGeneralClassMethod.class]);
 	
 	XCTAssertTrue([object conformsToProtocol:@protocol(MyDMInstanceRequiredMethodProtocol)]);
 	XCTAssertTrue([childObject conformsToProtocol:@protocol(MyDMInstanceRequiredMethodProtocol)]);
@@ -1726,7 +1726,7 @@
 	
 	XCTAssertTrue([object.class enableDynamicMethods]);
 	
-	XCTAssertTrue([object.class addInstanceProtocol:@protocol(MyDMInstanceRequiredMethodProtocol) withClass:ProtocolIMPGeneralInstanceMethod.class]);
+	XCTAssertTrue([object.class addInstanceProtocol:@protocol(MyDMInstanceRequiredMethodProtocol) withClass:ProtocolIMPGeneralClassMethod.class]);
 	
 	
 	
@@ -1757,12 +1757,12 @@
 	
 	XCTAssertTrue([object.class enableDynamicMethods]);
 	
-	XCTAssertTrue([object.class addInstanceProtocol:nil withClass:ProtocolIMPGeneralInstanceMethod.class]);
+	XCTAssertTrue([object.class addInstanceProtocol:nil withClass:ProtocolIMPGeneralClassMethod.class]);
 	
 	XCTAssertNotNil([object methodSignatureForSelector:@selector(protocolObjectMethod)]);
 	XCTAssertNotNil([childObject methodSignatureForSelector:@selector(protocolObjectMethod)]);
 	
-	XCTAssertTrue([object.class removeInstanceProtocol:nil withClass:ProtocolIMPGeneralInstanceMethod.class]);
+	XCTAssertTrue([object.class removeInstanceProtocol:nil withClass:ProtocolIMPGeneralClassMethod.class]);
 	
 	XCTAssertNil([object methodSignatureForSelector:@selector(protocolObjectMethod)]);
 	XCTAssertNil([childObject methodSignatureForSelector:@selector(protocolObjectMethod)]);
@@ -1777,12 +1777,12 @@
 	
 	XCTAssertTrue([object.class enableDynamicMethods]);
 	
-	XCTAssertTrue([object.class addInstanceProtocol:nil withClass:ProtocolIMPGeneralInstanceMethod.class]);
+	XCTAssertTrue([object.class addInstanceProtocol:nil withClass:ProtocolIMPGeneralClassMethod.class]);
 	
 	XCTAssertTrue([object respondsToSelector:@selector(protocolObjectMethod)]);
 	XCTAssertTrue([childObject respondsToSelector:@selector(protocolObjectMethod)]);
 	
-	XCTAssertTrue([object.class removeInstanceProtocol:nil withClass:ProtocolIMPGeneralInstanceMethod.class]);
+	XCTAssertTrue([object.class removeInstanceProtocol:nil withClass:ProtocolIMPGeneralClassMethod.class]);
 	
 	XCTAssertFalse([object respondsToSelector:@selector(protocolObjectMethod)]);
 	XCTAssertFalse([childObject respondsToSelector:@selector(protocolObjectMethod)]);
@@ -1797,12 +1797,12 @@
 	
 	XCTAssertTrue([object.class enableDynamicMethods]);
 	
-	XCTAssertTrue([object.class addInstanceProtocol:nil withClass:ProtocolIMPGeneralInstanceMethod.class]);
+	XCTAssertTrue([object.class addInstanceProtocol:nil withClass:ProtocolIMPGeneralClassMethod.class]);
 	
 	XCTAssertFalse([object conformsToProtocol:@protocol(MyDMInstanceRequiredMethodProtocol)]);
 	XCTAssertFalse([childObject conformsToProtocol:@protocol(MyDMInstanceRequiredMethodProtocol)]);
 	
-	XCTAssertTrue([object.class removeInstanceProtocol:nil withClass:ProtocolIMPGeneralInstanceMethod.class]);
+	XCTAssertTrue([object.class removeInstanceProtocol:nil withClass:ProtocolIMPGeneralClassMethod.class]);
 	
 	XCTAssertFalse([object conformsToProtocol:@protocol(MyDMInstanceRequiredMethodProtocol)]);
 	XCTAssertFalse([childObject conformsToProtocol:@protocol(MyDMInstanceRequiredMethodProtocol)]);
@@ -1818,7 +1818,7 @@
 	
 	XCTAssertTrue([object.class enableDynamicMethods]);
 	
-	XCTAssertTrue([object.class addInstanceProtocol:@protocol(MyDMInstanceRequiredMethodProtocol) withClass:ProtocolIMPGeneralInstanceMethod.class]);
+	XCTAssertTrue([object.class addInstanceProtocol:@protocol(MyDMInstanceRequiredMethodProtocol) withClass:ProtocolIMPGeneralClassMethod.class]);
 	
 	
 	
@@ -10248,7 +10248,7 @@
 {
 	[InstanceBaseProtocolTargetObject enableDynamicMethods];
 	
-	[InstanceBaseProtocolTargetObject addInstanceProtocol:@protocol(MyDMInstanceOptionalMethodProtocol) withClass:ProtocolIMPOptionalInstanceMethod.class];
+	[InstanceBaseProtocolTargetObject addInstanceProtocol:@protocol(MyDMInstanceOptionalMethodProtocol) withClass:InstanceProtocolIMPOptionalClassMethod.class];
 	
 	XCTAssertTrue([InstanceBaseProtocolTargetObject instancesRespondToSelector:@selector(protocolOptionalObjectMethod)]);
 	XCTAssertFalse([InstanceBaseProtocolTargetObject removeInstanceForwardClass:IMPInstanceMTestObject.class]);

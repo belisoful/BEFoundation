@@ -10,6 +10,8 @@
 #import <Foundation/Foundation.h>
 #import <objc/runtime.h>
 #import "NSPriorityNotification.h"
+#import "NSNotification+ExtraProperties.h"
+#import "NSNotification+MutableUserInfo.h"
 #import "NSObject+GlobalRegistry.h"
 
 @interface GlobalObjectToTest : NSObject <BERegistryProtocol>
@@ -18,6 +20,15 @@
 @implementation GlobalObjectToTest
 @dynamic globalRegistryUUID;
 @dynamic globalRegistryCount;
+@dynamic isGlobalRegistered;
+@end
+
+@interface TaggedObject : NSObject
+@property (nonatomic, assign) NSInteger tag;
+@property (nonatomic, strong) id identifier;
+@end
+
+@implementation TaggedObject
 @end
 
 
@@ -202,21 +213,9 @@
 
 #pragma mark - NSPriorityNotification Instance Method Tests
 
-- (void)testInitWithNameObject {
-	NSPriorityNotification *notification = [NSPriorityNotification notificationWithName:self.testNotificationName
-																				  object:self.testObject
-																				userInfo:nil];
-	
-	XCTAssertNotNil(notification);
-	XCTAssertEqualObjects(notification.name, self.testNotificationName);
-	XCTAssertEqualObjects(notification.object, self.testObject);
-	XCTAssertNil(notification.userInfo);
-	XCTAssertFalse(notification.reverse);
-	XCTAssertNil(notification.postBlock);
-}
 
 - (void)testInitWithNameObjectUserInfo {
-	NSPriorityNotification *notification = [NSPriorityNotification notificationWithName:self.testNotificationName
+	NSPriorityNotification *notification = [NSPriorityNotification.alloc initWithName:self.testNotificationName
 																				  object:self.testObject
 																				userInfo:self.testUserInfo];
 	
@@ -229,7 +228,7 @@
 }
 
 - (void)testInitWithNameObjectUserInfoReverse {
-	NSPriorityNotification *notification = [NSPriorityNotification notificationWithName:self.testNotificationName
+	NSPriorityNotification *notification = [NSPriorityNotification.alloc initWithName:self.testNotificationName
 																				  object:self.testObject
 																				userInfo:self.testUserInfo
 																				 reverse:YES];
@@ -248,7 +247,7 @@
 		blockCalled = YES;
 	};
 	
-	NSPriorityNotification *notification = [NSPriorityNotification notificationWithName:self.testNotificationName
+	NSPriorityNotification *notification = [NSPriorityNotification.alloc initWithName:self.testNotificationName
 																				  object:self.testObject
 																				userInfo:self.testUserInfo
 																			   postBlock:testBlock];
@@ -271,7 +270,7 @@
 		capturedNotification = note;
 	};
 	
-	NSPriorityNotification *notification = [NSPriorityNotification notificationWithName:self.testNotificationName
+	NSPriorityNotification *notification = [NSPriorityNotification.alloc initWithName:self.testNotificationName
 																				  object:self.testObject
 																				userInfo:self.testUserInfo
 																				 reverse:YES
@@ -291,7 +290,7 @@
 
 - (void)testInitWithNilPostBlock {
 	id nilBlock = nil;
-	NSPriorityNotification *notification = [NSPriorityNotification notificationWithName:self.testNotificationName
+	NSPriorityNotification *notification = [NSPriorityNotification.alloc initWithName:self.testNotificationName
 																				  object:self.testObject
 																				userInfo:self.testUserInfo
 																				 reverse:NO
@@ -341,9 +340,12 @@
 {
 	@synchronized (NSObject.globalRegistry) {
 		[NSObject.globalRegistry clearAllRegisteredObjects];
-		GlobalObjectToTest *globalizedObject = GlobalObjectToTest.new;
+		GlobalObjectToTest *globalizedObject1 = GlobalObjectToTest.new;
+		NSString *objUUID1 = [globalizedObject1 registerGlobalInstance];
+		XCTAssertTrue(globalizedObject1.isGlobalRegistered, @"globalizedObject was not registered");
+		
 		NSPriorityNotification *originalNotification = [NSPriorityNotification notificationWithName:self.testNotificationName
-																							 object:globalizedObject
+																							 object:globalizedObject1
 																						   userInfo:self.testUserInfo
 																							reverse:NO];
 		
@@ -351,8 +353,19 @@
 		NSKeyedArchiver *archiver = [[NSKeyedArchiver alloc] initRequiringSecureCoding:NO];
 		[archiver encodeObject:originalNotification forKey:@"notification"];
 		[archiver finishEncoding];
-		NSData *data = [archiver encodedData];
 		
+		XCTAssertEqual([globalizedObject1 unregisterGlobalInstance], BEUnregisterStatus_Unregistered, @"globalizedObject was not registered");
+		// @todo ERROR!!!!    this sometimes returns "BEUnregisterStatus_Decremented" ????
+		
+		GlobalObjectToTest *globalizedObject2 = GlobalObjectToTest.new;
+		globalizedObject2.globalRegistryUUID = objUUID1;
+		NSString *objUUID2 = [globalizedObject2 registerGlobalInstance];
+		
+		XCTAssertEqualObjects(objUUID2, objUUID1, @"global object 1 and global object 2 should have the same ID");
+		XCTAssertNotEqual(globalizedObject1, globalizedObject2, @"global object 1 is the same as global object 2");
+		
+		
+		NSData *data = [archiver encodedData];
 		XCTAssertNotNil(data);
 		XCTAssertEqual(NSObject.globalRegistry.registeredObjectsCount, 1);
 		
@@ -369,7 +382,7 @@
 		// Verify
 		XCTAssertNotNil(decodedNotification);
 		XCTAssertFalse(decodedNotification.reverse);
-		XCTAssertEqual(decodedNotification.object, globalizedObject);
+		XCTAssertEqual(decodedNotification.object, globalizedObject2);
 		[NSObject.globalRegistry clearAllRegisteredObjects];
 	}
 }
@@ -383,6 +396,9 @@
 																						  object:self.testObject
 																						userInfo:self.testUserInfo
 																						 reverse:YES];
+	
+	originalNotification.tag = random();
+	originalNotification.identifier = [NSString stringWithFormat:@"%ld", originalNotification.tag + 1];
 	
 	// Encode
 	NSKeyedArchiver *archiver = [[NSKeyedArchiver alloc] initRequiringSecureCoding:YES];
@@ -409,6 +425,9 @@
 	XCTAssertNil(decodedNotification.object, @"The object is does not conform to GlobalRegistryProtocol so should return nil");
 	XCTAssertEqualObjects(decodedNotification.userInfo, originalNotification.userInfo);
 	XCTAssertEqual(decodedNotification.reverse, originalNotification.reverse);
+	
+	XCTAssertEqual(decodedNotification.tag, originalNotification.tag);
+	XCTAssertEqualObjects(decodedNotification.identifier, originalNotification.identifier);
 }
 
 - (void)testNSSecureCoding_EncodingAndDecodingKeyedWithReverseNo_GlobalObject
@@ -420,6 +439,9 @@
 																							 object:globalizedObject
 																						   userInfo:self.testUserInfo
 																							reverse:NO];
+		
+		originalNotification.tag = random();
+		originalNotification.identifier = [NSString stringWithFormat:@"%ld", originalNotification.tag + 1];
 		
 		// Encode
 		NSKeyedArchiver *archiver = [[NSKeyedArchiver alloc] initRequiringSecureCoding:YES];
@@ -443,6 +465,10 @@
 		XCTAssertNotNil(decodedNotification);
 		XCTAssertFalse(decodedNotification.reverse);
 		XCTAssertEqual(decodedNotification.object, globalizedObject);
+		
+		XCTAssertEqual(decodedNotification.tag, originalNotification.tag);
+		XCTAssertEqualObjects(decodedNotification.identifier, originalNotification.identifier);
+		
 		[NSObject.globalRegistry clearAllRegisteredObjects];
 	}
 }
@@ -451,8 +477,9 @@
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
 
+#if TARGET_OS_OSX  // NSArchiver/NSUnarchiver are macOS-only legacy (non-keyed) archivers
 // Unit test that actually uses NSArchiver to test classForCoder
-- (void)testBEMutableNumber_ClassForCoder_OldMacOS
+- (void)testBEMutableNumber_ClassForKeyedCoder_OldMacOS
 {
 	@synchronized (NSObject.globalRegistry) {
 		[NSObject.globalRegistry clearAllRegisteredObjects];
@@ -461,6 +488,9 @@
 																							 object:globalizedObject
 																						   userInfo:self.testUserInfo
 																							reverse:NO];
+		
+		originalNotification.tag = random();
+		originalNotification.identifier = [NSString stringWithFormat:@"%ld", originalNotification.tag + 1];
 		
 		// Test using NSArchiver (which uses classForCoder)
 		NSData *archivedData = [NSArchiver archivedDataWithRootObject:originalNotification];
@@ -471,6 +501,49 @@
 		
 		XCTAssertNotNil(result, @"Unarchiving should succeed");
 		XCTAssertTrue([result isEqual:originalNotification], @"Unarchived object should equal original");
+		
+		XCTAssertEqual(result.tag, originalNotification.tag);
+		XCTAssertEqualObjects(result.identifier, originalNotification.identifier);
+		
+		XCTAssertTrue([result isKindOfClass:[NSPriorityNotification class]], @"Unarchived object should be NSPriorityNotification");
+		
+		// Verify that classForCoder was used during archiving
+		XCTAssertEqual([result class], [NSPriorityNotification class], @"Result should be NSMutableNumber class");
+	}
+}
+
+// Unit test that actually uses NSArchiver to test classForCoder
+- (void)testBEMutableNumber_ClassForUnkeyedCoder_OldMacOS
+{
+	@synchronized (NSObject.globalRegistry) {
+		[NSObject.globalRegistry clearAllRegisteredObjects];
+		NSDictionary *testObject = @{@"key": @"value"};
+		NSPriorityNotification *originalNotification = [NSPriorityNotification notificationWithName:self.testNotificationName
+																							 object:testObject
+																						   userInfo:self.testUserInfo
+																							reverse:YES];
+		
+		originalNotification.tag = random();
+		originalNotification.identifier = [NSString stringWithFormat:@"%ld", originalNotification.tag + 1];
+		
+		// Test using NSArchiver (which uses classForCoder)
+		NSData *archivedData = [NSArchiver archivedDataWithRootObject:originalNotification];
+		XCTAssertNotNil(archivedData, @"Archiving with NSArchiver should succeed");
+		
+		// Unarchive using NSUnarchiver
+		NSPriorityNotification *result = [NSUnarchiver unarchiveObjectWithData:archivedData];
+		
+		XCTAssertNotNil(result, @"Unarchiving should succeed");
+		
+		XCTAssertEqualObjects(result.name, originalNotification.name);
+		//XCTAssertEqualObject(result.object, originalNotification.object);
+		XCTAssertNil(result.object);
+		XCTAssertEqualObjects(result.userInfo, originalNotification.userInfo);
+		XCTAssertEqual(result.reverse, originalNotification.reverse);
+		
+		XCTAssertEqual(result.tag, originalNotification.tag);
+		XCTAssertEqualObjects(result.identifier, originalNotification.identifier);
+		
 		XCTAssertTrue([result isKindOfClass:[NSPriorityNotification class]], @"Unarchived object should be NSPriorityNotification");
 		
 		// Verify that classForCoder was used during archiving
@@ -478,6 +551,102 @@
 	}
 }
 #pragma clang diagnostic pop
+
+#pragma mark - CopyWithZone
+
+#endif // TARGET_OS_OSX
+- (void)testNotificationCopyWithZone {
+	
+	__block int called = 0;
+	
+	NSDictionary *testUserInfo = @{@"testKey": @"testValue"};
+	NSPriorityNotification *reference = [NSPriorityNotification notificationWithName:self.testNotificationName object:self.testObject userInfo:testUserInfo reverse:YES postBlock:^(NSNotification * _Nonnull notification) {
+		called++;
+	}];
+	reference.tag = random();
+	reference.identifier = [NSString stringWithFormat: @"%ld", reference.tag];
+	
+	NSPriorityNotification *notification = [reference copy];
+	
+	XCTAssertEqualObjects(notification.name, reference.name);
+	XCTAssertEqual(notification.object, reference.object);
+	XCTAssertEqual(notification.userInfo, reference.userInfo);
+	XCTAssertEqual(notification.reverse, reference.reverse);
+	XCTAssertEqual(notification.tag, reference.tag);
+	XCTAssertEqualObjects(notification.identifier, reference.identifier);
+	notification.postBlock(notification);
+	XCTAssertEqual(called, 1);
+}
+
+- (void)testNSSecureCoding_NestedUserInfoRoundTrips {
+	NSDictionary *nested = @{ @"arr": @[@1, @2, @3], @"dict": @{@"k": @"v"}, @"date": [NSDate dateWithTimeIntervalSince1970:1000] };
+	NSPriorityNotification *original = [NSPriorityNotification notificationWithName:@"N" object:nil userInfo:nested];
+
+	NSData *data = [NSKeyedArchiver archivedDataWithRootObject:original requiringSecureCoding:YES error:nil];
+	XCTAssertNotNil(data);
+
+	NSError *error = nil;
+	NSKeyedUnarchiver *unarchiver = [[NSKeyedUnarchiver alloc] initForReadingFromData:data error:&error];
+	XCTAssertNil(error);
+	NSPriorityNotification *decoded = [unarchiver decodeObjectOfClass:[NSPriorityNotification class] forKey:NSKeyedArchiveRootObjectKey];
+	XCTAssertNil(unarchiver.error, @"secure decode of nested userInfo failed: %@", unarchiver.error);
+	XCTAssertEqualObjects(decoded.userInfo, nested);
+}
+
+#pragma mark - supportsSecureCoding
+
+- (void)testSupportsSecureCoding {
+	XCTAssertTrue([NSPriorityNotification supportsSecureCoding]);
+}
+
+#pragma mark - ExtraProperties fallback
+
+- (void)testTagFallsBackToObjectTag {
+	TaggedObject *taggedObject = [[TaggedObject alloc] init];
+	taggedObject.tag = 99;
+	NSPriorityNotification *notification = [NSPriorityNotification notificationWithName:@"N" object:taggedObject];
+	XCTAssertEqual(notification.tag, 99, @"tag should fall back to the object's tag when unset");
+}
+
+- (void)testTagFallsBackToUserInfo {
+	NSPriorityNotification *notification = [NSPriorityNotification notificationWithName:@"N" object:nil userInfo:@{@"tag": @77}];
+	XCTAssertEqual(notification.tag, 77, @"tag should fall back to userInfo[@\"tag\"] when unset and no object tag");
+}
+
+- (void)testExplicitTagOverridesFallback {
+	TaggedObject *taggedObject = [[TaggedObject alloc] init];
+	taggedObject.tag = 99;
+	NSPriorityNotification *notification = [NSPriorityNotification notificationWithName:@"N" object:taggedObject];
+	notification.tag = 5;
+	XCTAssertEqual(notification.tag, 5, @"an explicitly set tag must win over the object fallback");
+}
+
+- (void)testIdentifierFallsBackToObjectIdentifier {
+	TaggedObject *taggedObject = [[TaggedObject alloc] init];
+	taggedObject.identifier = @"oid";
+	NSPriorityNotification *notification = [NSPriorityNotification notificationWithName:@"N" object:taggedObject];
+	XCTAssertEqualObjects(notification.identifier, @"oid", @"identifier should fall back to the object's identifier when unset");
+}
+
+- (void)testIdentifierFallsBackToUserInfo {
+	NSPriorityNotification *notification = [NSPriorityNotification notificationWithName:@"N" object:nil userInfo:@{@"identifier": @"uid"}];
+	XCTAssertEqualObjects(notification.identifier, @"uid", @"identifier should fall back to userInfo[@\"identifier\"] when unset");
+}
+
+#pragma mark - mutableUserInfo
+
+- (void)testMutableUserInfoReturnsMutableDictionary {
+	NSMutableDictionary *mutable = [NSMutableDictionary dictionaryWithObject:@1 forKey:@"k"];
+	NSPriorityNotification *notification = [NSPriorityNotification notificationWithName:@"N" object:nil userInfo:mutable];
+	XCTAssertEqual(notification.mutableUserInfo, mutable);
+	notification.mutableUserInfo[@"k2"] = @2;
+	XCTAssertEqualObjects(notification.userInfo[@"k2"], @2);
+}
+
+- (void)testMutableUserInfoReturnsNilForImmutableDictionary {
+	NSPriorityNotification *notification = [NSPriorityNotification notificationWithName:@"N" object:nil userInfo:@{@"k": @1}];
+	XCTAssertNil(notification.mutableUserInfo, @"mutableUserInfo must be nil when userInfo is not mutable");
+}
 
 #pragma mark - Edge Cases and Error Handling
 

@@ -9,6 +9,9 @@
 #import <Accelerate/Accelerate.h>
 #import "BEMetalHelper.h"
 
+// VLAs with const-sized dimensions are intentional; the folding warning is harmless.
+#pragma clang diagnostic ignored "-Wgnu-folding-constant"
+
 // Forward declaration of the custom function for testing
 vImage_Error vImageConvert_16FtoF(const vImage_Buffer *src,
 								  const vImage_Buffer *dest,
@@ -379,10 +382,12 @@ vImage_Error vImageConvert_16FtoF(const vImage_Buffer *src,
 #pragma mark - imageFromTexture Tests
 
 - (void)testImageFromTexture_NullTexture {
-	NSImage *result = [BEMetalHelper imageFromTexture:nil];
+	id<MTLTexture> nilTexture = nil;
+	BEImage *result = [BEMetalHelper imageFromTexture:nilTexture];
 	XCTAssertNil(result, @"Should return nil for null texture");
 }
 
+#if TARGET_OS_OSX  // a depth-format texture yields nil only on macOS
 - (void)testImageFromTexture_UnsupportedPixelFormat {
 	MTLTextureDescriptor *descriptor = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatDepth32Float
 																						  width:32
@@ -390,9 +395,10 @@ vImage_Error vImageConvert_16FtoF(const vImage_Buffer *src,
 																					  mipmapped:NO];
 	id<MTLTexture> texture = [self.device newTextureWithDescriptor:descriptor];
 	
-	NSImage *result = [BEMetalHelper imageFromTexture:texture];
+	BEImage *result = [BEMetalHelper imageFromTexture:texture];
 	XCTAssertNil(result, @"Should return nil for unsupported pixel format");
 }
+#endif // TARGET_OS_OSX
 
 - (void)testImageFromTexture_BGRA8Unorm {
 	MTLTextureDescriptor *descriptor = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatBGRA8Unorm
@@ -414,7 +420,7 @@ vImage_Error vImageConvert_16FtoF(const vImage_Buffer *src,
 				 withBytes:testData
 			   bytesPerRow:16];
 	
-	NSImage *result = [BEMetalHelper imageFromTexture:texture];
+	BEImage *result = [BEMetalHelper imageFromTexture:texture];
 	XCTAssertNotNil(result, @"Should create image from BGRA8Unorm texture");
 	XCTAssertEqual(result.size.width, 4, @"Image width should match texture width");
 	XCTAssertEqual(result.size.height, 4, @"Image height should match texture height");
@@ -440,7 +446,7 @@ vImage_Error vImageConvert_16FtoF(const vImage_Buffer *src,
 				 withBytes:testData
 			   bytesPerRow:16];
 	
-	NSImage *result = [BEMetalHelper imageFromTexture:texture];
+	BEImage *result = [BEMetalHelper imageFromTexture:texture];
 	XCTAssertNotNil(result, @"Should create image from RGBA8Unorm texture");
 }
 
@@ -464,7 +470,7 @@ vImage_Error vImageConvert_16FtoF(const vImage_Buffer *src,
 				 withBytes:testData
 			   bytesPerRow:64];
 	
-	NSImage *result = [BEMetalHelper imageFromTexture:texture];
+	BEImage *result = [BEMetalHelper imageFromTexture:texture];
 	XCTAssertNotNil(result, @"Should create image from RGBA32Float texture");
 }
 
@@ -488,7 +494,7 @@ vImage_Error vImageConvert_16FtoF(const vImage_Buffer *src,
 				 withBytes:testData
 			   bytesPerRow:4];
 	
-	NSImage *result = [BEMetalHelper imageFromTexture:texture];
+	BEImage *result = [BEMetalHelper imageFromTexture:texture];
 	XCTAssertNotNil(result, @"Should create image from R8Unorm texture");
 }
 
@@ -512,7 +518,7 @@ vImage_Error vImageConvert_16FtoF(const vImage_Buffer *src,
 				 withBytes:testData
 			   bytesPerRow:8];
 	
-	NSImage *result = [BEMetalHelper imageFromTexture:texture];
+	BEImage *result = [BEMetalHelper imageFromTexture:texture];
 	XCTAssertNotNil(result, @"Should create image from R16Float texture");
 }
 
@@ -536,12 +542,13 @@ vImage_Error vImageConvert_16FtoF(const vImage_Buffer *src,
 				 withBytes:testData
 			   bytesPerRow:16];
 	
-	NSImage *result = [BEMetalHelper imageFromTexture:texture];
+	BEImage *result = [BEMetalHelper imageFromTexture:texture];
 	XCTAssertNotNil(result, @"Should create image from R32Float texture");
 }
 
 #pragma mark - Error Handling Tests
 
+#if TARGET_OS_OSX  // 16384x16384 alloc OOM-crashes the iOS simulator; macOS-only
 - (void)testImageFromTexture_MemoryAllocationFailure {
 	// Create a texture with extremely large dimensions to potentially cause malloc failure
 	// Note: This test might not always fail depending on available memory
@@ -554,11 +561,12 @@ vImage_Error vImageConvert_16FtoF(const vImage_Buffer *src,
 	// This might fail to create the texture itself, which is also a valid test
 	id<MTLTexture> texture = [self.device newTextureWithDescriptor:descriptor];
 	if (texture) {
-		NSImage *result = [BEMetalHelper imageFromTexture:texture];
+		__unused BEImage *result = [BEMetalHelper imageFromTexture:texture];
 		// The result could be nil if memory allocation fails inside the method
 		// We don't assert anything specific here as it depends on available memory
 	}
 }
+#endif // TARGET_OS_OSX
 
 - (void)testImageFromTexture_CGContextCreationFailure {
 	// This is difficult to test directly as CGBitmapContextCreate failure
@@ -573,7 +581,7 @@ vImage_Error vImageConvert_16FtoF(const vImage_Buffer *src,
 	descriptor.usage = MTLTextureUsageRenderTarget | MTLTextureUsageShaderRead;
 	id<MTLTexture> texture = [self.device newTextureWithDescriptor:descriptor];
 	
-	NSImage *result = [BEMetalHelper imageFromTexture:texture];
+	__unused BEImage *result = [BEMetalHelper imageFromTexture:texture];
 	// Should either succeed or fail gracefully
 	// XCTAssertNotNil or XCTAssertNil would both be valid outcomes
 }
@@ -590,7 +598,7 @@ vImage_Error vImageConvert_16FtoF(const vImage_Buffer *src,
 	id<MTLTexture> texture = [self.device newTextureWithDescriptor:descriptor];
 	
 	if (texture) {
-		NSImage *result = [BEMetalHelper imageFromTexture:texture];
+		BEImage *result = [BEMetalHelper imageFromTexture:texture];
 		// If texture creation succeeded, the method should handle it gracefully
 	}
 }
@@ -606,7 +614,7 @@ vImage_Error vImageConvert_16FtoF(const vImage_Buffer *src,
 	id<MTLTexture> texture = [self.device newTextureWithDescriptor:descriptor];
 	
 	if (texture) {
-		NSImage *result = [BEMetalHelper imageFromTexture:texture];
+		BEImage *result = [BEMetalHelper imageFromTexture:texture];
 		if (result) {
 			XCTAssertEqual(result.size.width, 1024, @"Image width should match texture width");
 			XCTAssertEqual(result.size.height, 1024, @"Image height should match texture height");

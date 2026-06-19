@@ -4,23 +4,24 @@
  */
 
 #import <XCTest/XCTest.h>
+#import <Foundation/Foundation.h>
 #import "NSMutableNumber.h"
 #import "NSMockNumber.h"
 
-@interface MNTests : XCTestCase
+@interface NSMutableNumberTests : XCTestCase
 
 @end
 
-@implementation MNTests
+@implementation NSMutableNumberTests
 
 - (void)setUp {
-    [super setUp];
-    // Put setup code here. This method is called before the invocation of each test method in the class.
+	[super setUp];
+	// Put setup code here. This method is called before the invocation of each test method in the class.
 }
 
 - (void)tearDown {
-    // Put teardown code here. This method is called after the invocation of each test method in the class.
-    [super tearDown];
+	// Put teardown code here. This method is called after the invocation of each test method in the class.
+	[super tearDown];
 }
 
 - (void) testIncDec
@@ -306,15 +307,41 @@
 
 - (void)testBEMutableNumber_InitWithCoder
 {
-	NSMutableNumber	*reference = [NSMutableNumber numberWithDouble:M_PI];
+	NSMutableNumber *reference = [NSMutableNumber numberWithDouble:M_PI];
+
 	XCTAssertTrue([NSMutableNumber supportsSecureCoding]);
-	
-	NSData *archivedData = [NSKeyedArchiver archivedDataWithRootObject:reference requiringSecureCoding:YES error:nil];
-	XCTAssertNotNil(archivedData);
-	NSMutableNumber *result = [NSKeyedUnarchiver unarchivedObjectOfClass:NSMutableNumber.class fromData:archivedData error:nil];
-	
-	XCTAssertNotNil(result);
-	XCTAssertTrue([result isEqual:reference]);
+
+	NSError *error = nil;
+
+	// Archive the object
+	NSData *archivedData =
+		[NSKeyedArchiver archivedDataWithRootObject:reference
+								 requiringSecureCoding:YES
+												 error:&error];
+
+	XCTAssertNotNil(archivedData, @"Archiving should produce data");
+	XCTAssertNil(error, @"Archiving should not produce an error");
+
+	// Register NSMutableNumber so iOS secure coding will allow it
+	[NSKeyedUnarchiver setClass:[NSMutableNumber class] forClassName:@"NSMutableNumber"];
+
+	// Allowed classes set
+	NSSet *allowedClasses = [NSSet setWithObjects:
+							 [NSMutableNumber class],
+							 [NSNumber class],
+							 [NSValue class],
+							 nil];
+
+	// Unarchive the object
+	NSMutableNumber *result =
+		[NSKeyedUnarchiver unarchivedObjectOfClasses:allowedClasses
+											fromData:archivedData
+											   error:&error];
+
+	XCTAssertNil(error, @"Unarchiving should not produce an error");
+	XCTAssertNotNil(result, @"Result should not be nil");
+	XCTAssertTrue([result isEqual:reference], @"Unarchived object should equal original");
+	XCTAssertTrue([result isKindOfClass:[NSMutableNumber class]], @"Result should be NSMutableNumber");
 }
 
 - (void)testBEMutableNumber_InitWithCoder_BadParameter
@@ -326,28 +353,75 @@
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
+#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
 
 // Unit test that actually uses NSArchiver to test classForCoder
 - (void)testBEMutableNumber_ClassForCoder_OldMacOS
 {
+	#if TARGET_OS_IOS || TARGET_OS_TV
+	{
+		XCTSkip(@"NSArchiver not implemented on iOS and iTV");
+		return;
+	}
+	// NSArchiver test only for macOS
+	#endif
+
+	#if TARGET_OS_MAC
+
+	Class NSArchiverClass = NSClassFromString(@"NSArchiver");
+	Class NSUnarchiverClass = NSClassFromString(@"NSUnarchiver");
+
+	if (!NSArchiverClass || !NSUnarchiverClass)
+	{
+		XCTSkip(@"Skipping: NSArchiver / NSUnarchiver not available on this OS/SDK");
+		return;
+	}
+
+	SEL archiveSel = @selector(archivedDataWithRootObject:);
+	SEL unarchiveSel = @selector(unarchiveObjectWithData:);
+
+	if (![NSArchiverClass respondsToSelector:archiveSel] ||
+		![NSUnarchiverClass respondsToSelector:unarchiveSel])
+	{
+		XCTSkip(@"Skipping: NSArchiver selectors not available");
+		return;
+	}
+
 	NSMutableNumber *reference = [NSMutableNumber numberWithDouble:M_PI];
-	
-	// Test using NSArchiver (which uses classForCoder)
-	NSData *archivedData = [NSArchiver archivedDataWithRootObject:reference];
+
+	// Call NSArchiver
+	NSData *archivedData =
+		[NSArchiverClass performSelector:archiveSel
+							  withObject:reference];
+
 	XCTAssertNotNil(archivedData, @"Archiving with NSArchiver should succeed");
-	
-	// Unarchive using NSUnarchiver
-	NSMutableNumber *result = [NSUnarchiver unarchiveObjectWithData:archivedData];
-	
+
+	// Call NSUnarchiver
+	id result =
+		[NSUnarchiverClass performSelector:unarchiveSel
+								withObject:archivedData];
+
 	XCTAssertNotNil(result, @"Unarchiving should succeed");
-	XCTAssertTrue([result isEqual:reference], @"Unarchived object should equal original");
-	XCTAssertTrue([result isKindOfClass:[NSMutableNumber class]], @"Unarchived object should be NSMutableNumber");
+	XCTAssertTrue([result isEqual:reference],
+				  @"Unarchived object should equal original");
 	
-	// Verify that classForCoder was used during archiving
-	XCTAssertEqual([result class], [NSMutableNumber class], @"Result should be NSMutableNumber class");
+	XCTAssertTrue([result isKindOfClass:[NSNumber class]],
+				  @"Unarchived object should not be NSNumber");
+
+	XCTAssertTrue([result isKindOfClass:[NSMutableNumber class]],
+				  @"Unarchived object should be NSMutableNumber");
+	
+	// Verify classForCoder behavior
+	XCTAssertEqual([result class],
+				   [NSMutableNumber class],
+				   @"Result should be NSMutableNumber class");
+	#endif
 }
 
 #pragma clang diagnostic pop
+
+
+
 
 - (void) testIsKindOfClass
 {
@@ -412,13 +486,10 @@
 	XCTAssertEqual([@(0) compare:@(NAN)], NSOrderedDescending);
 	XCTAssertEqual([@(-1) compare:@(NAN)], NSOrderedAscending);
 	
-	XCTAssertEqual(((NSInteger)INFINITY), 0);
-	XCTAssertEqual(((NSInteger)-INFINITY), 0);
-	XCTAssertEqual(((NSUInteger)INFINITY), 0);
-	XCTAssertEqual(((NSInteger)NAN), 0);
-	
-	
-	
+	// (Raw C casts of INFINITY/NAN to integer types are undefined behavior whose result
+	// varies with compiler mode — e.g. plain vs ASan codegen — so they are not asserted here.
+	// The compare:-based assertions above cover the class's defined infinity/NaN behavior.)
+
 	leftNumber = [NSMutableNumber numberWithInteger:-10];
 	
 	XCTAssertEqual([leftNumber compare:[NSMutableNumber numberWithInteger:-11]], NSOrderedDescending);
@@ -528,6 +599,13 @@
 	XCTAssertEqual([@(-0.0) compare:@(NAN)], NSOrderedAscending);
 	XCTAssertEqual([@(-0.1) compare:@(NAN)], NSOrderedAscending);
 	XCTAssertEqual([@(0.0) compare:@(-0.0)], NSOrderedSame);
+	
+	XCTAssertEqual(NSMutableNumber.infinity.integerValue, @(INFINITY).integerValue);
+	XCTAssertEqual(NSMutableNumber.minusInfinity.integerValue, @(-INFINITY).integerValue);
+	XCTAssertEqual(NSMutableNumber.infinity.unsignedIntegerValue, @(INFINITY).unsignedIntegerValue);
+	XCTAssertEqual(NSMutableNumber.minusInfinity.unsignedIntegerValue, @(-INFINITY).unsignedIntegerValue);
+	XCTAssertEqual(NSMutableNumber.notANumber.integerValue, @(NAN).integerValue);
+	XCTAssertEqual(NSMutableNumber.notANumber.unsignedIntegerValue, @(NAN).unsignedIntegerValue);
 	
 	
 	leftNumber = [NSMutableNumber numberWithDouble:-10.5];
@@ -1602,7 +1680,7 @@
 			NSNumber * n = [[NSNumber alloc] initWithUnsignedInteger:1];
 			n = nil;
 		}
-    }];
+	}];
 }
 
 - (void) testCreateM
@@ -2480,6 +2558,46 @@
 	XCTAssertFalse([NSNumber numberWithDouble:0].isNegativeInfinity);
 }
 
+- (void)testNSMutableNumber_addOne_DoublePreservesTypeAndPrecision {
+	NSMutableNumber *n = [NSMutableNumber numberWithDouble:0.1];
+	[n addOne];
+	XCTAssertEqual(strcmp(n.objCType, @encode(double)), 0, @"addOne must keep a double a double, not truncate to float");
+	XCTAssertEqual(n.doubleValue, 1.1, @"addOne on 0.1 must equal 1.1 at double precision");
+}
 
+- (void)testNSMutableNumber_minusOne_DoublePreservesTypeAndPrecision {
+	NSMutableNumber *n = [NSMutableNumber numberWithDouble:0.1];
+	[n minusOne];
+	XCTAssertEqual(strcmp(n.objCType, @encode(double)), 0, @"minusOne must keep a double a double, not truncate to float");
+	XCTAssertEqual(n.doubleValue, 0.1 - 1.0, @"minusOne on 0.1 must equal -0.9 at double precision");
+}
+
+// NSMockNumber preserves objCType 'C', exercising the NSNumber unsigned-char branch with a value
+// above 127 — where the prior initWithChar: would wrap to a negative signed char.
+- (void)testNSNumber_plusOne_UnsignedCharAboveSignedRange {
+	NSNumber *n = [NSMockNumber numberWithUnsignedChar:(unsigned char)200];
+	XCTAssertEqual(n.plusOne.intValue, 201, @"unsigned char 200 + 1 must be 201, not a signed-char wrap to -55");
+}
+
+- (void)testNSNumber_subtractOne_UnsignedCharAboveSignedRange {
+	NSNumber *n = [NSMockNumber numberWithUnsignedChar:(unsigned char)200];
+	XCTAssertEqual(n.subtractOne.intValue, 199, @"unsigned char 200 - 1 must be 199, not a signed-char wrap");
+}
+
+// compare: classifies the operand's encoding. A BOOL operand is signed; an unrecognized encoding
+// is unsupported and, per the documented contract, compares as NSOrderedDescending.
+- (void)testCompare_BoolOperandComparesAsSigned {
+	NSMutableNumber *one = [NSMutableNumber numberWithInt:1];
+	XCTAssertEqual([one compare:[NSMockNumber numberWithBool:YES]], NSOrderedSame);
+	XCTAssertEqual([one compare:[NSMockNumber numberWithBool:NO]], NSOrderedDescending);
+}
+
+- (void)testCompare_UnrecognizedEncoding_ReturnsDescending {
+	NSMockNumber *bogus = [NSMockNumber numberWithInt:1];
+	bogus.typeEncoding = "v"; // not a recognized numeric @encode
+	NSMutableNumber *one = [NSMutableNumber numberWithInt:1];
+	XCTAssertEqual([one compare:bogus], NSOrderedDescending,
+				   @"Unsupported operand encoding must compare as NSOrderedDescending");
+}
 
 @end
