@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 740 408" font-family="-apple-system, system-ui, 'Helvetica Neue', Arial, sans-serif">
+  <defs>
+    <marker id="ahwc" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#6E6E73"/>
+    </marker>
+  </defs>
+  <rect x="1" y="1" width="738" height="406" rx="14" fill="#FCFCFE" stroke="#D2D2D7"/>
+  <text x="28" y="40" font-size="20" font-weight="700" fill="#1D1D1F">Window controller relationships</text>
+  <text x="28" y="62" font-size="13" fill="#6E6E73">The shared manager tracks controllers; closing a parent closes its children recursively.</text>
+
+  <!-- manager -->
+  <rect x="430" y="92" width="278" height="58" rx="11" fill="#EFEAFB" stroke="#BF5AF2"/>
+  <text x="569" y="118" font-size="13.5" font-weight="700" fill="#8A2BE2" text-anchor="middle">BEWindowControllerManager</text>
+  <text x="569" y="137" font-size="11.5" fill="#6E6E73" text-anchor="middle">shared — tracks every controller</text>
+
+  <!-- parent -->
+  <rect x="60" y="100" width="220" height="50" rx="10" fill="#E9F1FF" stroke="#0A84FF"/>
+  <text x="170" y="123" font-size="13" font-weight="700" fill="#0A5FCC" text-anchor="middle">Parent BEWindowController</text>
+  <text x="170" y="140" font-size="11" fill="#6E6E73" text-anchor="middle">isPrimaryWindowController = YES</text>
+
+  <!-- children -->
+  <rect x="60" y="196" width="220" height="46" rx="10" fill="#FFFFFF" stroke="#C7C7CC"/>
+  <text x="170" y="223" font-size="12.5" font-weight="600" fill="#1D1D1F" text-anchor="middle">Child controller — Inspector</text>
+  <rect x="60" y="256" width="220" height="46" rx="10" fill="#FFFFFF" stroke="#C7C7CC"/>
+  <text x="170" y="283" font-size="12.5" font-weight="600" fill="#1D1D1F" text-anchor="middle">Child controller — Settings</text>
+
+  <!-- grandchild -->
+  <rect x="320" y="256" width="200" height="46" rx="10" fill="#FFFFFF" stroke="#C7C7CC"/>
+  <text x="420" y="283" font-size="12.5" font-weight="600" fill="#1D1D1F" text-anchor="middle">Grandchild — Sheet</text>
+
+  <!-- parent->child edges -->
+  <path d="M120,150 L120,196" stroke="#6E6E73" stroke-width="1.6" marker-end="url(#ahwc)"/>
+  <path d="M120,242 L120,256" stroke="#6E6E73" stroke-width="1.6" marker-end="url(#ahwc)"/>
+  <path d="M280,279 L320,279" stroke="#6E6E73" stroke-width="1.6" marker-end="url(#ahwc)"/>
+  <text x="128" y="180" font-size="10.5" fill="#8E8E93">addWindowController:</text>
+
+  <!-- registration edges (dashed to manager) -->
+  <path d="M280,120 C360,120 360,118 430,118" fill="none" stroke="#BF5AF2" stroke-width="1.4" stroke-dasharray="5 3" marker-end="url(#ahwc)"/>
+  <text x="355" y="110" font-size="10.5" fill="#8A2BE2" text-anchor="middle">registers on windowDidLoad</text>
+
+  <!-- note -->
+  <rect x="60" y="322" width="648" height="70" rx="10" fill="#FFFFFF" stroke="#C7C7CC"/>
+  <text x="78" y="346" font-size="12.5" font-weight="700" fill="#1D1D1F">On close</text>
+  <text x="78" y="368" font-size="11.5" fill="#6E6E73">Closing the parent closes Inspector, Settings, and the Sheet beneath it.</text>
+  <text x="78" y="385" font-size="11.5" fill="#6E6E73">BEWindowDidLoadNotification fires when each window loads.</text>
+</svg>

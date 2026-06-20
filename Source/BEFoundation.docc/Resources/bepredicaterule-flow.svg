@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 740 430" font-family="-apple-system, system-ui, 'Helvetica Neue', Arial, sans-serif">
+  <defs>
+    <marker id="ahp" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#6E6E73"/>
+    </marker>
+  </defs>
+  <rect x="1" y="1" width="738" height="428" rx="14" fill="#FCFCFE" stroke="#D2D2D7"/>
+  <text x="28" y="40" font-size="20" font-weight="700" fill="#1D1D1F">Rule evaluation</text>
+  <text x="28" y="62" font-size="13" fill="#6E6E73">Rules run in ascending priority order. The first match with a non-N/A outcome wins.</text>
+
+  <rect x="270" y="82" width="200" height="38" rx="19" fill="#1D1D1F"/>
+  <text x="370" y="106" font-size="13" font-weight="600" fill="#FFFFFF" text-anchor="middle">ruleOutcomeWithObject:</text>
+
+  <!-- rule 1 -->
+  <rect x="40" y="142" width="420" height="52" rx="10" fill="#FFFFFF" stroke="#C7C7CC"/>
+  <text x="60" y="166" font-size="12.5" font-weight="700" fill="#0A5FCC">priority 0</text>
+  <text x="150" y="166" font-size="13" font-weight="600" fill="#1D1D1F">predicate matches &amp; outcome ≠ N/A?</text>
+  <text x="150" y="184" font-size="11.5" fill="#6E6E73">e.g. age ≥ 21 → Accept</text>
+  <rect x="500" y="148" width="200" height="40" rx="10" fill="#E8F8EE" stroke="#34C759"/>
+  <text x="600" y="172" font-size="13" font-weight="700" fill="#137A37" text-anchor="middle">Accept</text>
+
+  <!-- rule 2 -->
+  <rect x="40" y="218" width="420" height="52" rx="10" fill="#FFFFFF" stroke="#C7C7CC"/>
+  <text x="60" y="242" font-size="12.5" font-weight="700" fill="#0A5FCC">priority 5</text>
+  <text x="150" y="242" font-size="13" font-weight="600" fill="#1D1D1F">predicate matches &amp; outcome ≠ N/A?</text>
+  <text x="150" y="260" font-size="11.5" fill="#6E6E73">e.g. on blocklist → Reject</text>
+  <rect x="500" y="224" width="200" height="40" rx="10" fill="#FDECEA" stroke="#FF453A"/>
+  <text x="600" y="248" font-size="13" font-weight="700" fill="#C7261C" text-anchor="middle">Reject</text>
+
+  <!-- rule 3 -->
+  <rect x="40" y="294" width="420" height="52" rx="10" fill="#FFFFFF" stroke="#C7C7CC"/>
+  <text x="60" y="318" font-size="12.5" font-weight="700" fill="#0A5FCC">priority 10</text>
+  <text x="150" y="318" font-size="13" font-weight="600" fill="#1D1D1F">predicate matches &amp; outcome ≠ N/A?</text>
+  <text x="150" y="336" font-size="11.5" fill="#6E6E73">further rules…</text>
+  <rect x="500" y="300" width="200" height="40" rx="10" fill="#E8F8EE" stroke="#34C759"/>
+  <text x="600" y="324" font-size="13" font-weight="700" fill="#137A37" text-anchor="middle">that outcome</text>
+
+  <!-- none -->
+  <rect x="220" y="372" width="300" height="42" rx="10" fill="#F0F0F2" stroke="#8E8E93"/>
+  <text x="370" y="398" font-size="13" font-weight="600" fill="#48484A" text-anchor="middle">no decisive match — N/A</text>
+
+  <!-- down arrows -->
+  <path d="M250,120 L250,142" stroke="#6E6E73" stroke-width="1.6" marker-end="url(#ahp)"/>
+  <path d="M250,194 L250,218" stroke="#6E6E73" stroke-width="1.6" marker-end="url(#ahp)"/>
+  <path d="M250,270 L250,294" stroke="#6E6E73" stroke-width="1.6" marker-end="url(#ahp)"/>
+  <path d="M250,346 L250,372" stroke="#6E6E73" stroke-width="1.6" marker-end="url(#ahp)"/>
+  <text x="260" y="214" font-size="10.5" fill="#8E8E93">no / N/A</text>
+  <text x="260" y="290" font-size="10.5" fill="#8E8E93">no / N/A</text>
+  <text x="260" y="366" font-size="10.5" fill="#8E8E93">no / N/A</text>
+
+  <!-- yes arrows -->
+  <path d="M460,168 L500,168" stroke="#34C759" stroke-width="1.8" marker-end="url(#ahp)"/>
+  <path d="M460,244 L500,244" stroke="#FF453A" stroke-width="1.8" marker-end="url(#ahp)"/>
+  <path d="M460,320 L500,320" stroke="#34C759" stroke-width="1.8" marker-end="url(#ahp)"/>
+  <text x="468" y="162" font-size="10.5" fill="#137A37">yes</text>
+  <text x="468" y="238" font-size="10.5" fill="#C7261C">yes</text>
+  <text x="468" y="314" font-size="10.5" fill="#137A37">yes</text>
+</svg>

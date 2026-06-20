@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 740 500" font-family="-apple-system, system-ui, 'Helvetica Neue', Arial, sans-serif">
+  <defs>
+    <marker id="ah5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#6E6E73"/>
+    </marker>
+  </defs>
+  <rect x="1" y="1" width="738" height="498" rx="14" fill="#FCFCFE" stroke="#D2D2D7"/>
+  <text x="28" y="40" font-size="20" font-weight="700" fill="#1D1D1F">URL resolution tiers</text>
+  <text x="28" y="62" font-size="13" fill="#6E6E73">A path resolves to a security-scoped URL by trying four tiers in order.</text>
+
+  <rect x="150" y="82" width="200" height="38" rx="19" fill="#1D1D1F"/>
+  <text x="250" y="106" font-size="13" font-weight="600" fill="#FFFFFF" text-anchor="middle">absolute path string</text>
+
+  <!-- tiers -->
+  <g>
+    <rect x="40" y="142" width="420" height="52" rx="10" fill="#FFFFFF" stroke="#C7C7CC"/>
+    <text x="60" y="166" font-size="13" font-weight="700" fill="#0A5FCC">Tier 1</text>
+    <text x="124" y="166" font-size="13" font-weight="600" fill="#1D1D1F">Direct bookmark match</text>
+    <text x="124" y="184" font-size="11.5" fill="#6E6E73">catalog keyed by path → entry.url</text>
+    <rect x="500" y="148" width="200" height="40" rx="10" fill="#E8F8EE" stroke="#34C759"/>
+    <text x="600" y="172" font-size="13" font-weight="600" fill="#137A37" text-anchor="middle">resolved URL</text>
+  </g>
+  <g>
+    <rect x="40" y="218" width="420" height="52" rx="10" fill="#FFFFFF" stroke="#C7C7CC"/>
+    <text x="60" y="242" font-size="13" font-weight="700" fill="#0A5FCC">Tier 2</text>
+    <text x="124" y="242" font-size="13" font-weight="600" fill="#1D1D1F">Active reference counts</text>
+    <text x="124" y="260" font-size="11.5" fill="#6E6E73">already-accessing URL in refCounts</text>
+    <rect x="500" y="224" width="200" height="40" rx="10" fill="#E8F8EE" stroke="#34C759"/>
+    <text x="600" y="248" font-size="13" font-weight="600" fill="#137A37" text-anchor="middle">member URL</text>
+  </g>
+  <g>
+    <rect x="40" y="294" width="420" height="52" rx="10" fill="#FFFFFF" stroke="#C7C7CC"/>
+    <text x="60" y="318" font-size="13" font-weight="700" fill="#0A5FCC">Tier 3</text>
+    <text x="124" y="318" font-size="13" font-weight="600" fill="#1D1D1F">Directory containment</text>
+    <text x="124" y="336" font-size="11.5" fill="#6E6E73">path lies inside a bookmarked directory</text>
+    <rect x="500" y="300" width="200" height="40" rx="10" fill="#E8F8EE" stroke="#34C759"/>
+    <text x="600" y="324" font-size="13" font-weight="600" fill="#137A37" text-anchor="middle">dir URL + relative path</text>
+  </g>
+  <g>
+    <rect x="40" y="370" width="420" height="52" rx="10" fill="#FFFFFF" stroke="#C7C7CC"/>
+    <text x="60" y="394" font-size="13" font-weight="700" fill="#0A5FCC">Tier 4</text>
+    <text x="124" y="394" font-size="13" font-weight="600" fill="#1D1D1F">Filename fallback</text>
+    <text x="124" y="412" font-size="11.5" fill="#6E6E73">same last path component in any bookmarked dir</text>
+    <rect x="500" y="376" width="200" height="40" rx="10" fill="#E8F8EE" stroke="#34C759"/>
+    <text x="600" y="400" font-size="13" font-weight="600" fill="#137A37" text-anchor="middle">matched file URL</text>
+  </g>
+
+  <rect x="220" y="446" width="300" height="40" rx="10" fill="#F0F0F2" stroke="#8E8E93"/>
+  <text x="370" y="471" font-size="13" font-weight="600" fill="#48484A" text-anchor="middle">no match — returns nil</text>
+
+  <!-- down arrows (miss) -->
+  <path d="M250,120 L250,142" stroke="#6E6E73" stroke-width="1.6" marker-end="url(#ah5)"/>
+  <path d="M250,194 L250,218" stroke="#6E6E73" stroke-width="1.6" marker-end="url(#ah5)"/>
+  <path d="M250,270 L250,294" stroke="#6E6E73" stroke-width="1.6" marker-end="url(#ah5)"/>
+  <path d="M250,346 L250,370" stroke="#6E6E73" stroke-width="1.6" marker-end="url(#ah5)"/>
+  <path d="M250,422 L250,446" stroke="#6E6E73" stroke-width="1.6" marker-end="url(#ah5)"/>
+  <text x="260" y="214" font-size="10.5" fill="#8E8E93">miss</text>
+  <text x="260" y="290" font-size="10.5" fill="#8E8E93">miss</text>
+  <text x="260" y="366" font-size="10.5" fill="#8E8E93">miss</text>
+  <text x="260" y="442" font-size="10.5" fill="#8E8E93">miss</text>
+
+  <!-- hit arrows -->
+  <path d="M460,168 L500,168" stroke="#34C759" stroke-width="1.8" marker-end="url(#ah5)"/>
+  <path d="M460,244 L500,244" stroke="#34C759" stroke-width="1.8" marker-end="url(#ah5)"/>
+  <path d="M460,320 L500,320" stroke="#34C759" stroke-width="1.8" marker-end="url(#ah5)"/>
+  <path d="M460,396 L500,396" stroke="#34C759" stroke-width="1.8" marker-end="url(#ah5)"/>
+</svg>

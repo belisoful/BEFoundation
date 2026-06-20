@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 740 360" font-family="-apple-system, system-ui, 'Helvetica Neue', Arial, sans-serif">
+  <defs>
+    <marker id="ah6" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#98989D"/>
+    </marker>
+  </defs>
+  <rect x="1" y="1" width="738" height="358" rx="14" fill="#131316" stroke="#3A3A3C"/>
+  <text x="28" y="40" font-size="20" font-weight="700" fill="#F5F5F7">Bookmark lifecycle</text>
+  <text x="28" y="62" font-size="13" fill="#98989D">A bookmarked URL is created, persisted, accessed, and refreshed when it goes stale.</text>
+
+  <!-- top row -->
+  <rect x="36" y="96" width="180" height="58" rx="11" fill="#0A2A4D" stroke="#0A84FF"/>
+  <text x="126" y="120" font-size="14" font-weight="700" fill="#6FB6FF" text-anchor="middle">Create</text>
+  <text x="126" y="139" font-size="11.5" fill="#6FB6FF" text-anchor="middle">bookmarkData from URL</text>
+
+  <rect x="280" y="96" width="180" height="58" rx="11" fill="#0A2A4D" stroke="#0A84FF"/>
+  <text x="370" y="120" font-size="14" font-weight="700" fill="#6FB6FF" text-anchor="middle">Persist</text>
+  <text x="370" y="139" font-size="11.5" fill="#6FB6FF" text-anchor="middle">catalog + disk archive</text>
+
+  <rect x="524" y="96" width="180" height="58" rx="11" fill="#0A2A4D" stroke="#0A84FF"/>
+  <text x="614" y="120" font-size="14" font-weight="700" fill="#6FB6FF" text-anchor="middle">Access</text>
+  <text x="614" y="139" font-size="11.5" fill="#6FB6FF" text-anchor="middle">startAccessing, ref-counted</text>
+
+  <path d="M216,125 L280,125" stroke="#98989D" stroke-width="1.8" marker-end="url(#ah6)"/>
+  <path d="M460,125 L524,125" stroke="#98989D" stroke-width="1.8" marker-end="url(#ah6)"/>
+
+  <!-- stale decision -->
+  <path d="M614,154 L614,196" stroke="#98989D" stroke-width="1.6" marker-end="url(#ah6)"/>
+  <rect x="494" y="196" width="240" height="56" rx="11" fill="#232327" stroke="#48484A"/>
+  <text x="614" y="220" font-size="13" font-weight="600" fill="#F5F5F7" text-anchor="middle">Stale on resolve?</text>
+  <text x="614" y="239" font-size="11.5" fill="#98989D" text-anchor="middle">the resource moved or changed</text>
+
+  <!-- no -->
+  <text x="724" y="222" font-size="11" fill="#5DD27A" text-anchor="end">no → keep accessing</text>
+
+  <!-- yes → relocate -->
+  <rect x="36" y="196" width="400" height="56" rx="11" fill="#3A2A0A" stroke="#FF9F0A"/>
+  <text x="56" y="220" font-size="13" font-weight="700" fill="#FFBF5A">Relocate</text>
+  <text x="56" y="239" font-size="11.5" fill="#98989D">refresh bookmark · transfer ref counts (resolved form) · notify delegate</text>
+  <path d="M494,224 L436,224" stroke="#FF9F0A" stroke-width="1.8" marker-end="url(#ah6)"/>
+  <text x="452" y="216" font-size="11" fill="#FFBF5A">yes</text>
+
+  <!-- loop back to persist -->
+  <path d="M236,196 L236,168 L370,168 L370,154" stroke="#FF9F0A" stroke-width="1.6" fill="none" marker-end="url(#ah6)"/>
+  <text x="244" y="186" font-size="11" fill="#FFBF5A">re-persist</text>
+
+  <text x="370" y="300" font-size="12" fill="#98989D" text-anchor="middle">On relocation the active reference counts move from the old resolved URL to the new one,</text>
+  <text x="370" y="320" font-size="12" fill="#98989D" text-anchor="middle">so access stays balanced across the move.</text>
+</svg>

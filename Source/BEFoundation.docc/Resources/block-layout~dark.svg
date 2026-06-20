@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 740 410" font-family="-apple-system, system-ui, 'Helvetica Neue', Arial, sans-serif">
+  <defs>
+    <marker id="ahb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#98989D"/>
+    </marker>
+  </defs>
+  <rect x="1" y="1" width="738" height="408" rx="14" fill="#131316" stroke="#3A3A3C"/>
+  <text x="28" y="40" font-size="20" font-weight="700" fill="#F5F5F7">Block ABI layout</text>
+  <text x="28" y="62" font-size="13" fill="#98989D">A block's type-encoding signature lives in its descriptor. The category reads it out.</text>
+
+  <!-- Block_literal -->
+  <rect x="36" y="92" width="200" height="244" rx="10" fill="#232327" stroke="#48484A"/>
+  <text x="136" y="116" font-size="13" font-weight="700" fill="#F5F5F7" text-anchor="middle" font-family="ui-monospace, 'SF Mono', Menlo, monospace">Block_literal</text>
+  <g font-family="ui-monospace, 'SF Mono', Menlo, monospace" font-size="12.5" fill="#1D1D1F">
+    <line x1="36" y1="128" x2="236" y2="128" stroke="#E5E5EA"/>
+    <text x="52" y="152">isa</text>
+    <line x1="36" y1="164" x2="236" y2="164" stroke="#E5E5EA"/>
+    <text x="52" y="188">flags</text>
+    <line x1="36" y1="200" x2="236" y2="200" stroke="#E5E5EA"/>
+    <text x="52" y="224">reserved</text>
+    <line x1="36" y1="236" x2="236" y2="236" stroke="#E5E5EA"/>
+    <text x="52" y="260">invoke</text>
+  </g>
+  <rect x="44" y="280" width="184" height="44" rx="7" fill="#0A2A4D" stroke="#0A84FF"/>
+  <text x="136" y="300" font-size="12.5" font-weight="700" fill="#6FB6FF" text-anchor="middle" font-family="ui-monospace, 'SF Mono', Menlo, monospace">descriptor</text>
+  <text x="136" y="316" font-size="10.5" fill="#6FB6FF" text-anchor="middle">pointer →</text>
+
+  <!-- Block_descriptor -->
+  <rect x="320" y="92" width="220" height="244" rx="10" fill="#232327" stroke="#48484A"/>
+  <text x="430" y="116" font-size="13" font-weight="700" fill="#F5F5F7" text-anchor="middle" font-family="ui-monospace, 'SF Mono', Menlo, monospace">Block_descriptor</text>
+  <g font-family="ui-monospace, 'SF Mono', Menlo, monospace" font-size="12.5" fill="#1D1D1F">
+    <line x1="320" y1="128" x2="540" y2="128" stroke="#E5E5EA"/>
+    <text x="336" y="152">reserved · size</text>
+    <line x1="320" y1="164" x2="540" y2="164" stroke="#E5E5EA"/>
+    <text x="336" y="188">copy · dispose</text>
+    <text x="336" y="204" font-size="10" fill="#8E8E93">(if BLOCK_HAS_COPY_DISPOSE)</text>
+  </g>
+  <rect x="328" y="216" width="204" height="44" rx="7" fill="#11371F" stroke="#34C759"/>
+  <text x="430" y="236" font-size="12.5" font-weight="700" fill="#5DD27A" text-anchor="middle" font-family="ui-monospace, 'SF Mono', Menlo, monospace">signature</text>
+  <text x="430" y="252" font-size="10.5" fill="#5DD27A" text-anchor="middle">"@?0@8" — ObjC type encoding</text>
+  <text x="336" y="290" font-size="10.5" fill="#8E8E93">regular &amp; small (relative-32) descriptors</text>
+  <text x="336" y="308" font-size="10.5" fill="#8E8E93">both resolved.</text>
+
+  <!-- arrows -->
+  <path d="M228,302 C270,302 280,238 320,238" fill="none" stroke="#0A84FF" stroke-width="1.8" marker-end="url(#ahb)"/>
+  <path d="M532,238 C580,238 590,238 612,238" fill="none" stroke="#34C759" stroke-width="1.8" marker-end="url(#ahb)"/>
+
+  <!-- result -->
+  <rect x="612" y="210" width="100" height="56" rx="10" fill="#48484A"/>
+  <text x="662" y="234" font-size="12" font-weight="700" fill="#FFFFFF" text-anchor="middle">NSMethod</text>
+  <text x="662" y="250" font-size="12" font-weight="700" fill="#FFFFFF" text-anchor="middle">Signature</text>
+
+  <text x="370" y="372" font-size="11.5" fill="#8E8E93" text-anchor="middle">SIMD / vector / _Float16 parameter types cannot be encoded and are reported as unsupported.</text>
+</svg>

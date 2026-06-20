@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 740 360" font-family="-apple-system, system-ui, 'Helvetica Neue', Arial, sans-serif">
+  <defs>
+    <linearGradient id="dial" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#0A84FF"/>
+      <stop offset="0.5" stop-color="#5E5CE6"/>
+      <stop offset="1" stop-color="#FF9F0A"/>
+    </linearGradient>
+  </defs>
+  <rect x="1" y="1" width="738" height="358" rx="14" fill="#131316" stroke="#3A3A3C"/>
+  <text x="28" y="40" font-size="20" font-weight="700" fill="#F5F5F7">evictionBalance — the eviction dial</text>
+  <text x="28" y="62" font-size="13" fill="#98989D">One knob between recency and value density. Both trim passes evict the highest score first.</text>
+
+  <!-- track -->
+  <rect x="80" y="128" width="580" height="16" rx="8" fill="url(#dial)"/>
+  <!-- ticks -->
+  <line x1="80" y1="120" x2="80" y2="152" stroke="#F5F5F7" stroke-width="2"/>
+  <line x1="370" y1="120" x2="370" y2="152" stroke="#F5F5F7" stroke-width="2"/>
+  <line x1="660" y1="120" x2="660" y2="152" stroke="#F5F5F7" stroke-width="2"/>
+
+  <!-- pointer at default 0.5 -->
+  <path d="M370,98 l10,18 l-20,0 z" fill="#F5F5F7"/>
+  <text x="370" y="92" font-size="12" font-weight="700" fill="#F5F5F7" text-anchor="middle">default 0.5</text>
+
+  <!-- end labels -->
+  <text x="80" y="176" font-size="15" font-weight="700" fill="#6FB6FF" text-anchor="middle">0</text>
+  <text x="80" y="196" font-size="12" font-weight="600" fill="#6FB6FF" text-anchor="middle">LRU</text>
+  <text x="80" y="213" font-size="11" fill="#98989D" text-anchor="middle">least-recently-used</text>
+
+  <text x="370" y="176" font-size="15" font-weight="700" fill="#C7C7CC" text-anchor="middle">0.5</text>
+  <text x="370" y="196" font-size="12" font-weight="600" fill="#C7C7CC" text-anchor="middle">balanced</text>
+  <text x="370" y="213" font-size="11" fill="#98989D" text-anchor="middle">geometric mean</text>
+
+  <text x="660" y="176" font-size="15" font-weight="700" fill="#FFBF5A" text-anchor="middle">1</text>
+  <text x="660" y="196" font-size="12" font-weight="600" fill="#FFBF5A" text-anchor="middle">value density</text>
+  <text x="660" y="213" font-size="11" fill="#98989D" text-anchor="middle">recency ignored</text>
+
+  <!-- formula -->
+  <rect x="80" y="240" width="580" height="44" rx="9" fill="#232327" stroke="#48484A"/>
+  <text x="370" y="268" font-size="14" fill="#F5F5F7" text-anchor="middle" font-family="ui-monospace, 'SF Mono', Menlo, monospace">score = pow(age, 1 − balance) × pow(cost / retentionCost, balance)</text>
+
+  <text x="370" y="312" font-size="12" fill="#98989D" text-anchor="middle">The value-density term stays inert (pure LRU) until a caller sets retentionCost ≠ cost.</text>
+  <text x="370" y="332" font-size="12" fill="#98989D" text-anchor="middle">Higher cost / retentionCost (large, cheap-to-replace) scores higher and is evicted first.</text>
+</svg>

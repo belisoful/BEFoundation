@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 740 560" font-family="-apple-system, system-ui, 'Helvetica Neue', Arial, sans-serif">
+  <defs>
+    <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#98989D"/>
+    </marker>
+  </defs>
+  <rect x="1" y="1" width="738" height="558" rx="14" fill="#131316" stroke="#3A3A3C"/>
+  <text x="28" y="40" font-size="20" font-weight="700" fill="#F5F5F7">Dynamic selector resolution</text>
+  <text x="28" y="62" font-size="13" fill="#98989D">How a selector resolves through the dynamic-methods system.</text>
+
+  <!-- start -->
+  <rect x="250" y="84" width="240" height="40" rx="20" fill="#48484A"/>
+  <text x="370" y="109" font-size="14" font-weight="600" fill="#FFFFFF" text-anchor="middle">Selector received</text>
+
+  <!-- decision rows: left decision, right outcome -->
+  <!-- row 1 -->
+  <rect x="40" y="150" width="400" height="56" rx="10" fill="#232327" stroke="#48484A"/>
+  <text x="240" y="174" font-size="14" font-weight="600" fill="#F5F5F7" text-anchor="middle">Object dynamic method?</text>
+  <text x="240" y="193" font-size="12" fill="#98989D" text-anchor="middle">dynamicObjectMethodMeta:</text>
+  <rect x="500" y="156" width="210" height="44" rx="10" fill="#11371F" stroke="#34C759"/>
+  <text x="605" y="182" font-size="13" font-weight="600" fill="#5DD27A" text-anchor="middle">Invoke object method</text>
+
+  <!-- row 2 -->
+  <rect x="40" y="232" width="400" height="56" rx="10" fill="#232327" stroke="#48484A"/>
+  <text x="240" y="256" font-size="14" font-weight="600" fill="#F5F5F7" text-anchor="middle">Protocol target handles it?</text>
+  <text x="240" y="275" font-size="12" fill="#98989D" text-anchor="middle">required, or optional + respondsToSelector</text>
+  <rect x="500" y="238" width="210" height="44" rx="10" fill="#0A2A4D" stroke="#0A84FF"/>
+  <text x="605" y="264" font-size="13" font-weight="600" fill="#6FB6FF" text-anchor="middle">Forward to protocol target</text>
+
+  <!-- row 3 -->
+  <rect x="40" y="314" width="400" height="56" rx="10" fill="#232327" stroke="#48484A"/>
+  <text x="240" y="338" font-size="14" font-weight="600" fill="#F5F5F7" text-anchor="middle">No-protocol forward target responds?</text>
+  <text x="240" y="357" font-size="12" fill="#98989D" text-anchor="middle">respondsToSelector:</text>
+  <rect x="500" y="320" width="210" height="44" rx="10" fill="#0A2A4D" stroke="#0A84FF"/>
+  <text x="605" y="346" font-size="13" font-weight="600" fill="#6FB6FF" text-anchor="middle">Forward to forward target</text>
+
+  <!-- row 4 -->
+  <rect x="40" y="396" width="400" height="56" rx="10" fill="#232327" stroke="#48484A"/>
+  <text x="240" y="420" font-size="14" font-weight="600" fill="#F5F5F7" text-anchor="middle">Class dynamic method?</text>
+  <text x="240" y="439" font-size="12" fill="#98989D" text-anchor="middle">instance receiver, dynamicClassMethodMeta:</text>
+  <rect x="500" y="402" width="210" height="44" rx="10" fill="#11371F" stroke="#34C759"/>
+  <text x="605" y="428" font-size="13" font-weight="600" fill="#5DD27A" text-anchor="middle">Invoke class method</text>
+
+  <!-- final no -->
+  <rect x="120" y="486" width="320" height="44" rx="10" fill="#232327" stroke="#8E8E93"/>
+  <text x="280" y="512" font-size="13" font-weight="600" fill="#C7C7CC" text-anchor="middle">Not dynamic — normal forwarding</text>
+
+  <!-- down arrows (NO path) -->
+  <path d="M240,124 L240,150" stroke="#98989D" stroke-width="1.6" fill="none" marker-end="url(#ah)"/>
+  <path d="M240,206 L240,232" stroke="#98989D" stroke-width="1.6" fill="none" marker-end="url(#ah)"/>
+  <path d="M240,288 L240,314" stroke="#98989D" stroke-width="1.6" fill="none" marker-end="url(#ah)"/>
+  <path d="M240,370 L240,396" stroke="#98989D" stroke-width="1.6" fill="none" marker-end="url(#ah)"/>
+  <path d="M240,452 L240,486" stroke="#98989D" stroke-width="1.6" fill="none" marker-end="url(#ah)"/>
+  <text x="252" y="146" font-size="11" fill="#8E8E93">no</text>
+  <text x="252" y="228" font-size="11" fill="#8E8E93">no</text>
+  <text x="252" y="310" font-size="11" fill="#8E8E93">no</text>
+  <text x="252" y="392" font-size="11" fill="#8E8E93">no</text>
+
+  <!-- yes arrows -->
+  <path d="M440,178 L500,178" stroke="#34C759" stroke-width="1.8" fill="none" marker-end="url(#ah)"/>
+  <path d="M440,260 L500,260" stroke="#0A84FF" stroke-width="1.8" fill="none" marker-end="url(#ah)"/>
+  <path d="M440,342 L500,342" stroke="#0A84FF" stroke-width="1.8" fill="none" marker-end="url(#ah)"/>
+  <path d="M440,424 L500,424" stroke="#34C759" stroke-width="1.8" fill="none" marker-end="url(#ah)"/>
+  <text x="458" y="172" font-size="11" fill="#5DD27A">yes</text>
+  <text x="458" y="254" font-size="11" fill="#6FB6FF">yes</text>
+  <text x="458" y="336" font-size="11" fill="#6FB6FF">yes</text>
+  <text x="458" y="418" font-size="11" fill="#5DD27A">yes</text>
+
+  <text x="40" y="540" font-size="11" fill="#8E8E93">Any colored exit makes isDynamicMethod: / dynamicRespondsToSelector: return YES.</text>
+</svg>

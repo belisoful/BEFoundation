@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 740 360" font-family="-apple-system, system-ui, 'Helvetica Neue', Arial, sans-serif">
+  <defs>
+    <marker id="ahs" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#98989D"/>
+    </marker>
+  </defs>
+  <rect x="1" y="1" width="738" height="358" rx="14" fill="#131316" stroke="#3A3A3C"/>
+  <text x="28" y="40" font-size="20" font-weight="700" fill="#F5F5F7">Array-based stack — LIFO</text>
+  <text x="28" y="62" font-size="13" fill="#98989D">push: appends to the top; pop removes and returns the top. Last in, first out.</text>
+
+  <!-- stack -->
+  <rect x="300" y="110" width="160" height="44" rx="8" fill="#0A2A4D" stroke="#0A84FF"/>
+  <text x="380" y="138" font-size="14" font-weight="700" fill="#6FB6FF" text-anchor="middle">D</text>
+  <rect x="300" y="158" width="160" height="44" rx="8" fill="#232327" stroke="#48484A"/>
+  <text x="380" y="186" font-size="14" font-weight="600" fill="#F5F5F7" text-anchor="middle">C</text>
+  <rect x="300" y="206" width="160" height="44" rx="8" fill="#232327" stroke="#48484A"/>
+  <text x="380" y="234" font-size="14" font-weight="600" fill="#F5F5F7" text-anchor="middle">B</text>
+  <rect x="300" y="254" width="160" height="44" rx="8" fill="#232327" stroke="#48484A"/>
+  <text x="380" y="282" font-size="14" font-weight="600" fill="#F5F5F7" text-anchor="middle">A</text>
+
+  <text x="476" y="136" font-size="12" font-weight="600" fill="#6FB6FF">top</text>
+  <text x="476" y="281" font-size="12" fill="#8E8E93">bottom</text>
+
+  <!-- push -->
+  <rect x="60" y="98" width="120" height="38" rx="9" fill="#48484A"/>
+  <text x="120" y="122" font-size="13" font-weight="600" fill="#FFFFFF" text-anchor="middle">push: D</text>
+  <path d="M182,124 C240,128 270,128 300,132" fill="none" stroke="#34C759" stroke-width="1.8" marker-end="url(#ahs)"/>
+  <text x="206" y="120" font-size="11" fill="#5DD27A">add to top</text>
+
+  <!-- pop -->
+  <rect x="560" y="98" width="120" height="38" rx="9" fill="#48484A"/>
+  <text x="620" y="122" font-size="13" font-weight="600" fill="#FFFFFF" text-anchor="middle">pop → D</text>
+  <path d="M460,128 C500,128 530,124 558,120" fill="none" stroke="#0A84FF" stroke-width="1.8" marker-end="url(#ahs)"/>
+  <text x="498" y="116" font-size="11" fill="#6FB6FF">remove top</text>
+
+  <text x="370" y="330" font-size="11.5" fill="#8E8E93" text-anchor="middle">pushObjects:… and pushArray: add several at once; pop returns nil when empty.</text>
+</svg>

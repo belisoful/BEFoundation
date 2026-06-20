@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 740 300" font-family="-apple-system, system-ui, 'Helvetica Neue', Arial, sans-serif">
+  <defs>
+    <marker id="ahw" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#6E6E73"/>
+    </marker>
+  </defs>
+  <rect x="1" y="1" width="738" height="298" rx="14" fill="#FCFCFE" stroke="#D2D2D7"/>
+  <text x="28" y="40" font-size="20" font-weight="700" fill="#1D1D1F">File-system event flow</text>
+  <text x="28" y="62" font-size="13" fill="#6E6E73">A GCD dispatch source turns kernel VNODE events into your callback.</text>
+
+  <!-- stage 1 -->
+  <rect x="28" y="98" width="150" height="80" rx="11" fill="#FFFFFF" stroke="#C7C7CC"/>
+  <text x="103" y="132" font-size="13" font-weight="700" fill="#1D1D1F" text-anchor="middle">File change</text>
+  <text x="103" y="152" font-size="11" fill="#6E6E73" text-anchor="middle">write · delete</text>
+  <text x="103" y="167" font-size="11" fill="#6E6E73" text-anchor="middle">rename · extend</text>
+
+  <!-- stage 2 -->
+  <rect x="210" y="98" width="150" height="80" rx="11" fill="#FFF4E5" stroke="#FF9F0A"/>
+  <text x="285" y="132" font-size="13" font-weight="700" fill="#B5710A" text-anchor="middle">VNODE event</text>
+  <text x="285" y="152" font-size="11" fill="#6E6E73" text-anchor="middle">kernel, on the</text>
+  <text x="285" y="167" font-size="11" fill="#6E6E73" text-anchor="middle">O_EVTONLY descriptor</text>
+
+  <!-- stage 3 -->
+  <rect x="392" y="98" width="160" height="80" rx="11" fill="#E9F1FF" stroke="#0A84FF"/>
+  <text x="472" y="134" font-size="13" font-weight="700" fill="#0A5FCC" text-anchor="middle">Dispatch source</text>
+  <text x="472" y="154" font-size="11" fill="#0A5FCC" text-anchor="middle">filters by eventMask</text>
+
+  <!-- stage 4 -->
+  <rect x="584" y="98" width="128" height="80" rx="11" fill="#E8F8EE" stroke="#34C759"/>
+  <text x="648" y="128" font-size="13" font-weight="700" fill="#137A37" text-anchor="middle">Your callback</text>
+  <text x="648" y="148" font-size="11" fill="#6E6E73" text-anchor="middle">block or</text>
+  <text x="648" y="163" font-size="11" fill="#6E6E73" text-anchor="middle">target-selector(flags)</text>
+
+  <path d="M178,138 L210,138" stroke="#6E6E73" stroke-width="1.8" marker-end="url(#ahw)"/>
+  <path d="M360,138 L392,138" stroke="#6E6E73" stroke-width="1.8" marker-end="url(#ahw)"/>
+  <path d="M552,138 L584,138" stroke="#6E6E73" stroke-width="1.8" marker-end="url(#ahw)"/>
+
+  <text x="370" y="222" font-size="11.5" fill="#8E8E93" text-anchor="middle">Default event mask: WRITE · DELETE · EXTEND · RENAME.</text>
+  <text x="370" y="244" font-size="11.5" fill="#8E8E93" text-anchor="middle">The watcher auto-stops when the watched path is deleted or renamed.</text>
+</svg>

@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 740 400" font-family="-apple-system, system-ui, 'Helvetica Neue', Arial, sans-serif">
+  <defs>
+    <marker id="ahc" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#6E6E73"/>
+    </marker>
+  </defs>
+  <rect x="1" y="1" width="738" height="398" rx="14" fill="#FCFCFE" stroke="#D2D2D7"/>
+  <text x="28" y="40" font-size="20" font-weight="700" fill="#1D1D1F">BEColor hex &amp; dynamic colors</text>
+  <text x="28" y="62" font-size="13" fill="#6E6E73">Parse 3/4/6/8-digit hex (optional # or 0x), and build appearance-aware colors.</text>
+
+  <!-- left: hex parsing -->
+  <text x="28" y="96" font-size="14" font-weight="700" fill="#1D1D1F">colorWithHexString:</text>
+
+  <!-- row template -->
+  <g font-family="ui-monospace, 'SF Mono', Menlo, monospace">
+    <rect x="28" y="112" width="86" height="34" rx="7" fill="#FFFFFF" stroke="#C7C7CC"/>
+    <text x="71" y="134" font-size="12" font-weight="600" fill="#1D1D1F" text-anchor="middle">#RGB</text>
+    <text x="128" y="134" font-size="12" fill="#6E6E73">"#1a2" → #11aa22</text>
+    <rect x="292" y="112" width="60" height="34" rx="7" fill="#11AA22" stroke="#C7C7CC"/>
+
+    <rect x="28" y="158" width="86" height="34" rx="7" fill="#FFFFFF" stroke="#C7C7CC"/>
+    <text x="71" y="180" font-size="12" font-weight="600" fill="#1D1D1F" text-anchor="middle">#RGBA</text>
+    <text x="128" y="180" font-size="12" fill="#6E6E73">"#1a28" (alpha last)</text>
+    <rect x="292" y="158" width="60" height="34" rx="7" fill="#11AA22" fill-opacity="0.53" stroke="#C7C7CC"/>
+
+    <rect x="28" y="204" width="86" height="34" rx="7" fill="#FFFFFF" stroke="#C7C7CC"/>
+    <text x="71" y="226" font-size="12" font-weight="600" fill="#1D1D1F" text-anchor="middle">#RRGGBB</text>
+    <text x="128" y="226" font-size="12" fill="#6E6E73">"#3498DB"</text>
+    <rect x="292" y="204" width="60" height="34" rx="7" fill="#3498DB" stroke="#C7C7CC"/>
+
+    <rect x="28" y="250" width="86" height="34" rx="7" fill="#FFFFFF" stroke="#C7C7CC"/>
+    <text x="71" y="272" font-size="12" font-weight="600" fill="#1D1D1F" text-anchor="middle">#RRGGBBAA</text>
+    <text x="128" y="272" font-size="12" fill="#6E6E73">"0x3498DB80"</text>
+    <rect x="292" y="250" width="60" height="34" rx="7" fill="#3498DB" fill-opacity="0.5" stroke="#C7C7CC"/>
+  </g>
+  <text x="28" y="312" font-size="11.5" fill="#8E8E93">hexString → "#RRGGBB", hexStringWithAlpha → "#RRGGBBAA", both computed in sRGB.</text>
+
+  <!-- right: dynamic -->
+  <line x1="392" y1="100" x2="392" y2="330" stroke="#D2D2D7"/>
+  <text x="416" y="96" font-size="14" font-weight="700" fill="#1D1D1F">dynamicColorWithLight:dark:</text>
+
+  <rect x="416" y="120" width="130" height="92" rx="10" fill="#FFFFFF" stroke="#C7C7CC"/>
+  <rect x="432" y="136" width="98" height="44" rx="7" fill="#3498DB"/>
+  <text x="481" y="200" font-size="12" fill="#1D1D1F" text-anchor="middle">light appearance</text>
+
+  <rect x="566" y="120" width="130" height="92" rx="10" fill="#FFFFFF" stroke="#C7C7CC"/>
+  <rect x="582" y="136" width="98" height="44" rx="7" fill="#5AB0F5"/>
+  <text x="631" y="200" font-size="12" fill="#1D1D1F" text-anchor="middle">dark appearance</text>
+
+  <path d="M481,212 C481,250 560,250 560,250" fill="none" stroke="#6E6E73" stroke-width="1.4"/>
+  <path d="M631,212 C631,250 560,250 560,250" fill="none" stroke="#6E6E73" stroke-width="1.4"/>
+  <text x="560" y="270" font-size="12" font-weight="600" fill="#1D1D1F" text-anchor="middle">one color</text>
+  <text x="560" y="288" font-size="11.5" fill="#6E6E73" text-anchor="middle">resolves per appearance</text>
+</svg>
