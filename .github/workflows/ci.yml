@@ -63,11 +63,20 @@ jobs:
       - name: Run unit tests (iOS)
         run: |
           set -o pipefail
-          # A concrete arm64 simulator (not 'generic', which also builds the
+          # Pick a concrete simulator id (not 'generic', which also builds the
           # x86_64 slice and fails on the NEON intrinsics the framework pulls in).
-          ID=$(xcodebuild -showdestinations -scheme BEFoundation -project BEFoundation.xcodeproj 2>/dev/null \
-                 | grep "platform:iOS Simulator" | grep "arch:arm64" \
-                 | grep -oE "id:[0-9A-F-]{36}" | head -1 | cut -d: -f2)
+          # The runner is Apple Silicon, so every simulator runs arm64. Match the
+          # UDID shape directly: the 'arch:arm64' token is only emitted by newer
+          # Xcode, and the placeholder line carries a non-UDID id.
+          DESTS=$(xcodebuild -showdestinations -scheme BEFoundation -project BEFoundation.xcodeproj 2>/dev/null)
+          ID=$(printf '%s\n' "$DESTS" | grep "platform:iOS Simulator" \
+                 | grep -oiE "id:[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}" \
+                 | head -1 | cut -d: -f2)
+          if [ -z "$ID" ]; then
+            echo "No concrete iOS Simulator destination found. Available destinations:"
+            printf '%s\n' "$DESTS"
+            exit 1
+          fi
           echo "Using simulator: $ID"
           xcodebuild test \
                      -project BEFoundation.xcodeproj \
