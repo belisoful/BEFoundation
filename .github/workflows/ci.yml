@@ -63,18 +63,28 @@ jobs:
       - name: Run unit tests (iOS)
         run: |
           set -o pipefail
-          # Pick a concrete simulator id (not 'generic', which also builds the
-          # x86_64 slice and fails on the NEON intrinsics the framework pulls in).
-          # The runner is Apple Silicon, so every simulator runs arm64. Match the
-          # UDID shape directly: the 'arch:arm64' token is only emitted by newer
-          # Xcode, and the placeholder line carries a non-UDID id.
-          DESTS=$(xcodebuild -showdestinations -scheme BEFoundation -project BEFoundation.xcodeproj 2>/dev/null)
-          ID=$(printf '%s\n' "$DESTS" | grep "platform:iOS Simulator" \
-                 | grep -oiE "id:[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}" \
-                 | head -1 | cut -d: -f2)
+          # Resolve a concrete simulator id (not 'generic', which also builds the
+          # x86_64 slice and fails on the framework's NEON intrinsics). Read it
+          # from simctl, whose output is stable across Xcode versions, rather than
+          # `xcodebuild -showdestinations`, whose format and eligibility filtering
+          # vary. The trailing `|| true` keeps an empty result from aborting the
+          # step under `set -o pipefail` before the diagnostics below can run.
+          pick_ios_sim() {
+            xcrun simctl list devices available \
+              | awk '/^-- iOS/{f=1; next} /^-- /{f=0} f' \
+              | grep -oiE '[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}' \
+              | head -1
+          }
+          ID=$(pick_ios_sim || true)
           if [ -z "$ID" ]; then
-            echo "No concrete iOS Simulator destination found. Available destinations:"
-            printf '%s\n' "$DESTS"
+            echo "No iOS Simulator installed; downloading the iOS platform..."
+            xcodebuild -downloadPlatform iOS || true
+            ID=$(pick_ios_sim || true)
+          fi
+          if [ -z "$ID" ]; then
+            echo "No available iOS Simulator. Diagnostics follow:"
+            xcrun simctl list runtimes
+            xcrun simctl list devices
             exit 1
           fi
           echo "Using simulator: $ID"
