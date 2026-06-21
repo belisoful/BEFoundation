@@ -1,4 +1,4 @@
-# BEFileCache
+# ``BEFileCache``
 
 A persistent, file-backed cache that mirrors the NSCache API.
 

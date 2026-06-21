@@ -132,8 +132,8 @@ extern NSInteger const NSPriorityNotificationDefaultPriority;
  @discussion    This class extends NSNotificationCenter to support priority-based notification
 				delivery. Observers are notified in order of their priority, with lower
 				numerical values having higher priority.
-				
-				Key features:
+
+				The class provides:
 				- Priority-based observer ordering (Unix-style priorities)
 				- Backward compatibility with NSNotificationCenter
 				- Support for reverse notification ordering
@@ -467,13 +467,10 @@ extern NSInteger const NSPriorityNotificationDefaultPriority;
  @param         aUserInfo Additional data to include with the notification, or nil
  @param         reverse If YES, observers are called in reverse priority order
  @param         postBlock Block executed after each observer is notified, or nil
- @discussion    This is the most comprehensive notification posting method, supporting
-				all available features:
+ @discussion    This method supports every posting option:
 				- User info dictionary for additional data
 				- Reverse ordering for special notification patterns
 				- Post-processing blocks for cleanup or additional handling
-				
-				This method provides maximum flexibility for complex notification scenarios.
  */
 - (void)postNotificationName:(nonnull NSNotificationName)aName
 					  object:(nullable id)anObject

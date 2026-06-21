@@ -18,7 +18,7 @@
 				combining two images.
 	@discussion	This wraps the creation of a text CIImage into a handy method and
 				easily combining two images with an alpha transparency of the top image.
-				These are useful for, eg, FxPlug Effects.
+				These are useful for, e.g., FxPlug Effects.
  */
 
 /*!
@@ -30,8 +30,8 @@
 	@param		angle		The angle of the text.
 	@param      color 		The color of the text to render
 	@param      blur		The blur, in pixels, applied to the text.
-	@param      position	The position of the text to be rendered..
-	@discussion	This is a compound function to generate text in a specific font, size, angle, color, blur, and position..
+	@param      position	The position of the text to be rendered.
+	@discussion	This is a compound function to generate text in a specific font, size, angle, color, blur, and position.
 	@result     This method returns a CIImage containing the rendered text.
  */
 + (CIImage *)createImageText:(NSString *)text

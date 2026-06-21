@@ -31,12 +31,12 @@ typedef void(^BEWebDataCompletionBlock)(NSData * _Nullable data, NSURLResponse *
 /*!
  @class      BEWebData
  @abstract   NSData subclass that loads and decodes data URLs with metadata preservation.
- @discussion BEWebData provides seamless support for data URLs (RFC 2397) while maintaining
+ @discussion BEWebData supports data URLs (RFC 2397) while maintaining
 			 compatibility with standard NSData loading methods. When initialized with a
 			 data URL, it automatically parses and decodes the URL, storing metadata
 			 properties that can be accessed later.
 			 
-			 Key features:
+			 The class provides the following behaviors:
 			 - Automatic data URL detection and decoding
 			 - Preserves MIME type, charset, and encoding information
 			 - Supports both base64 and percent-encoded data URLs
@@ -105,7 +105,7 @@ typedef void(^BEWebDataCompletionBlock)(NSData * _Nullable data, NSURLResponse *
 /*!
  @property   dataTask
  @abstract   the task of the data download.
- @discussion contains the `NSURLSessionDataTask` of the task downloading the data when downloading.  nil when a fileURL ordataURL.
+ @discussion contains the `NSURLSessionDataTask` of the task downloading the data when downloading.  nil when a fileURL or dataURL.
 			Synchronous downloads are blocking, but still contain the dataTask until complete; after which its set to nil.
 			For asynch download use the method with `options:error:` and add the bit `BEDataReadingAsynchronous`.
  */
@@ -121,14 +121,14 @@ typedef void(^BEWebDataCompletionBlock)(NSData * _Nullable data, NSURLResponse *
 
 /*!
  @property   dataTaskResponse
- @abstract   The NSURLResponse given by a dataTask download in the completionHandler..
- @discussion The NSURLResponse..
+ @abstract   The NSURLResponse given by a dataTask download in the completionHandler.
+ @discussion The NSURLResponse.
  */
 @property (readonly, nullable) NSURLResponse *dataTaskResponse;
 
 /*!
  @property   dataTaskError
- @abstract   Any errors in the data task download, when downloading the contents of a web URL..
+ @abstract   Any errors in the data task download, when downloading the contents of a web URL.
  @discussion The error in the completion block of a dataTask.
  */
 @property (readonly, nullable) NSError *dataTaskError;

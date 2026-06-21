@@ -29,14 +29,6 @@
 @synthesize reverse = _reverse;
 @synthesize postBlock = _postBlock;
 
-/*!
- @const			NSReverseKey
- @abstract		Key used for storing reverse flag in user info dictionary during legacy operations.
- @discussion	This constant is reserved for potential future use in storing the reverse
-				flag within the notification's userInfo dictionary for compatibility purposes.
- */
-static NSString * const NSReverseKey = @"NSPriorityNotification.reverse";
-
 #pragma mark - Class Factory Methods
 
 /*!
@@ -209,7 +201,7 @@ static NSString * const NSReverseKey = @"NSPriorityNotification.reverse";
  @param			name		The notification name. Must not be nil.
  @param			object		The associated object. May be nil.
  @param			userInfo	Additional data dictionary. May be nil.
- @param			postBlock	Block to execute after each observer. Must not be nil.
+ @param			postBlock	Block to execute after each observer. May be nil.
  @return		An initialized NSPriorityNotification instance.
  @discussion	This designated initializer sets up post-processing capabilities.
 				The block is copied using BLOCK_COPY for proper memory management.
@@ -227,7 +219,7 @@ static NSString * const NSReverseKey = @"NSPriorityNotification.reverse";
  @param			object		The associated object. May be nil.
  @param			userInfo	Additional data dictionary. May be nil.
  @param			reverse		Whether to process observers in reverse order.
- @param			postBlock	Block to execute after each observer. Must not be nil.
+ @param			postBlock	Block to execute after each observer. May be nil.
  @return		An initialized NSPriorityNotification instance.
  @discussion	This is the master designated initializer that provides access to all
 				NSPriorityNotification features. The block is copied for proper memory management.
@@ -520,10 +512,8 @@ static NSString * const NSReverseKey = @"NSPriorityNotification.reverse";
 /*!
  @category		NSNotification(PriorityExtension)
  @abstract		Extends NSNotification for compatibility with NSPriorityNotificationCenter.
- @discussion	This category provides compatibility methods that allow standard NSNotification
-				objects to work seamlessly with the priority notification system. The methods
-				ensure that NSNotification instances can be processed by NSPriorityNotificationCenter
-				while maintaining their standard behavior.
+ @discussion	This category provides compatibility methods so standard NSNotification objects can be
+				processed by NSPriorityNotificationCenter while keeping their standard behavior.
  */
 @implementation NSNotification (PriorityExtension)
 

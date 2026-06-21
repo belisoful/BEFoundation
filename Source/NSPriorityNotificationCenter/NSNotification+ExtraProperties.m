@@ -35,7 +35,7 @@
 
 /*!
  @method		setTag
- @abstract		Sets the tag of the notification..
+ @abstract		Sets the tag of the notification.
  @param		tag		 The NSInteger of the tag.
  */
 - (void)setTag:(NSInteger)tag
@@ -67,7 +67,7 @@
 
 /*!
  @method		setIdentifier
- @abstract		Sets the identifier of the notification..
+ @abstract		Sets the identifier of the notification.
  @param		identifier		 The id of the identifier.
  */
 - (void)setIdentifier:(id)identifier

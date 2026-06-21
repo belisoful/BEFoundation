@@ -12,7 +12,7 @@
  UUID-based tracking for registered objects. Objects can be registered, unregistered, and queried
  for their registration status with reference counting support.
  
- Key features:
+ The registry provides:
  - Thread-safe singleton registry access
  - UUID-based object identification
  - Registration reference counting

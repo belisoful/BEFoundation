@@ -15,9 +15,9 @@
  @abstract		Adds numeric checking and date/time checking.
  @discussion	This category adds several utility methods to the `NSString` class for checking
  whether the string contains specific types of data (e.g., digits, integers, floats, dates, and times). These
- methods provide convenient ways to validate or convert strings based on their content.
- 
- It also adds `stringValue` to mimic NSNumber for consisstency in reading plist Dictionaries.
+ methods validate or convert strings based on their content.
+
+ It also adds `stringValue` to mimic NSNumber for consistency in reading plist Dictionaries.
  
  The following methods are provided by this category:
  
@@ -43,13 +43,13 @@
  
  `-isSystemTimeValue`: Checks if the string is a valid system time.
  
- `-isDateStyle:`: Checks if the string is a valid style of date.
- 
- `-isTimeStyle:`: Checks if the string is a valid style of time.
- 
- `-isDateStyle:timeStyle:`: Checks if the string is a valid style of date and time.
- 
- `-isDateTimeString:`: Checks if the string is date and/or time conforming to the format.
+ `-dateWithStyle:`: Parses the string as a date of the given style.
+
+ `-timeWithStyle:`: Parses the string as a time of the given style.
+
+ `-dateWithStyle:timeStyle:`: Parses the string as a date and time of the given styles.
+
+ `-dateWithFormat:`: Parses the string as a date conforming to the format.
  
  
  These methods aim to make string parsing and validation easier, especially in scenarios where the format or
@@ -276,10 +276,10 @@
 
 /*!
  @method		-dateWithStyle:
- @abstract		Checks if the NSString is a date of a specific style.
- @discussion	Forwards to isDateStyle:timeStyle: with no timeStyle.
- @param			dateStyle	The style of date to check the string against.
- @result		Returns `YES` if the string is a valid date in the provided format, `NO` otherwise.
+ @abstract		Parses the NSString as a date of a specific style.
+ @discussion	Forwards to dateWithStyle:timeStyle: with no timeStyle.
+ @param			dateStyle	The style of date to parse the string against.
+ @result		Returns an `NSDate` if the string parses in the provided style, `nil` otherwise.
  */
 - (NSDate *)dateWithStyle:(NSDateFormatterStyle)dateStyle
 {
@@ -288,11 +288,11 @@
 
 
 /*!
- @method		-isTimeStyle:
- @abstract		Checks if the NSString is a time of a specific style.
- @discussion	Forwards to @c isDateStyle:timeStyle:  with no dateStyle.
- @param			timeStyle	The style of time to check the string against.
- @result		Returns `YES` if the string is a valid time in the provided format, `NO` otherwise.
+ @method		-timeWithStyle:
+ @abstract		Parses the NSString as a time of a specific style.
+ @discussion	Forwards to @c dateWithStyle:timeStyle: with no dateStyle.
+ @param			timeStyle	The style of time to parse the string against.
+ @result		Returns an `NSDate` if the string parses as a valid time, `nil` otherwise.
  */
 - (NSDate *)timeWithStyle:(NSDateFormatterStyle)timeStyle
 {
@@ -301,15 +301,14 @@
 
 
 /*!
- @method		-isDateStyle: timeStyle:
- @abstract		Checks if the NSString is a date and time with specified styles.
- @discussion	This method attempts to parse the string using a specified date time format and returns
- 				if it is successful or not
+ @method		-dateWithStyle:timeStyle:
+ @abstract		Parses the NSString as a date and time with specified styles.
+ @discussion	This method attempts to parse the string using the specified date and time styles
+ 				and returns the resulting date.
  @param	dateStyle	The date style to use for parsing the string.
  @param	timeStyle	The time style to use for parsing the string.
-  
- @result		Returns `YES` if the string is a valid date time in the provided format,
-				 `NO` otherwise.
+
+ @result		Returns an `NSDate` if the string parses in the provided styles, `nil` otherwise.
  */
 - (NSDate *)dateWithStyle:(NSDateFormatterStyle)dateStyle timeStyle:(NSDateFormatterStyle)timeStyle
 {
@@ -318,20 +317,20 @@
 	[formatter setDateStyle:dateStyle];
 	[formatter setTimeStyle:timeStyle];
 	
-	// Return YES if the string is a valid date and matches the given format
+	// Returns the parsed date, or nil if the string does not match the format.
 	return [formatter dateFromString:self];
 }
 
 
 /*!
- @method		-isDateTimeString:
- @abstract		Checks if the NSString is a date time of a specific format.
- @discussion	This methods checks if the string conforms to the date string format as a
+ @method		-dateWithFormat:
+ @abstract		Parses the NSString as a date with a specific format.
+ @discussion	This method parses the string using the given date format as a
  				`NSDateFormatter`.
 				If `nil` is passed, the system date format without time is used.
  @param		strFormat	The date format string to use for parsing the string. If `nil`, the system's
 						default date format is used.
- @result		Returns `YES` if the string is a valid date in the provided format, `NO` otherwise.
+ @result		Returns an `NSDate` if the string parses in the provided format, `nil` otherwise.
  */
 - (NSDate*)dateWithFormat:(nullable NSString *)strFormat
 {
@@ -357,7 +356,7 @@
  @param			index The index of the character to access.
  @discussion	This makes NSStrings act more like C-Strings for accessing
 				characters.
- @result		Returns a `unichar` of the character at that `index`.
+ @result		Returns an `NSNumber` boxing the character at that `index`, or `nil` if out of range.
  */
 - (nullable NSNumber *)objectAtIndexedSubscript:(NSUInteger)index
 {

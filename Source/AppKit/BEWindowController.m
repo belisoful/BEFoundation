@@ -60,7 +60,7 @@ NSNotificationName const BEWindowDidLoadNotification = @"BEWindowDidLoadNotifica
 	return self;
 }
 
-#pragma NSCoder methods
+#pragma mark - NSCoder methods
 
 /*!
  @method        supportsSecureCoding
@@ -107,7 +107,7 @@ NSNotificationName const BEWindowDidLoadNotification = @"BEWindowDidLoadNotifica
 	[coder encodeBool:self.isPrimaryWindowController forKey:kBEIsPrimaryWindowControllerKey];
 }
 
-#pragma NSWindowController load/close
+#pragma mark - NSWindowController load/close
 
 /*!
  @method        windowDidLoad
@@ -284,7 +284,7 @@ NSNotificationName const BEWindowDidLoadNotification = @"BEWindowDidLoadNotifica
 */
 - (void)addChildWindowController:(NSWindowController *)childController
 {
-	// to set the parent controller, it must conform to BEChildWindowController
+	// to manage child controllers, the receiver must conform to BEParentWindowController
 	if (![self conformsToProtocol:@protocol(BEParentWindowController)]) {
 #ifdef DEBUG
 		NSLog(@"ERROR: %@ must conform to %@ to %@", self.className, NSStringFromProtocol(@protocol(BEParentWindowController)), NSStringFromSelector(_cmd));
@@ -309,7 +309,7 @@ NSNotificationName const BEWindowDidLoadNotification = @"BEWindowDidLoadNotifica
 			((id<BEChildWindowController>)childController).parentController = self;
 		} else if (beChildController.parentController != self) {
 #ifdef DEBUG
-			NSLog(@"ERROR: child.parentController be set to self as parent");
+			NSLog(@"ERROR: child already has a different parentController");
 #endif
 		}
 	}
@@ -324,7 +324,7 @@ NSNotificationName const BEWindowDidLoadNotification = @"BEWindowDidLoadNotifica
 */
 - (BOOL)removeChildWindowController:(NSWindowController *)childController
 {
-	// to set the parent controller, it must conform to BEChildWindowController
+	// to manage child controllers, the receiver must conform to BEParentWindowController
 	if (![self conformsToProtocol:@protocol(BEParentWindowController)]) {
 #ifdef DEBUG
 		NSLog(@"ERROR: %@ must conform to %@ to %@", self.className, NSStringFromProtocol(@protocol(BEParentWindowController)), NSStringFromSelector(_cmd));

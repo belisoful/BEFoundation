@@ -18,7 +18,7 @@
 /*!
 	@property   isSingleton
 	@abstract   Determines if the object is a singleton implementation
-	@discussion	This is checked by @c __NSSingleton to ensure that it can do singleton things
+	@discussion	This is checked by @c __BESingleton to ensure that it can do singleton things
 	@result     The method returns NO by default unless the subclass override returns YES.
  */
 + (BOOL)isSingleton

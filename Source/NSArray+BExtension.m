@@ -221,12 +221,12 @@
 
 
 /*!
-	@method     -filterUsingBlock
+	@method     -filterUsingBlock:
 	@abstract   This runs each element through the block.
-	@param      filterBlock		A function block to process each element, removing
-								the element if the block returns NULL.
-	@discussion This processes each element in the set.  If an element is returned as
-				NULL, then it is removed.
+	@param      filterBlock		A function block to process each element. Return `NO`, or set
+								`*obj` to nil, to remove the element.
+	@discussion This processes each element in the array.  If the block returns `NO` or sets
+				the element to nil, the element is removed.
 	@result		Returns self after filtering.
  */
 - (nonnull instancetype)filterUsingBlock:(BOOL (^_Nullable)(id _Nullable *_Nonnull obj, NSUInteger idx, BOOL *_Nonnull stop))filterBlock

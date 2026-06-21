@@ -24,7 +24,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @code
 // After all GPU work writing to `texture` has completed, convert a CPU-readable
-// (MTLStorageModeShared) texture to an BEImage.
+// (MTLStorageModeShared) texture to a BEImage.
 id<MTLTexture> texture = renderTarget; // e.g. MTLPixelFormatRGBA8Unorm, Shared
 BEImage *image = [BEMetalHelper imageFromTexture:texture];
 if (image) {
@@ -36,8 +36,8 @@ if (image) {
 
 /*!
 @method imageFromTexture:
-@abstract Converts a Metal texture to an BEImage object.
-@discussion This method extracts pixel data from a Metal texture and converts it to an BEImage. It supports multiple pixel formats including BGRA8Unorm, RGBA8Unorm, RGBA32Float, R8Unorm, R16Float, and R32Float. For grayscale formats (R8Unorm, R16Float, R32Float), the method automatically converts to RGB format by duplicating the grayscale values across all color channels.
+@abstract Converts a Metal texture to a BEImage object.
+@discussion This method extracts pixel data from a Metal texture and converts it to a BEImage. It supports multiple pixel formats including BGRA8Unorm, RGBA8Unorm, RGBA32Float, R8Unorm, R16Float, and R32Float. For grayscale formats (R8Unorm, R16Float, R32Float), the method automatically converts to RGB format by duplicating the grayscale values across all color channels.
 @param texture The Metal texture to convert. Must be a valid MTLTexture object.
 @return An BEImage object containing the converted texture data, or nil if the conversion fails, the texture format is unsupported, an allocation fails, or the dimensions would overflow.
 @note The method reads pixel data with -[MTLTexture getBytes:...], which requires the texture to be CPU-readable: MTLStorageModeShared (the default on Apple Silicon), or MTLStorageModeManaged after a blit-synchronize. Calling it on a MTLStorageModePrivate texture (possible for render targets on discrete-GPU Macs) is undefined; blit such a texture to a Shared/Managed staging texture first. The caller is also responsible for ensuring all GPU work writing to the texture has completed before calling.

@@ -12,8 +12,8 @@
  				were native methods. The system uses NSObject+DynamicMethods internally
  				for the actual method implementation.
 
- 				## Key Features
- 				- Simple macro registration and removal
+ 				The system provides:
+ 				- Macro registration and removal
  				- Class-level macros (available to all instances)
  				- Thread-safe operations
  				- Uses NSObject+DynamicMethods internally for method implementation

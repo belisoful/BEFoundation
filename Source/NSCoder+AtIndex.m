@@ -24,8 +24,8 @@
 
 /*!
  @method		-indexKey:
- @abstract		This is a private utility method for changing the signed
- 				long long index to a string key for the coder.
+ @abstract		This is a private utility method for changing the index to a
+ 				string key for the coder.
  @param			index	The index to convert into an NSString for the Coder.
  @discussion	This adds functionality to encode and decode at an index rather
 				than a key.  The AtIndex (in each method) is converted into a

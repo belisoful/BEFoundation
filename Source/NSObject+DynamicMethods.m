@@ -129,12 +129,11 @@
 
 - (void)dealloc
 {
-	// Tear down the IMP trampoline when THIS object is deallocated — not when it is removed/replaced
-	// in the methods dictionary. The dispatch path holds a strong reference to the meta while it
-	// invokes -implementation, so an in-flight call keeps the IMP alive even if another thread removes
-	// or replaces the method concurrently; the trampoline is freed only once no one references it,
-	// avoiding the prior use-after-free. (_block is a strong ivar released by ARC; do NOT also
-	// Block_release it — that was an unbalanced over-release.)
+	// The IMP trampoline is torn down when THIS object is deallocated, not when it is removed or
+	// replaced in the methods dictionary. The dispatch path holds a strong reference to the meta while
+	// it invokes -implementation, so an in-flight call keeps the IMP alive even when another thread
+	// removes or replaces the method concurrently; the trampoline is freed only once no one references
+	// it. _block is a strong ivar released by ARC; do NOT also Block_release it.
 	if (_implementation) {
 		imp_removeBlock(_implementation);
 		_implementation = NULL;
@@ -1345,7 +1344,7 @@ static NSString * const BEDMProtocolTargetLUTKey = @"__reverseTargetLUT";
 		
 		if (noProtocolTargets && removedSet.count) {
 			// Iterate the (smaller) removed set and look each target up directly in
-			// the className→target map, rather than scanning every no-protocol target.
+			// the className→target map. Direct lookup avoids scanning every no-protocol target.
 			for (NSString *className in removedSet) {
 				id obj = noProtocolTargets[className];
 				if (obj) {
@@ -1357,8 +1356,8 @@ static NSString * const BEDMProtocolTargetLUTKey = @"__reverseTargetLUT";
 		// Targets in both sets (instanceClassTargets ∩ objectClassTargets) are already
 		// in sync, so they need no action.
 		[self setDynamicProtocolSelfHash:classHash];
-		// Reaching here means the object's protocol hash differed from the class's, so a
-		// synchronization was performed. (The early-out above returns NO when already in sync.)
+		// Control reaches here only when the object's protocol hash differs from the class's, so
+		// synchronization runs. The early-out above returns NO when the two are already in sync.
 		returnValue = YES;
 	}
 
@@ -1524,9 +1523,7 @@ static NSString * const BEDMProtocolTargetLUTKey = @"__reverseTargetLUT";
 			//construct new target from class
 			impObject = [[targetClass alloc] init];
 			if ([impObject respondsToSelector:@selector(setOriginalObject:)]) {
-				// set original object
-				// @warning generate this test
-				
+
 				[impObject setOriginalObject:self];
 			}
 		}

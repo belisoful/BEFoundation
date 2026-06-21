@@ -959,7 +959,7 @@ static NSString * _Nullable BEMetaFileName(id<NSCopying, NSSecureCoding> key) {
 // ---------------------------------------------------------------------------
 
 /**
- * @method writeToDisk:key:cost:
+ * @method writeToDisk:key:cost:retentionCost:
  *
  * @abstract
  *   Writes the object payload and metadata sidecar for @p key to disk, then
@@ -969,8 +969,8 @@ static NSString * _Nullable BEMetaFileName(id<NSCopying, NSSecureCoding> key) {
  *   Two files are written per entry:
  *
  *   - @c <hash>.BE_FILE_CACHE_EXTENSION      — the archived object, no wrapper.
- *   - @c <hash>.BE_FILE_CACHE_META_EXTENSION — @c BEFileCacheItem (key + cost +
- *     date only); intentionally excludes the object so index rebuilds via
+ *   - @c <hash>.BE_FILE_CACHE_META_EXTENSION — @c BEFileCacheItem (key, cost,
+ *     retention cost, and date); intentionally excludes the object so index rebuilds via
  *     @c scanMetaFilesForIndex never need to open large payload files.
  *
  *   The object file is written first.  If the metadata write subsequently
@@ -984,6 +984,7 @@ static NSString * _Nullable BEMetaFileName(id<NSCopying, NSSecureCoding> key) {
  * @param obj   The object to persist.  Must conform to @c NSSecureCoding.
  * @param key   The cache key.  Must conform to @c NSCopying and @c NSSecureCoding.
  * @param cost  The caller-supplied cost for this entry (@c 0 if unspecified).
+ * @param retentionCost  The value-density retention cost for this entry (@c 0 if unspecified).
  *
  * @return @c YES if both files were written successfully; @c NO otherwise.
  */
@@ -1150,8 +1151,8 @@ static NSString * _Nullable BEMetaFileName(id<NSCopying, NSSecureCoding> key) {
  * @abstract  Deserialises and returns the @c BEFileCacheItem stored at @p path.
  *
  * @discussion
- *   @c BEFileCacheItem contains the entry's key, cost, and @c dateStored but
- *   NOT the cached object itself.  Used during the index-rebuild fallback scan
+ *   @c BEFileCacheItem contains the entry's key, cost, retention cost, and
+ *   @c dateStored but NOT the cached object itself.  Used during the index-rebuild fallback scan
  *   so that large @c .cache payload files are never opened during start-up.
  *
  * @param path  Absolute path to a @c .BE_FILE_CACHE_META_EXTENSION sidecar file.

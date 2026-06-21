@@ -13,11 +13,11 @@
 				date representation is required. This extension simplifies the creation and
 				configuration of NSDateFormatter instances for RFC 3339 compliance.
 				
-				Key features of RFC 3339 formatting:
+				RFC 3339 formatting behaves as follows:
 				- Uses UTC timezone (GMT+0) for consistency
 				- Employs en_US_POSIX locale to avoid localization issues
 				- Follows the standard yyyy-MM-dd'T'HH:mm:ssZZZZZ format
-				- Ensures reliable parsing and formatting across different locales and timezones
+				- Parses and formats reliably across different locales and timezones
  */
 
 #ifndef NSDateFormatterRFC3339_h
@@ -31,7 +31,7 @@
  public const string DateTimeInterface::ATOM = "Y-m-d\\TH:i:sP";
  public const string DateTimeInterface::COOKIE = "l, d-M-Y H:i:s T";
  public const string DateTimeInterface::ISO8601 = "Y-m-d\\TH:i:sO";
- public constL string DateTimeInterface::ISO8601_EXPANDED = "X-m-d\\TH:i:sP";
+ public const string DateTimeInterface::ISO8601_EXPANDED = "X-m-d\\TH:i:sP";
  public const string DateTimeInterface::RFC822 = "D, d M y H:i:s O";
  public const string DateTimeInterface::RFC850 = "l, d-M-y H:i:s T";
  public const string DateTimeInterface::RFC1036 = "D, d M y H:i:s O";
@@ -96,7 +96,7 @@
 				- Locale: en_US_POSIX (prevents localization issues)
 				- Timezone: UTC (GMT+0)
 				
-				This method is convenient when you need a one-time formatter for RFC 3339 dates
+				This method creates a one-time formatter for RFC 3339 dates
 				and don't want to manually configure the formatter settings. The returned formatter
 				can be used immediately for date parsing and formatting operations.
 

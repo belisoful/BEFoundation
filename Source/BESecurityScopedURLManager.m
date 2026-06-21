@@ -238,11 +238,11 @@ static NSString * const kIsSecurityScopedKey = @"isSecurityScoped";
 											relativeToURL:nilRelativeURL
 													error:&bookmarkError];
 		
-		// FIX: Guard on both the error AND the data being non-nil.
-		// bookmarkDataWithOptions: can return nil with no error in a non-sandboxed
-		// process. Without !_bookmarkData, the test-resolve call below would pass
-		// nil as the nonnull first argument of URLByResolvingBookmarkData:,
-		// triggering a "Null passed to a callee that requires a non-null argument" crash.
+		// Guard on both the error AND the data being non-nil. bookmarkDataWithOptions:
+		// can return nil with no error in a non-sandboxed process. The !_bookmarkData
+		// guard keeps nil out of the nonnull first argument of URLByResolvingBookmarkData:
+		// in the test-resolve call below, which would otherwise trigger a "Null passed to
+		// a callee that requires a non-null argument" crash.
 		if (bookmarkError || !_bookmarkData) {
 			_bookmarkError = bookmarkError;
 			if (bookmarkError) {
@@ -357,11 +357,12 @@ static NSString * const kIsSecurityScopedKey = @"isSecurityScoped";
 			return _url;
 		}
 
-		// BUG FIX: In non-sandboxed processes NSURLBookmarkCreationWithSecurityScope fails
-		// during initWithURL:, leaving _bookmarkData = nil. Without this guard the call
-		// below would pass nil to a nonnull parameter, triggering an NSInvalidArgumentException
-		// that propagates through the enclosing dispatch_sync block and corrupts queue state,
-		// causing subsequent catalog operations (remove, clear, count) to produce wrong results.
+		// In non-sandboxed processes NSURLBookmarkCreationWithSecurityScope fails during
+		// initWithURL:, leaving _bookmarkData = nil. This guard keeps nil out of the nonnull
+		// parameter of the resolve call below; passing nil there raises an
+		// NSInvalidArgumentException that propagates through the enclosing dispatch_sync block
+		// and corrupts queue state, making subsequent catalog operations (remove, clear, count)
+		// produce wrong results.
 		if (!_bookmarkData) {
 			return nil;
 		}
@@ -428,9 +429,8 @@ static NSString * const kIsSecurityScopedKey = @"isSecurityScoped";
 	}
 
 	_bookmarkData = newBookmarkData;
-	// The bookmark was successfully refreshed, so it is no longer stale. (Runs under the -url
-	// getter's @synchronized(self).) Without this, the entry reported isStale = YES forever after
-	// a successful refresh.
+	// A successful refresh clears the stale flag so the entry does not report isStale = YES
+	// permanently. (Runs under the -url getter's @synchronized(self).)
 	_isStale = NO;
 
 	// Check if the path changed (relocation)
@@ -591,15 +591,13 @@ static NSString * const kIsSecurityScopedKey = @"isSecurityScoped";
  @return        The full file system path to the cache file, or nil if unavailable.
  */
 - (NSString *)cacheFilePath {
-	// BUG FIX: Do NOT use a global dispatch_once here. A global once-token means every
+	// A global dispatch_once token would share one cache-file path across every
 	// BESecurityScopedURLManager instance — both the shared singleton and any private
-	// instances created via -init — would share the same cache-file path, causing
-	// concurrent instances to clobber each other's persisted bookmarks.
-	//
-	// Instead, lazily compute the path once per instance using a simple nil-check.
-	// This is safe because cacheFilePath is only ever called from within a
-	// dispatch_sync/dispatch_async block on self.accessQueue (a serial queue), so
-	// there is no multi-thread race on the ivar for a given instance.
+	// instances created via -init — so concurrent instances would clobber each other's
+	// persisted bookmarks. A per-instance nil-check computes the path once per instance.
+	// cacheFilePath is only ever called from within a dispatch_sync/dispatch_async block
+	// on self.accessQueue (a serial queue), so there is no multi-thread race on the ivar
+	// for a given instance.
 	if (!_cacheFilePath) {
 		NSURL *cacheDir = [[NSFileManager defaultManager]
 						  URLsForDirectory:NSCachesDirectory inDomains:NSUserDomainMask].firstObject;
@@ -840,19 +838,14 @@ static NSString * const kIsSecurityScopedKey = @"isSecurityScoped";
 		return;
 	}
 	
-	// FIX: Perform the entire lookup-and-remove in a single dispatch_sync so the
-	// catalog key used for removal is the exact key that was stored at add-time.
-	//
-	// The original two-step approach called urlFromCatalog: (outside the sync block)
-	// and then removed by resolvedURL.absoluteString (inside the sync block). This
-	// silently failed because URLByResolvingBookmarkData: expands symlinks — e.g.
-	// /var/folders → /private/var/folders — so resolvedURL.absoluteString differed
-	// from the stored catalog key, which is always the original unresolved URL string.
-	//
-	// Fix: look up the entry by the input URL's absoluteString directly. Directory
-	// entries are normalized with a trailing slash in initWithURL:lifetime:, so we
-	// also check a trailing-slash variant. Either way we remove by the exact stored
-	// key — never by a symlink-resolved URL string.
+	// Perform the entire lookup-and-remove in a single dispatch_sync so the catalog key
+	// used for removal is the exact key that was stored at add-time. The lookup uses the
+	// input URL's absoluteString directly. A resolved URL is wrong here: URLByResolvingBookmarkData:
+	// expands symlinks (e.g. /var/folders → /private/var/folders), so a resolved absoluteString
+	// differs from the stored catalog key, which is always the original unresolved URL string.
+	// Directory entries are normalized with a trailing slash in initWithURL:lifetime:, so a
+	// trailing-slash variant is also checked. Removal is keyed by the exact stored key, never
+	// by a symlink-resolved URL string.
 	dispatch_sync(self.accessQueue, ^{
 		NSString *catalogKey = url.absoluteString;
 		
@@ -903,18 +896,17 @@ static NSString * const kIsSecurityScopedKey = @"isSecurityScoped";
 /*!
  @method        clearCatalog
  @abstract      Removes all bookmarks from the catalog, ends all access sessions, and clears persistence.
- @discussion    This comprehensive cleanup method removes all entries and releases all security-scoped access.
+ @discussion    This cleanup method removes all entries and releases all security-scoped access.
 				All reference counts are released and underlying resource access is terminated.
 				Persisted bookmarks in all storage locations are also cleared.
 				This is a thread-safe operation that executes atomically.
  */
 - (void)clearCatalog {
-	// FIX (Deadlock 5): The original code called endAccessingAllURLs inside a
-	// dispatch_sync(accessQueue) block. endAccessingAllURLs itself calls
-	// dispatch_sync(accessQueue) — a serial-queue re-entry deadlock.
-	// Fix: use endAccessingAllURLsInternal which performs the same teardown without
-	// dispatching. saveCatalogInternal is similarly used to keep everything in one
-	// atomic dispatch block so clearCatalog is fully serialized end-to-end.
+	// endAccessingAllURLs and saveCatalogSynchronously:YES each call dispatch_sync(accessQueue),
+	// so calling them from inside this dispatch_sync(accessQueue) block would re-enter the serial
+	// queue and deadlock. The non-dispatching endAccessingAllURLsInternal and saveCatalogInternal
+	// perform the same teardown and persistence inside one atomic dispatch block, serializing
+	// clearCatalog end-to-end.
 	dispatch_sync(self.accessQueue, ^{
 		[self endAccessingAllURLsInternal];
 		[self.mutableCatalog removeAllObjects];
@@ -981,7 +973,7 @@ static NSString * const kIsSecurityScopedKey = @"isSecurityScoped";
 /*!
  @method        objectForKeyedSubscript:
  @abstract      Allows subscript access to resolve URLs using array-like syntax.
- @discussion    Supports subscript notation for convenient URL resolution: manager[url] or manager[@"file:///path"].
+ @discussion    Supports subscript notation for URL resolution: manager[url] or manager[@"file:///path"].
 				Accepts either NSURL or NSString keys. This is equivalent to calling urlFromCatalog: or
 				urlFromCatalogWithAbsolutePath: depending on the key type.
  @param         key An NSURL or NSString key for URL resolution.
@@ -1020,10 +1012,9 @@ static NSString * const kIsSecurityScopedKey = @"isSecurityScoped";
 	__block BOOL success = NO;
 	__block BESecurityScopedURLBookmarkEntry *entry = nil;
 	
-	// FIX (Deadlock 1): Use the non-dispatching internal resolver so that this single
-	// dispatch_sync does not nest a second dispatch_sync onto the same serial queue.
-	// Previously this block called urlFromCatalogWithAbsolutePath:, which itself called
-	// dispatch_sync(self.accessQueue) — a guaranteed deadlock on a serial queue.
+	// Use the non-dispatching internal resolver so this dispatch_sync does not nest a second
+	// dispatch_sync onto the same serial queue. The public urlFromCatalogWithAbsolutePath:
+	// itself calls dispatch_sync(self.accessQueue), which would deadlock the serial queue.
 	dispatch_sync(self.accessQueue, ^{
 		resolvedURL = [self urlFromCatalogWithAbsolutePathInternal:url.absoluteString];
 		
@@ -1049,15 +1040,12 @@ static NSString * const kIsSecurityScopedKey = @"isSecurityScoped";
 		}
 	});
 	
-	// FIX (Deadlock 6): The original code always dispatched async to the main thread
-	// then blocked the calling thread with dispatch_semaphore_wait.  When this method
-	// was called from the main thread (e.g. from a button action or app launch), the
-	// main thread blocked forever on the semaphore: the only block that could signal
-	// it was queued on that same frozen main thread — an irreversible deadlock.
-	//
-	// Fix: if we are already on the main thread, call the delegate synchronously so
-	// we never block the main thread.  Only use the semaphore + async pattern on
-	// background threads where blocking is safe.
+	// Dispatching async to the main thread and then blocking on dispatch_semaphore_wait
+	// deadlocks when this method runs on the main thread (e.g. from a button action or app
+	// launch): the main thread blocks forever on the semaphore because the only block that
+	// can signal it is queued on that same frozen main thread. On the main thread the delegate
+	// is called synchronously so the main thread never blocks. The semaphore + async pattern
+	// runs only on background threads, where blocking is safe.
 	if (!resolvedURL && [self.delegate respondsToSelector:@selector(securityScopedURLManager:accessFailedForURL:entry:completionHandler:)]) {
 		__block NSURL *delegateURL = nil;
 		
@@ -1199,9 +1187,9 @@ static NSString * const kIsSecurityScopedKey = @"isSecurityScoped";
 	
 	// TIER 3: Directory containment — input path is inside a bookmarked directory.
 	// Compare FILESYSTEM paths, not URL strings: derive the input's path (via -[NSURL path],
-	// which also percent-decodes) so it has the same form as directoryURL.path. Comparing the
-	// "file:///…" absoluteString against the "/…" directory path never matched, so directory
-	// containment silently never resolved.
+	// which also percent-decodes) so it has the same form as directoryURL.path. A
+	// "file:///…" absoluteString does not match a "/…" directory path, so a URL-string
+	// comparison resolves no directory containment.
 	NSString *inputPath = [[NSURL URLWithString:absolutePathString].path stringByStandardizingPath];
 	if (!inputPath) {
 		inputPath = [([absolutePathString stringByRemovingPercentEncoding] ?: absolutePathString) stringByStandardizingPath];
@@ -1306,9 +1294,9 @@ static NSString * const kIsSecurityScopedKey = @"isSecurityScoped";
  @abstract      Non-dispatching core implementation of bulk access teardown.
  @discussion    Drains refCounts completely and calls stopAccessingSecurityScopedResource
 				on each unique URL.  This method MUST only be called from within a block
-				already executing on self.accessQueue.  It exists to break the deadlock in
-				clearCatalog, which called endAccessingAllURLs (a dispatch_sync) from inside
-				its own dispatch_sync block.
+				already executing on self.accessQueue.  clearCatalog calls it from inside its
+				own dispatch_sync(accessQueue) block, where invoking endAccessingAllURLs (a
+				dispatch_sync onto the same serial queue) would re-enter the queue and deadlock.
  */
 - (void)endAccessingAllURLsInternal {
 	NSArray<NSURL *> *activeURLs = self.refCounts.allObjects;
@@ -1326,9 +1314,10 @@ static NSString * const kIsSecurityScopedKey = @"isSecurityScoped";
  @abstract      Non-dispatching core implementation of catalog persistence.
  @discussion    Archives long-lived bookmarks and writes to all configured storage locations
 				(UserDefaults and/or the Caches directory).  This method MUST only be called
-				from within a block already executing on self.accessQueue.  It exists to break
-				the deadlock in removeURLFromCatalog:, which called saveCatalogSynchronously:YES
-				(a dispatch_sync) from inside its own dispatch_sync block.
+				from within a block already executing on self.accessQueue.  removeURLFromCatalog:
+				calls it from inside its own dispatch_sync(accessQueue) block, where invoking
+				saveCatalogSynchronously:YES (a dispatch_sync onto the same serial queue) would
+				re-enter the queue and deadlock.
  */
 - (void)saveCatalogInternal {
 	// Collect only long-lived bookmarks for persistence
@@ -1465,12 +1454,11 @@ static NSString * const kIsSecurityScopedKey = @"isSecurityScoped";
 		return NO;
 	}
 	
-	// FIX (Deadlock 3): The original code called dispatch_sync(accessQueue) here, then
-	// inside that block called urlFromCatalogWithAbsolutePath:, which also calls
-	// dispatch_sync(accessQueue) — a serial-queue re-entry deadlock.
-	// Fix: use the non-dispatching internal resolver, and combine the resolve + end
-	// steps into a single dispatch_sync using endAccessingURLInternal: so we never
-	// nest a second dispatch onto the same queue.
+	// The public urlFromCatalogWithAbsolutePath: calls dispatch_sync(accessQueue), so calling
+	// it from inside this dispatch_sync(accessQueue) block would re-enter the serial queue and
+	// deadlock. The non-dispatching internal resolver and endAccessingURLInternal: combine the
+	// resolve and end steps in a single dispatch_sync without nesting a second dispatch onto
+	// the same queue.
 	__block BOOL success = NO;
 	dispatch_sync(self.accessQueue, ^{
 		NSURL *resolvedURL = [self urlFromCatalogWithAbsolutePathInternal:absolutePathString];
@@ -1503,11 +1491,10 @@ static NSString * const kIsSecurityScopedKey = @"isSecurityScoped";
 - (NSArray<NSURL *> *)startAccessingAllURLs {
 	__block NSMutableArray *accessedURLs = [NSMutableArray array];
 	
-	// FIX (Deadlock 2): The original code called startAccessingURL: inside a
-	// dispatch_sync(accessQueue) block. startAccessingURL: itself calls
-	// dispatch_sync(accessQueue) — a serial-queue re-entry deadlock.
-	// Fix: use startAccessingURLInternal: which performs the same logic without
-	// dispatching, safe to call from within an already-dispatched block.
+	// startAccessingURL: itself calls dispatch_sync(accessQueue), so calling it from inside
+	// this dispatch_sync(accessQueue) block would re-enter the serial queue and deadlock.
+	// startAccessingURLInternal: performs the same logic without dispatching, so it is safe
+	// to call from within an already-dispatched block.
 	dispatch_sync(self.accessQueue, ^{
 		for (BESecurityScopedURLBookmarkEntry *entry in self.mutableCatalog.allValues) {
 			NSURL *url = entry.url;
@@ -1622,9 +1609,9 @@ static NSString * const kIsSecurityScopedKey = @"isSecurityScoped";
 - (NSUInteger)countByEnumeratingWithState:(NSFastEnumerationState *)state
 								   objects:(__unsafe_unretained id _Nullable *_Nonnull)buffer
 									 count:(NSUInteger)len {
-	// BUG FIX: NSDictionary fast-enumeration yields keys (NSString), not values.
-	// The documented and expected behaviour is "for (BESecurityScopedURLBookmarkEntry *entry in manager)"
-	// which requires enumerating the dictionary values (the entry objects), not the keys.
+	// NSDictionary fast-enumeration yields keys (NSString), not values. The contract
+	// "for (BESecurityScopedURLBookmarkEntry *entry in manager)" requires enumerating the
+	// dictionary values (the entry objects), so enumerate allValues rather than the keys.
 	return [self.catalog.allValues countByEnumeratingWithState:state objects:buffer count:len];
 }
 

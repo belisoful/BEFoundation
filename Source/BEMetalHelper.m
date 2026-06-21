@@ -140,8 +140,8 @@ static inline BOOL BEMulOverflowsSize(size_t a, size_t b) {
 		.width = width,
 		.rowBytes = grayRowBytes
 	};
-	
-	// Step 2: Convert single channel 32F to RGB 32F
+
+	// Convert single channel 32F to RGB 32F
 	vImage_Buffer dstARGB = {
 		.data = rgbaData,
 		.height = height,

@@ -63,7 +63,7 @@
 
 /*!
  @property		identifier
- @abstract		Returns the set identifier or the notification.object.identifier, if the object has a identifier.
+ @abstract		Returns the set identifier or the notification.object.identifier, if the object has an identifier.
  @discussion	If the identifier of the notification is set, the set identifier is returned,
 				otherwise it returns the notification object's identifier if it has an identifier property.
  @result		object of the notification identifier.

@@ -251,7 +251,7 @@ NSString * _Nonnull const BEURL_ISO_2022_JP = @"ISO-2022-JP";
 
 
 /*!
- @method     charSetForMimeType:
+ @method     charSetForDataMimeType:
  @abstract   Returns the default charset for a given MIME type.
  @param      mimeType The MIME type.
  @discussion Provides sensible defaults:
@@ -304,7 +304,7 @@ NSString * _Nonnull const BEURL_ISO_2022_JP = @"ISO-2022-JP";
 @implementation NSURL (Data)
 
 /*!
- @method     parseDataUrl:charset:encoding:isBase64:
+ @method     parseDataUrlWithMimeType:charset:encoding:isBase64:
  @abstract   Internal method to parse data URL metadata for the current URL.
  @param      mimeType Pointer to receive the parsed MIME type.
  @param      charset Pointer to receive the parsed charset.

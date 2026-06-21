@@ -240,10 +240,14 @@ NS_ASSUME_NONNULL_BEGIN
 /** Forwarded to the internal _memoryCache.  Default: YES. */
 @property (assign, nonatomic) BOOL evictsObjectsWithDiscardedContent;
 
-/** @param key  Must conform to NSCopying and NSSecureCoding. */
+/**
+ * @param obj  The object to store.
+ * @param key  Must conform to NSCopying and NSSecureCoding.
+ */
 - (void)setObject:(id)obj forKey:(id<NSCopying, NSSecureCoding>)key;
 
 /**
+ * @param obj   The object to store.
  * @param key   Must conform to NSCopying and NSSecureCoding.
  * @param g     Caller-supplied cost for this entry.
  */
@@ -260,6 +264,7 @@ NS_ASSUME_NONNULL_BEGIN
  *   @p g (the default), the value term is 1, so trimming stays least-recently-
  *   used regardless of @c evictionBalance.
  *
+ * @param obj  The object to store.
  * @param key  Must conform to NSCopying and NSSecureCoding.
  * @param g    Storage cost for this entry.
  * @param r    Replacement cost for this entry.

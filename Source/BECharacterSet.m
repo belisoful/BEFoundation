@@ -48,7 +48,7 @@
 
 /*!
  @method		setIsClassEqualToNSCharacterSet
- @param			value the value tot set isClassEqualToNSCharacterSet.
+ @param			value the value to set isClassEqualToNSCharacterSet.
  @abstract		Specifies if the BECharacterSet classes should generally equate to NSCharacterSets.
  @discussion	This is used if a specific BECharacterSet is not specifically set to equate to NSCharacterSet.
  */
@@ -154,7 +154,7 @@
 /*!
  @method		encodeWithCoder:
  @param			coder The NSCoder to encode the object into.
- @abstract		Provides support for secure Coding by returning YES for the class method.
+ @abstract		Encodes the character set and its NSCharacterSet-equality flag into the coder.
 				This method supports both BECharacterSet and BEMutableCharacterSet.
  */
 - (void)encodeWithCoder:(nonnull NSCoder *)coder {
@@ -207,7 +207,7 @@
  @method		isEqual
  @param			object The object to check against.
  @abstract		This equates BECharacterSet.characterSet and, upon setting equality, NSCharacterSet.
- @discussion	This checks for equality of the characterSet property.  If
+ @discussion	This checks for equality of the characterSet property.
  */
 - (BOOL)isEqual:(id)object
 {
@@ -445,7 +445,7 @@
  @discussion	This method is useful for creating a character set object with data
 				from a file or other external data source.
  
-				A raw bitmap representation of a character set is a byte array with the first 2^16 bits (that is, 8192 bytes) representing the code point range of the the Basic Multilingual Plane (BMP), such that the value of the bit at position n represents the presence in the character set of the character with decimal Unicode value n. A bitmap representation may contain zero to sixteen additional 8192 byte segments to for each additional Unicode plane containing a character in a character set, with each 8192 byte segment prepended with a single plane index byte.
+				A raw bitmap representation of a character set is a byte array with the first 2^16 bits (that is, 8192 bytes) representing the code point range of the Basic Multilingual Plane (BMP), such that the value of the bit at position n represents the presence in the character set of the character with decimal Unicode value n. A bitmap representation may contain zero to sixteen additional 8192 byte segments for each additional Unicode plane containing a character in a character set, with each 8192 byte segment prepended with a single plane index byte.
  
  To add a character in the Basic Multilingual Plane (BMP) with decimal Unicode value n to a raw bitmap representation, you might do the following:
  ```
@@ -470,7 +470,7 @@
  @return		A character set read from the bitmap representation stored in the file at path.
  @discussion	This method doesn’t use filenames to check for the uniqueness of the character sets it creates. To prevent duplication of character sets in memory, cache them and make them available through an API that checks whether the requested set has already been loaded.
  
- To read a bitmap representation from any file, use the NSData methoddataWithContentsOfFile:options:error: and pass the result to characterSetWithBitmapRepresentation:.
+ To read a bitmap representation from any file, use the NSData method dataWithContentsOfFile:options:error: and pass the result to characterSetWithBitmapRepresentation:.
  */
 + (BECharacterSet *)characterSetWithContentsOfFile:(NSString *)fName
 {
@@ -497,7 +497,7 @@
   @abstract		An NSData object encoding the receiver in binary format.
   @discussion	This format is suitable for saving to a file or otherwise transmitting or archiving.
  
- A raw bitmap representation of a character set is a byte array with the first 2^16 bits (that is, 8192 bytes) representing the code point range of the the Basic Multilingual Plane (BMP), such that the value of the bit at position n represents the presence in the character set of the character with decimal Unicode value n. A bitmap representation may contain zero to sixteen additional 8192 byte segments to for each additional Unicode plane containing a character in a character set, with each 8192 byte segment prepended with a single plane index byte.
+ A raw bitmap representation of a character set is a byte array with the first 2^16 bits (that is, 8192 bytes) representing the code point range of the Basic Multilingual Plane (BMP), such that the value of the bit at position n represents the presence in the character set of the character with decimal Unicode value n. A bitmap representation may contain zero to sixteen additional 8192 byte segments for each additional Unicode plane containing a character in a character set, with each 8192 byte segment prepended with a single plane index byte.
  
  For example, a character set containing only Basic Latin (ASCII) characters, which are contained by the Basic Multilingual Plane (BMP, plane 0), has a bitmap representation with a size of 8192 bytes, whereas a character set containing both Basic Latin (ASCII) characters and emoji characters, which are contained by the Supplementary Multilingual Plane (SMP, plane 1), has a bitmap representation with a size of 16385 bytes (8192 bytes for BMP, followed by the byte 0x01 for the plane index of SMP, followed by 8192 bytes for SMP).
  
@@ -916,7 +916,7 @@
  @discussion	This method is useful for creating a character set object with data
 				from a file or other external data source.
  
-				A raw bitmap representation of a character set is a byte array with the first 2^16 bits (that is, 8192 bytes) representing the code point range of the the Basic Multilingual Plane (BMP), such that the value of the bit at position n represents the presence in the character set of the character with decimal Unicode value n. A bitmap representation may contain zero to sixteen additional 8192 byte segments to for each additional Unicode plane containing a character in a character set, with each 8192 byte segment prepended with a single plane index byte.
+				A raw bitmap representation of a character set is a byte array with the first 2^16 bits (that is, 8192 bytes) representing the code point range of the Basic Multilingual Plane (BMP), such that the value of the bit at position n represents the presence in the character set of the character with decimal Unicode value n. A bitmap representation may contain zero to sixteen additional 8192 byte segments for each additional Unicode plane containing a character in a character set, with each 8192 byte segment prepended with a single plane index byte.
  
  To add a character in the Basic Multilingual Plane (BMP) with decimal Unicode value n to a raw bitmap representation, you might do the following:
  ```
@@ -941,7 +941,7 @@
  @return		A character set read from the bitmap representation stored in the file at path.
  @discussion	This method doesn’t use filenames to check for the uniqueness of the character sets it creates. To prevent duplication of character sets in memory, cache them and make them available through an API that checks whether the requested set has already been loaded.
  
- To read a bitmap representation from any file, use the NSData methoddataWithContentsOfFile:options:error: and pass the result to characterSetWithBitmapRepresentation:.
+ To read a bitmap representation from any file, use the NSData method dataWithContentsOfFile:options:error: and pass the result to characterSetWithBitmapRepresentation:.
  */
 + (BEMutableCharacterSet *)characterSetWithContentsOfFile:(NSString *)fName
 {

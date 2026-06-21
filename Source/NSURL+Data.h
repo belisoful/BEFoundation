@@ -245,7 +245,7 @@ FOUNDATION_EXPORT NSString * _Nonnull const BEURL_ISO_2022_JP;// "ISO-2022-JP"
 - (nullable NSURL *)initDataURLWithData:(nonnull NSData *)data mimeType:(nullable NSString *)mimeType charset:(nullable NSString *)charset isBase64:(NSURLBase64Type)base64Type;
 
 /*!
- @method     charSetForMimeType:
+ @method     charSetForDataMimeType:
  @abstract   Returns the default charset for a given MIME type.
  @param      mimeType The MIME type.
  @discussion Provides sensible defaults:
@@ -383,9 +383,9 @@ FOUNDATION_EXPORT NSString * _Nonnull const BEURL_ISO_2022_JP;// "ISO-2022-JP"
  @method     charsetFromStringEncoding:
  @abstract   Converts a `NSStringEncoding` to a charset
  @param      stringEncoding The `NSStringEncoding` string encoding
- @discussion Maps common charset names to their corresponding NSStringEncoding values.
+ @discussion Maps common `NSStringEncoding` values to their corresponding charset names.
 			 Supports UTF-8, ASCII, Latin1/2, Windows code pages, Japanese encodings, etc.
- @return     The corresponding `NSStringEncoding`, or `NSASCIIStringEncoding` if unrecognized.
+ @return     The corresponding charset name, or `nil` if unrecognized.
 */
 + (nullable NSString*)charsetFromStringEncoding:(NSStringEncoding)stringEncoding;
 @end

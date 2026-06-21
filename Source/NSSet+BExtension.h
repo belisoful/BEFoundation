@@ -17,7 +17,7 @@
 /*!
  @category		BExtension
  @abstract		Adds set mapping, filtering, and object meta functionality.
- @discussion	This category provides map, filter, and objects meta-date
+ @discussion	This category provides map, filter, and objects meta-data
 				methods.
  
  The following methods are provided by this category to `NSSet`:
@@ -112,7 +112,7 @@
 - (nonnull instancetype)toClassesFromStrings;
 
 /*!
- @method		-map
+ @method		-mapUsingBlock:
  @abstract		Maps each object in the set
  @param			filterBlock	The block is applied to each object in the set. The
 							block could mutate the object, or set it to `nil` if
@@ -138,8 +138,8 @@
 @interface NSMutableSet <ObjectType> (BExtension)
 
 /*!
- @method		-filter:
- @abstract		Filters the the NSMutableSet by applying the block to each
+ @method		-filterUsingBlock:
+ @abstract		Filters the NSMutableSet by applying the block to each
 				object in the set.
  @param			block	The block is applied to each element in the set. If it
 						returns NO, or the object is set to `nil`, to remove

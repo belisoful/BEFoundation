@@ -16,7 +16,7 @@
 			 structure, where the full path is known, but only the parts relative
 			 to the project's root should be visible to the user.
 			 
-			 Key features:
+			 The control behaves as follows:
 			 - Path items are trimmed to only show paths within the @c relativeURL.
 			 - The @c relativeURL is always considered the root of the path control.
 			 - Containment is compared on standardized path components, so directory

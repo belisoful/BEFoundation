@@ -12,7 +12,7 @@
 			 shown again at any time. This is useful for conditional UI where certain
 			 tabs should only be visible under specific circumstances.
 			 
-			 Key features:
+			 BETabView adds these behaviors to NSTabView:
 			 - Hide/show individual tabs dynamically
 			 - Maintain tab order when hiding/showing
 			 - Delegate notifications for hide/show events

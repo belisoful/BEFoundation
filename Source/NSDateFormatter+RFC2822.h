@@ -14,11 +14,11 @@
 				date headers, and RSS feeds. This extension simplifies the creation and configuration
 				of NSDateFormatter instances for RFC 2822 compliance.
 
-				Key features of RFC 2822 formatting:
+				RFC 2822 formatting in this extension:
 				- Uses UTC timezone (GMT+0) for consistency
 				- Employs en_US_POSIX locale so the English weekday/month names RFC 2822 requires are used
 				- Follows the standard EEE, dd MMM yyyy HH:mm:ss Z format
-				- Ensures reliable parsing and formatting across different locales and timezones
+				- Parses and formats consistently across locales and timezones
  */
 
 #ifndef NSDateFormatterRFC2822_h
@@ -72,7 +72,7 @@
 				- Locale: en_US_POSIX (prevents localization issues)
 				- Timezone: UTC (GMT+0)
 				
-				This method is convenient when you need a one-time formatter for RFC 2822 dates
+				This method creates a one-time formatter for RFC 2822 dates
 				and don't want to manually configure the formatter settings. The returned formatter
 				can be used immediately for date parsing and formatting operations.
 

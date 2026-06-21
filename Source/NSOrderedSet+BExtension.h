@@ -1,5 +1,5 @@
 /*!
- @header		NSOrderedSet+BExtension.m
+ @header		NSOrderedSet+BExtension.h
  @copyright		-© 2025 Delicense - @belisoful. All rights released.
  @date			2025-01-01
  @author		belisoful@icloud.com
@@ -18,7 +18,7 @@
 /*!
  @category		BExtension
  @abstract		Adds set mapping, filtering, and object meta functionality.
- @discussion	This category provides map, filter, and objects meta-date methods.
+ @discussion	This category provides map, filter, and objects meta-data methods.
  
  The following methods are provided by this category to `NSOrderedSet`:
 
@@ -154,7 +154,7 @@
 @property (readwrite, strong, nullable) NSArray<ObjectType> *array;
 
 /*!
- @property		setSet:
+ @property		set
  @abstract		Sets the ordered set to the NSSet.
  @discussion	This implements the set method as the get `set` property is
 				already in the parent.
@@ -174,8 +174,8 @@
 - (void)removeLastObject;
 
 /*!
- @method		-filter:
- @abstract		Filters the the NSMutableOrderedSet by applying the block to
+ @method		-filterUsingBlock:
+ @abstract		Filters the NSMutableOrderedSet by applying the block to
  				each object in the ordered set.
  @param			filterBlock	The block is applied to each element in the ordered
 							set. If it returns NO, or the object is set to `nil`, to

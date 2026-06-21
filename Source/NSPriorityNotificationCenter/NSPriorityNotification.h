@@ -4,7 +4,7 @@
  @date			2025-01-01
  @author		belisoful@icloud.com
  @abstract		Extends NSNotification to include priority-based notification processing with reverse ordering and post-processing blocks.
- @discussion	NSPriorityNotification provides notification functionality including:
+ @discussion	NSPriorityNotification provides the following notification functionality:
 				- Priority-based observer ordering
 				- Reverse enumeration support
 				- Per-notification post-processing blocks
@@ -26,11 +26,11 @@ NS_ASSUME_NONNULL_BEGIN
  @abstract		A notification class that extends NSNotification with priority-based processing capabilities.
  @discussion	NSPriorityNotification adds functionality to the standard notification system:
  
-				- **Reverse Processing**: Observers can be processed in reverse order using the `reverse` property
-				- **Post-Processing Blocks**: Each notification can have a block that executes after each observer
-				- **Priority Support**: Designed to work with NSPriorityNotificationCenter for priority-based observer management
-				- **Secure Coding**: Full support for NSSecureCoding protocol
-				- **Global Registry**: Supports object persistence through global registry system
+				- Reverse Processing: Observers can be processed in reverse order using the `reverse` property
+				- Post-Processing Blocks: Each notification can have a block that executes after each observer
+				- Priority Support: Designed to work with NSPriorityNotificationCenter for priority-based observer management
+				- Secure Coding: Full support for NSSecureCoding protocol
+				- Global Registry: Supports object persistence through global registry system
  
 				@code
 				// Create a reverse-order notification
@@ -196,7 +196,7 @@ NS_ASSUME_NONNULL_BEGIN
  @param			reverse		Whether to process observers in reverse order.
  @param			postBlock	A block to execute after each observer. May be nil.
  @return		A new NSPriorityNotification instance.
- @discussion	This is the most comprehensive factory method, allowing configuration of all
+ @discussion	This factory method configures all
 				NSPriorityNotification features including user info, reverse processing,
 				and post-processing blocks.
  */
@@ -207,20 +207,6 @@ NS_ASSUME_NONNULL_BEGIN
 						   postBlock:(void (NS_SWIFT_SENDABLE ^_Nullable)(NSNotification *notification))postBlock;
 
 #pragma mark - Initialization Methods
-
-/*!
- @method		initWithName:object:userInfo:
- @abstract		Initializes a notification with basic parameters.
- @param			name		The name for the notification. Must not be nil.
- @param			object		The object associated with the notification. May be nil.
- @param			userInfo	A dictionary containing additional information. May be nil.
- @return		An initialized NSPriorityNotification instance.
- @discussion	This is the base designated initializer. It creates a notification with
-				reverse processing disabled and no post-processing block.
- */
-/*- (instancetype)initWithName:(NSNotificationName)name
-					  object:(nullable id)object
-					userInfo:(nullable NSDictionary *)userInfo NS_DESIGNATED_INITIALIZER;*/
 
 /*!
  @method		initWithName:object:userInfo:reverse:
@@ -244,7 +230,7 @@ NS_ASSUME_NONNULL_BEGIN
  @param			name		The name for the notification. Must not be nil.
  @param			object		The object associated with the notification. May be nil.
  @param			userInfo	A dictionary containing additional information. May be nil.
- @param			postBlock	A block to execute after each observer. Must not be nil.
+ @param			postBlock	A block to execute after each observer. May be nil.
  @return		An initialized NSPriorityNotification instance.
  @discussion	This designated initializer allows configuration of post-processing behavior.
 				Reverse processing is disabled. The block is copied and retained.
@@ -261,10 +247,10 @@ NS_ASSUME_NONNULL_BEGIN
  @param			object		The object associated with the notification. May be nil.
  @param			userInfo	A dictionary containing additional information. May be nil.
  @param			reverse		Whether to process observers in reverse order.
- @param			postBlock	A block to execute after each observer. Must not be nil.
+ @param			postBlock	A block to execute after each observer. May be nil.
  @return		An initialized NSPriorityNotification instance.
- @discussion	This is the most comprehensive designated initializer, allowing configuration
-				of all NSPriorityNotification features. The block is copied and retained.
+ @discussion	This designated initializer configures all NSPriorityNotification features.
+				The block is copied and retained.
  */
 - (instancetype)initWithName:(NSNotificationName)name
 					  object:(nullable id)object
@@ -333,11 +319,11 @@ NS_ASSUME_NONNULL_BEGIN
 				NSNotification objects. It enables NSNotification instances to be processed
 				by NSPriorityNotificationCenter while maintaining backward compatibility.
  
-				Key features:
-				- **Priority Post Tracking**: Prevents duplicate processing by NSPriorityNotificationCenter
-				- **Reverse Processing**: Always returns NO for standard notifications
-				- **Post-Processing**: Always returns NULL for standard notifications
-				- **Seamless Integration**: Allows mixed use of NSNotification and NSPriorityNotification
+				The category provides:
+				- Priority Post Tracking: Prevents duplicate processing by NSPriorityNotificationCenter
+				- Reverse Processing: Always returns NO for standard notifications
+				- Post-Processing: Always returns NULL for standard notifications
+				- Mixed Use: Allows mixed use of NSNotification and NSPriorityNotification
  
 				@code
 				// Standard NSNotification works with NSPriorityNotificationCenter
@@ -359,9 +345,9 @@ NS_ASSUME_NONNULL_BEGIN
 				This prevents infinite loops when NSPriorityNotificationCenter observes
 				the system NSNotificationCenter.
  
-				- **Setting to YES**: Marks the notification as having been processed by the priority system
-				- **Setting to NO**: Clears the priority processing flag
-				- **Default Value**: NO for new notifications
+				- Setting to YES: Marks the notification as having been processed by the priority system
+				- Setting to NO: Clears the priority processing flag
+				- Default Value: NO for new notifications
  @note			This property uses associated objects for storage and is automatically managed
 				by NSPriorityNotificationCenter. Manual manipulation is rarely necessary.
  @warning		The flag is set/cleared around delivery, so a single notification instance must not be posted on two threads concurrently.

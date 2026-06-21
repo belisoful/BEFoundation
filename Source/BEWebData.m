@@ -99,12 +99,6 @@ static NSURLSessionConfiguration *s_defaultSessionConfiguration = nil;
 #pragma mark - BEWebData Properties
 
 
-/*!
- @method     setCharset:
- @abstract   Sets the charset of the BEWebData.
- @param      charset	The charset of the data.
- @discussion charset is used in NSURL (Data).
-*/
 /* - (void)setCharset:(NSString *)charset
 {
 	_charset = charset;
@@ -458,7 +452,7 @@ static NSURLSessionConfiguration *s_defaultSessionConfiguration = nil;
 }
 
 
-#pragma mark Contrete Unarchiver Overrides
+#pragma mark Concrete Unarchiver Overrides
 
 - (id)replacementObjectForCoder:(NSCoder *)coder {
 	return self; // Force archiving as this subclass

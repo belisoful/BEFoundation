@@ -3,11 +3,11 @@
  @copyright		-© 2025 Delicense - @belisoful. All rights released.
  @date			2025-01-01
  @author		belisoful@icloud.com
-@abstract		A comprehensive system for adding and managing dynamic methods to Objective-C objects at runtime using blocks.
-  @discussion	This header provides a powerful runtime method injection system that allows you to add methods to existing objects
+@abstract		A system for adding and managing dynamic methods to Objective-C objects at runtime using blocks.
+  @discussion	This header provides a runtime method injection system that adds methods to existing objects
  				and classes using blocks. The system supports class methods (added to all instances of a class).
-				
-				Key Features:
+
+				The system provides the following capabilities:
 				- Add methods to existing objects without subclassing
 				- Support for both instance-specific and class-wide dynamic methods
 				- Protocol-based method forwarding and delegation
@@ -42,7 +42,7 @@
 				One caveat applies to instance-protocol forwarding: reconfiguring an instance's forwarded
 				protocols (addInstanceProtocol:/removeInstanceProtocol: and related) concurrently with
 				dispatch on that same instance may briefly present a stale view of the forwarded
-				protocols. This self-corrects on the next synchronization — it does not crash or corrupt
+				protocols. This self-corrects on the next synchronization without crashing or corrupting
 				state. If you reconfigure protocol forwarding at runtime from multiple threads, serialize
 				that reconfiguration externally (typical usage registers methods and protocols during
 				setup, before concurrent dispatch begins).
@@ -572,7 +572,7 @@ typedef NS_ENUM(NSInteger, BEDynamicMethodsActivationState) {
  @param			protocol	The protocol to retrieve the target implementation object.
  @return		The target, an NSArray when without a protocol, or nil.
  @discussion	This returns the target implementation for a specific protocol.
- 				When the protocol paramater is nil or `\@protocol(NSNoProtocol)`, this
+ 				When the protocol parameter is nil or `\@protocol(NSNoProtocol)`, this
  				will return an NSArray of targets that don't have a protocol.
  				nil if none.
  */
@@ -736,7 +736,7 @@ typedef NS_ENUM(NSInteger, BEDynamicMethodsActivationState) {
 /*!
  @class			NSDynamicObject
  @abstract		Base class that provides automatic dynamic method support.
- @discussion	This class serves as a convenient base class for objects that need dynamic
+ @discussion	This class is a base class for objects that need dynamic
 				method capabilities. It automatically enables dynamic methods and implements
 				the necessary message forwarding methods to support dynamic method resolution.
 				

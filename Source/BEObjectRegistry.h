@@ -6,7 +6,7 @@
  @abstract      A thread-safe object registry system for managing object instances with UUID-based identification.
  @discussion    BEObjectRegistry provides a centralized system for registering and managing object instances using UUID-based identification. The registry maintains weak references to objects and provides thread-safe operations for registration, lookup, and management. Objects can be registered multiple times with reference counting, and the registry supports both automatic UUID generation and custom UUID provision through protocols.
 
-The registry uses NSMapTable with weak references to avoid retain cycles, and provides comprehensive management capabilities including bulk operations and protocol-based filtering. All operations are thread-safe and designed for high-performance applications requiring object lifecycle management.
+The registry uses NSMapTable with weak references to avoid retain cycles, and provides management methods including bulk operations and protocol-based filtering. All operations are thread-safe.
 
 Example usage:
 ```objc
@@ -143,7 +143,7 @@ extern NSExceptionName _Nonnull const NSDuplicateUUIDException;
  @abstract      A thread-safe registry for managing object instances with UUID-based identification.
  @discussion    BEObjectRegistry provides a centralized system for registering and managing object instances using UUID-based identification. The registry maintains weak references to objects to avoid retain cycles, and provides thread-safe operations for registration, lookup, and management.
  
- 				Key features:
+ 				The registry provides:
  				 - Thread-safe operations using synchronized blocks
  				 - Weak reference storage to prevent retain cycles
 				 - Reference counting for multiple registrations of the same object
@@ -405,7 +405,7 @@ extern NSExceptionName _Nonnull const NSDuplicateUUIDException;
  
 				This registry is ideal for scenarios where you need to track objects that don't conform to specific protocols, such as third-party objects, system objects, or temporary objects that need centralized management.
  
-				Key characteristics:
+				This registry:
 				- Accepts any NSObject instance for registration
 				- Maintains weak references to prevent retain cycles
 				- Inherits all thread-safety and reference counting features from BEObjectRegistry
@@ -458,7 +458,7 @@ extern NSExceptionName _Nonnull const NSDuplicateUUIDException;
 				- Persistent storage systems that need to maintain object lifecycles
 				- Scenarios where objects don't have other strong references
  
-				Key characteristics:
+				This registry:
 				- Maintains strong references to all registered objects
 				- Prevents automatic deallocation of registered objects
 				- Inherits universal object acceptance from BEUniversalObjectRegistry

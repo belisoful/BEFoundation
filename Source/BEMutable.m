@@ -14,8 +14,8 @@
 /*!
  @category		BEMutableProtocol
  @abstract		This provides compatibility properties and methods to `NSObject` to check for mutability.
- @discussion	This adds compatibility methods to NSNotification so it can be posted by the system's
-				`NSNotificationCenter` and observed by the `NSPriorityNotificationCenter`.
+ @discussion	This adds the mutability-check properties to `NSObject` so any object answers whether it
+				is mutable. The base implementation reports immutable; mutable subclasses override it.
  
  The following properties are provided by this category:
  

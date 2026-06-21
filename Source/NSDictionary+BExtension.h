@@ -3,8 +3,8 @@
  @copyright		-© 2025 Delicense - @belisoful. All rights released.
  @date			2025-01-01
  @author		belisoful@icloud.com
-@abstract		A comprehensive extension to NSDictionary and NSMutableDictionary providing advanced collection manipulation, indexed subscripting, and recursive merging capabilities.
-@discussion		This extension adds powerful functional programming methods to NSDictionary and NSMutableDictionary, including indexed access, object class inspection, dictionary mapping and filtering, and sophisticated recursive merging operations. The extension is designed to enhance the native Foundation dictionary classes with commonly needed operations while maintaining Apple's design patterns and conventions.
+@abstract		An extension to NSDictionary and NSMutableDictionary providing collection manipulation, indexed subscripting, and recursive merging capabilities.
+@discussion		This extension adds functional programming methods to NSDictionary and NSMutableDictionary, including indexed access, object class inspection, dictionary mapping and filtering, and recursive merging operations. The extension adds commonly needed operations to the native Foundation dictionary classes while following Apple's design patterns and conventions.
 */
 
 #ifndef NSDictionary_BExtension_h
@@ -138,7 +138,7 @@ typedef NS_ENUM(NSInteger, BEDictionaryCombineFlags) {
 /*!
  @category NSMutableDictionary(BExtension)
  @abstract Extensions to NSMutableDictionary providing indexed access, in-place transformations, and recursive merging capabilities.
- @discussion This category adds methods for indexed subscripting with configurable key types, in-place filtering and swapping operations, and sophisticated recursive merging that can handle nested dictionary structures with various combining strategies.
+ @discussion This category adds methods for indexed subscripting with configurable key types, in-place filtering and swapping operations, and recursive merging that can handle nested dictionary structures with various combining strategies.
  */
 @interface NSMutableDictionary<KeyType, ObjectType> (BExtension)
 

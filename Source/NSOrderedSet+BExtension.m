@@ -15,11 +15,11 @@
 /*!
  @category		BExtension
  @abstract		Adds set mapping, filtering, and object meta functionality.
- @discussion	This category provides map, filter, and objects meta-date methods.
+ @discussion	This category provides map, filter, and objects meta-data methods.
  
  The following methods are provided by this category to `NSOrderedSet`:
  
- `-map:`: Maps all objects to a new set, removing `NULL` mappings and not passing.
+ `-mapUsingBlock:`: Maps all objects to a new set, removing `NULL` mappings and not passing.
  
  `-objectsClasses`:  Gets and counts  the `Class` of the objects in the set.
  
@@ -33,7 +33,7 @@
  
  The following methods are provided by this category to `NSMutableOrderedSet`:
  
- `-filter:`: filters all objects to a different set, removing `NULL` mappings and not passing.
+ `-filterUsingBlock:`: filters all objects to a different set, removing `NULL` mappings and not passing.
  
 	These methods provide mapping and class conversion to `NSOrderedSet` and filter for
  `NSMutableOrderedSet`
@@ -43,12 +43,11 @@
 
 /*!
  @method		-objectsClasses
- @abstract		Gets the `class` of the objects in the set and how many of each
-				there are.
+ @abstract		Gets the distinct `class` values of the objects in the ordered set.
  @discussion 	This loops through each object in the ordered set and gets their
 				`class`.  It adds each object class to the resulting
  				`NSOrderedSet`.
- @result		A new `NSOrderedSet<Class>`  of the objects' classes.
+ @result		A new `NSOrderedSet<Class>` of the objects' distinct classes.
  */
 - (nonnull NSOrderedSet<Class> *)objectsClasses
 {
@@ -62,12 +61,10 @@
 
 /*!
  @method		-objectsClassNames
- @abstract		Gets the `className` of the objects in the ordered set and how
- 				many of each there are.
+ @abstract		Gets the distinct `className` values of the objects in the ordered set.
  @discussion 	This loops through each object in the ordered set and gets their
 				`className`.  It adds each object className to the `NSOrderedSet`.
- @result		A new `NSCountedSet<NSString*>`  of the objects' classNames and
-				their count.
+ @result		A new `NSOrderedSet<NSString*>` of the objects' distinct class names.
  */
 - (nonnull NSOrderedSet<NSString*> *)objectsClassNames
 {
@@ -252,8 +249,8 @@
 
 
 /*!
- @method		-filter:
- @abstract		Filters the the NSMutableOrderedSet by applying the block to
+ @method		-filterUsingBlock:
+ @abstract		Filters the NSMutableOrderedSet by applying the block to
  				each object in the ordered set.
  @param			filterBlock	The block is applied to each element in the ordered
  							set. If it returns NO, or the object is set to `nil`, to

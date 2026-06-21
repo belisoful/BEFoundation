@@ -11,7 +11,7 @@
 				runtime injection system, which uses these signatures to build NSInvocations for
 				block-backed methods.
 
-				Key Features:
+				This header provides the following capabilities:
 				- Extract a block's raw @encode signature (@c NSSignatureForBlock / @c BEBlockSignatureChar),
 				  resolving both the regular and small block-descriptor layouts
 				- Build an exact-match signature from a block (@c +signatureFromBlock:)
@@ -301,7 +301,7 @@ typedef NS_ENUM(NSInteger, BEMethodSignatureParseFlags) {
  @property		methodReturnTypeString
  @abstract		The method's return type as a string.
  @return		An NSString containing the encoded return type.
- @discussion	This property provides a convenient way to get the return type as a string
+ @discussion	This property returns the return type as a string
 				rather than a C string. Useful for debugging and introspection.
  */
 @property (readonly, nonnull) NSString *methodReturnTypeString;

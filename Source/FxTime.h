@@ -3,8 +3,8 @@
  @copyright 	-© 2025 Delicense - @belisoful. All rights released.
  @date 			2025-01-01
  @author		belisoful@icloud.com
- @abstract 		A comprehensive Objective-C wrapper for CoreMedia's CMTime structure providing convenient time manipulation and arithmetic operations.
- @discussion	FxTime encapsulates CoreMedia's CMTime structure in an Objective-C object, providing a more convenient and object-oriented interface for time-based operations in media applications. This class supports all standard CMTime operations including arithmetic, comparison, and conversion while maintaining compatibility with NSSecureCoding, NSCopying, and NSMutableCopying protocols.
+ @abstract 		An Objective-C wrapper for CoreMedia's CMTime structure providing time manipulation and arithmetic operations.
+ @discussion	FxTime encapsulates CoreMedia's CMTime structure in an Objective-C object, providing an object-oriented interface for time-based operations in media applications. This class supports all standard CMTime operations including arithmetic, comparison, and conversion while maintaining compatibility with NSSecureCoding, NSCopying, and NSMutableCopying protocols.
 
  The class provides factory methods for creating common time values (zero, invalid, infinity) and supports various initialization methods for different time representations.
 
@@ -35,7 +35,7 @@ typedef struct SRational32 SRational32;
  @class FxTime
  @abstract An Objective-C wrapper for CoreMedia's CMTime structure.
  @discussion
- FxTime provides a convenient object-oriented interface for working with time values in media applications. It encapsulates a CMTime structure and provides methods for comparison and conversion operations.
+ FxTime provides an object-oriented interface for working with time values in media applications. It encapsulates a CMTime structure and provides methods for comparison and conversion operations.
 
  The class supports secure coding and copying, making it suitable for serialization and for use as a thread-safe, immutable time representation.
 
@@ -241,7 +241,7 @@ typedef struct SRational32 SRational32;
  @property seconds
  @abstract The time value converted to seconds as a floating-point number.
  @discussion
- This property provides a convenient way to access the time value in seconds without manual conversion.
+ This property accesses the time value in seconds without manual conversion.
  */
 @property (assign, readonly) Float64 seconds;
 
@@ -347,8 +347,7 @@ typedef struct SRational32 SRational32;
  receiver relative to time1 (i.e. -1 == NSOrderedAscending when self < time1). Both time
  values must be numeric for meaningful comparison.
 
- NOTE: This orientation was corrected in 1.1. Prior versions returned the inverse sign
- (describing time1 relative to the receiver), which contradicted every Cocoa -compare:.
+ @since 1.1
  */
 - (int32_t)compare:(FxTime*)time1;
 
@@ -360,8 +359,9 @@ typedef struct SRational32 SRational32;
  @discussion
  Follows the standard Cocoa NSComparisonResult convention: the result describes the
  receiver relative to time1. Both time values must be numeric for meaningful comparison.
+ (See -compare:.)
 
- NOTE: This orientation was corrected in 1.1 (see -compare:).
+ @since 1.1
  */
 - (int32_t)compareTime:(CMTime)time1;
 
