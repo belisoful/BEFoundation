@@ -678,13 +678,16 @@
 }
 
 /*!
- * @abstract Deterministic, hash-independent stand-in for @c -[NSSet member:].
- * @discussion @c -[NSSet member:] locates a candidate through the hash bucket of the
- * argument. The collection fixtures above hash by element count, so several distinct
- * elements share a bucket; under an unlucky heap layout @c member: can probe a bucket
- * occupant that is not equal and return @c nil, which made the set correctness tests
- * flaky. A linear scan is immune to that: the fixtures contain no two mutually-equal
- * elements, so at most one member matches and the result is stable across runs.
+ * @abstract Deterministic, hash-independent stand-in for @c -[NSSet member:] and
+ * @c -[NSSet containsObject:].
+ * @discussion Both methods locate a candidate through the hash bucket of the argument.
+ * The collection fixtures above hash by element count, so several distinct elements share
+ * a bucket; under an unlucky heap layout the probe can land on a bucket occupant that is
+ * not equal and report a miss (@c member: returns @c nil, @c containsObject: returns
+ * @c NO), which made the set correctness tests flaky — intermittently under full-suite
+ * parallel execution. A linear scan is immune to that: the fixtures contain no two
+ * mutually-equal elements, so at most one member matches and the result is stable across
+ * runs.
  */
 - (id)memberOf:(id<NSFastEnumeration>)haystack equalTo:(id)needle
 {
@@ -714,7 +717,7 @@
 	XCTAssertEqual(result.count, reference.count);
 	
 	[result enumerateObjectsUsingBlock:^(id  _Nonnull obj, BOOL * _Nonnull stop) {
-		BOOL contains = [reference containsObject:obj];
+		BOOL contains = ([self memberOf:reference equalTo:obj] != nil);
 		
 		XCTAssertTrue(contains);
 		if (contains) {
@@ -1027,7 +1030,7 @@
 	XCTAssertEqual(result.count, reference.count);
 	
 	[result enumerateObjectsUsingBlock:^(id  _Nonnull obj, BOOL * _Nonnull stop) {
-		BOOL contains = [reference containsObject:obj];
+		BOOL contains = ([self memberOf:reference equalTo:obj] != nil);
 		
 		XCTAssertTrue(contains);
 		if (contains) {
@@ -1346,7 +1349,7 @@
 	XCTAssertEqual(result.count, reference.count);
 	
 	[result enumerateObjectsUsingBlock:^(id  _Nonnull obj, BOOL * _Nonnull stop) {
-		BOOL contains = [reference containsObject:obj];
+		BOOL contains = ([self memberOf:reference equalTo:obj] != nil);
 		
 		XCTAssertTrue(contains);
 		if (contains) {
@@ -1622,7 +1625,7 @@
 	XCTAssertEqual(result.count, reference.count);
 	
 	[result enumerateObjectsUsingBlock:^(id  _Nonnull obj, BOOL * _Nonnull stop) {
-		BOOL contains = [reference containsObject:obj];
+		BOOL contains = ([self memberOf:reference equalTo:obj] != nil);
 		
 		XCTAssertTrue(contains);
 		if (contains) {
@@ -1900,7 +1903,7 @@
 	XCTAssertEqual(result.count, reference.count);
 	
 	[reference enumerateObjectsUsingBlock:^(id  _Nonnull ref, BOOL * _Nonnull stop) {
-		BOOL contains = [result containsObject:ref];
+		BOOL contains = ([self memberOf:result equalTo:ref] != nil);
 		
 		XCTAssertTrue(contains);
 		if (contains) {
@@ -2246,7 +2249,7 @@
 	XCTAssertEqual(result.count, reference.count);
 	
 	[reference enumerateObjectsUsingBlock:^(id  _Nonnull ref, BOOL * _Nonnull stop) {
-		BOOL contains = [result containsObject:ref];
+		BOOL contains = ([self memberOf:result equalTo:ref] != nil);
 		
 		XCTAssertTrue(contains);
 		if (contains) {
@@ -2590,7 +2593,7 @@
 	XCTAssertEqual(result.count, reference.count);
 	
 	[reference enumerateObjectsUsingBlock:^(id  _Nonnull ref, BOOL * _Nonnull stop) {
-		BOOL contains = [result containsObject:ref];
+		BOOL contains = ([self memberOf:result equalTo:ref] != nil);
 		
 		XCTAssertTrue(contains);
 		if (contains) {
@@ -2865,7 +2868,7 @@
 	XCTAssertEqual(result.count, reference.count);
 	
 	[reference enumerateObjectsUsingBlock:^(id  _Nonnull ref, BOOL * _Nonnull stop) {
-		BOOL contains = [result containsObject:ref];
+		BOOL contains = ([self memberOf:result equalTo:ref] != nil);
 		
 		XCTAssertTrue(contains);
 		if (contains) {
