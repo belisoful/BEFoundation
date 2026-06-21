@@ -11,6 +11,12 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# Pin the toolchain so an image bump cannot silently change the default Xcode.
+# The macos-15 image ships several Xcodes (16.0–16.4 and 26.x) plus a mix of
+# iOS Simulator runtimes; this keeps every job on the same compiler and SDK.
+env:
+  DEVELOPER_DIR: /Applications/Xcode_16.4.app/Contents/Developer
+
 jobs:
   build-and-test:
     name: Build, Test, and Validate Docs (macOS)
@@ -63,31 +69,34 @@ jobs:
       - name: Run unit tests (iOS)
         run: |
           set -o pipefail
-          # Resolve a concrete simulator id (not 'generic', which also builds the
-          # x86_64 slice and fails on the framework's NEON intrinsics). Read it
-          # from simctl, whose output is stable across Xcode versions, rather than
-          # `xcodebuild -showdestinations`, whose format and eligibility filtering
-          # vary. The trailing `|| true` keeps an empty result from aborting the
-          # step under `set -o pipefail` before the diagnostics below can run.
-          pick_ios_sim() {
-            xcrun simctl list devices available \
-              | awk '/^-- iOS/{f=1; next} /^-- /{f=0} f' \
-              | grep -oiE '[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}' \
-              | head -1
-          }
-          ID=$(pick_ios_sim || true)
+          # Resolve a concrete simulator from simctl, matched to the pinned Xcode:
+          #   * iOS major from the selected Xcode's SDK — the pinned Xcode 16.4
+          #     ships the iOS 18 SDK and cannot boot the iOS 26.x runtimes the
+          #     image also carries. Deriving the major keeps this correct if the
+          #     DEVELOPER_DIR pin is later moved to a different Xcode.
+          #   * iPad — the targets build for iPhone and iPad; an iPad simulator is
+          #     always present on the runner, so it is a dependable choice.
+          # A concrete id keeps the build on the active arm64 arch (the runner is
+          # Apple Silicon), avoiding the x86_64 slice that fails on the framework's
+          # NEON intrinsics. `xcodebuild -showdestinations` is not used: it returns
+          # only placeholders on the runner. `|| true` stops an empty match from
+          # aborting the step (bash runs with -e) before the diagnostics print.
+          SDK_MAJOR=$(xcodebuild -showsdks 2>/dev/null \
+                        | grep -oiE 'iphonesimulator[0-9]+' | grep -oE '[0-9]+' \
+                        | sort -n | tail -1 || true)
+          echo "Xcode iOS Simulator SDK major: ${SDK_MAJOR:-unknown}"
+          ID=$(xcrun simctl list devices available \
+                 | awk -v hdr="-- iOS ${SDK_MAJOR}" 'index($0,hdr)==1{f=1;next} /^-- /{f=0} f && /iPad/' \
+                 | grep -oiE '[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}' \
+                 | head -1 || true)
           if [ -z "$ID" ]; then
-            echo "No iOS Simulator installed; downloading the iOS platform..."
-            xcodebuild -downloadPlatform iOS || true
-            ID=$(pick_ios_sim || true)
-          fi
-          if [ -z "$ID" ]; then
-            echo "No available iOS Simulator. Diagnostics follow:"
+            echo "No iPad iOS ${SDK_MAJOR} simulator available. Runtimes and devices:"
             xcrun simctl list runtimes
-            xcrun simctl list devices
+            xcrun simctl list devices available
             exit 1
           fi
           echo "Using simulator: $ID"
+          xcrun simctl boot "$ID" 2>/dev/null || true
           xcodebuild test \
                      -project BEFoundation.xcodeproj \
                      -scheme BEFoundation \

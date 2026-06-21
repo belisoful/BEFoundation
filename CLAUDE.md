@@ -18,9 +18,14 @@ xcodebuild -project BEFoundation.xcodeproj -scheme BEFoundation -configuration D
 # Run unit tests on the x86_64 slice (Rosetta on Apple Silicon)
 xcodebuild test -project BEFoundation.xcodeproj -scheme BEFoundation -configuration Debug -destination 'platform=macOS,arch=x86_64'
 
-# Run unit tests on iOS Simulator — use a CONCRETE arm64 simulator id, not 'generic'
-ID=$(xcodebuild -showdestinations -scheme BEFoundation -project BEFoundation.xcodeproj 2>/dev/null \
-       | grep 'platform:iOS Simulator' | grep 'arch:arm64' | grep -oE 'id:[0-9A-F-]{36}' | head -1 | cut -d: -f2)
+# Run unit tests on iOS Simulator — resolve a CONCRETE id from simctl (not 'generic').
+# Match the simulator's iOS major to the SELECTED Xcode's SDK: a macOS image can carry
+# newer iOS runtimes (e.g. 26.x) that an older Xcode (e.g. 16.4) cannot boot. simctl is
+# the reliable enumerator — `xcodebuild -showdestinations` may return only placeholders.
+SDK_MAJOR=$(xcodebuild -showsdks 2>/dev/null | grep -oiE 'iphonesimulator[0-9]+' | grep -oE '[0-9]+' | sort -n | tail -1)
+ID=$(xcrun simctl list devices available \
+       | awk -v hdr="-- iOS ${SDK_MAJOR}" 'index($0,hdr)==1{f=1;next} /^-- /{f=0} f && /iPad/' \
+       | grep -oiE '[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}' | head -1)
 xcodebuild test -project BEFoundation.xcodeproj -scheme BEFoundation -configuration Debug -destination "platform=iOS Simulator,id=$ID"
 
 # Validate the DocC catalog
@@ -40,7 +45,7 @@ Code is commit-ready only when every check below passes. These mirror the CI job
 ## Cross-Platform and Architecture Notes
 
 - **Platform aliases** — extend the real platform classes through `BEPlatformTypes.h`. A category on `BEColor` is a category on `NSColor` (macOS) or `UIColor` (iOS). macOS-only code is wrapped in `#if TARGET_OS_OSX`.
-- **iOS Simulator** — always target a concrete arm64 simulator id. `generic/platform=iOS Simulator` also builds the x86_64 slice, which fails on the NEON/Accelerate intrinsics the framework pulls in.
+- **iOS Simulator** — always target a concrete arm64 simulator id. `generic/platform=iOS Simulator` also builds the x86_64 slice, which fails on the NEON/Accelerate intrinsics the framework pulls in. Pick the simulator's iOS major to match the **selected Xcode's** SDK: a CI image can carry newer iOS runtimes (e.g. 26.x) that an older Xcode (e.g. 16.4) cannot boot, so a naive "first/latest simulator" pick fails with `Unable to find a destination matching`. CI pins the toolchain via `DEVELOPER_DIR` to keep this stable.
 - **`BOOL` encoding differs by ABI** — `@encode(BOOL)` is `"B"` on arm64 and `"c"` on x86_64. On x86_64 `BOOL` is `signed char`, so `BOOL` and `char` are indistinguishable at runtime. Tests must use `@encode(BOOL)` rather than a hardcoded `"B"`, and `NSMutableNumber` follows `NSNumber` by treating `"c"` as `char`.
 - **Frame lengths and `long double` differ by ABI** — `NSMethodSignature frameLength` and `long double` size (8 bytes arm64, 16 bytes x86_64) are architecture-specific. Guard exact-value assertions with `#if defined(__arm64__) || defined(__aarch64__)`.
 - **`<arm_neon.h>`** — never import it unguarded. Wrap any arm-only header in `#if defined(__arm64__) || defined(__aarch64__)` so the x86_64 slice compiles.
