@@ -24,7 +24,7 @@
  @param		value	This is the _Float16 to be encoded.
  @param		key		This is the key associated with the @c value.
  */
-- (void)encodeHalf:(_Float16)value forKey:(NSString * _Null_unspecified)key
+- (void)encodeHalf:(_Float16)value forKey:(NSString *)key
 {
 	[self encodeBytes:(void*)&value length:sizeof(_Float16) forKey:key];
 }
@@ -37,7 +37,7 @@
  @result		Returns the decoded `_Float16`, or 0 if the key is absent or the stored
 				data is the wrong size (matching NSCoder's other scalar decoders).
  */
-- (_Float16)decodeHalfForKey:(NSString *_Null_unspecified)key
+- (_Float16)decodeHalfForKey:(NSString *)key
 {
 	NSUInteger lengthp = 0;
 	const void* p = [self decodeBytesForKey:key returnedLength:&lengthp];

@@ -28,6 +28,8 @@
 
 #define kBEDateFormatRFC2822		(@"EEE, dd MMM yyyy HH:mm:ss Z")
 
+NS_ASSUME_NONNULL_BEGIN
+
 /*!
  @category		NSDateFormatter (RFC2822)
  @abstract		Category extension for NSDateFormatter providing RFC 2822 date formatting capabilities.
@@ -107,5 +109,7 @@
 - (void)rfc2822Format;
 
 @end
+
+NS_ASSUME_NONNULL_END
 
 #endif // NSDateFormatterRFC2822_h

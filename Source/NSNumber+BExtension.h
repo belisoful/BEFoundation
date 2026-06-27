@@ -81,6 +81,8 @@ int64_t floatToFpXX(double value, int exponentBits, int mantissaBits, int expone
  Type precedence follows this order (lowest to highest):
  char, short, int, long, long long, BOOL, unsigned char, unsigned short, unsigned int, unsigned long, unsigned long long, float, double
  */
+NS_ASSUME_NONNULL_BEGIN
+
 @interface NSNumber (Extension)
 
 #pragma mark - Operations with NSNumber
@@ -316,5 +318,7 @@ int64_t floatToFpXX(double value, int exponentBits, int mantissaBits, int expone
 - (NSNumber*)xorUInt:(UInt64)second;
 
 @end
+
+NS_ASSUME_NONNULL_END
 
 #endif // NSNumber_BExtension_h

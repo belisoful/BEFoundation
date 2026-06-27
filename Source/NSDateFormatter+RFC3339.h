@@ -48,6 +48,8 @@
 
 #define kBEDateFormatRFC3339		(@"yyyy-MM-dd'T'HH:mm:ssZZZZZ")
 
+NS_ASSUME_NONNULL_BEGIN
+
 /*!
  @category		NSDateFormatter (RFC3339)
  @abstract		Category extension for NSDateFormatter providing RFC 3339 date formatting capabilities.
@@ -131,5 +133,7 @@
 - (void)rfc3339Format;
 
 @end
+
+NS_ASSUME_NONNULL_END
 
 #endif // NSDateFormatterRFC3339_h

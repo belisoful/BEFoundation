@@ -80,7 +80,7 @@
 #define NSObject_DynamicMethods_h
 
 #import <Foundation/Foundation.h>
-#import "NSMethodSignature+BlockSignatures.h"
+#import <BEFoundation/NSMethodSignature+BlockSignatures.h>
 #import <objc/runtime.h>
 
 /*!

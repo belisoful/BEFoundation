@@ -9,7 +9,7 @@
 //
 
 #import <AppKit/AppKit.h>
-#import "BESecurityScopedURLManager.h"
+#import <BEFoundation/BESecurityScopedURLManager.h>
 
 NS_ASSUME_NONNULL_BEGIN
 

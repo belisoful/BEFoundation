@@ -17,6 +17,8 @@
 #import <Foundation/Foundation.h>
 #import <CoreMedia/CMTime.h>
 
+NS_ASSUME_NONNULL_BEGIN
+
 /*!
  @struct SRational32
  @abstract A structure representing a rational number with 32-bit integer components.
@@ -526,5 +528,7 @@ typedef struct SRational32 SRational32;
 - (void)maximumTime:(CMTime)time;
 
 @end
+
+NS_ASSUME_NONNULL_END
 
 #endif

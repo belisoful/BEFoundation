@@ -14,7 +14,7 @@
 #define NSPooledPriorityNotification_h
 
 #import <Foundation/Foundation.h>
-#import "NSPriorityNotification.h"
+#import <BEFoundation/NSPriorityNotification.h>
 
 /*!
  @class			NSPooledPriorityNotification

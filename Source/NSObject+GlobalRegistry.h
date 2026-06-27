@@ -24,7 +24,7 @@
 #define NSObject_GlobalRegistry_h
 
 #import <Foundation/Foundation.h>
-#import "BEObjectRegistry.h"
+#import <BEFoundation/BEObjectRegistry.h>
 
 /*!
  @category NSObject(BEGlobalRegistry)

@@ -17,6 +17,8 @@
 
 #import <Foundation/Foundation.h>
 
+NS_ASSUME_NONNULL_BEGIN
+
 /*!
  @category		NSCoder (HalfFloat)
  @abstract		Category extension for NSCoder providing half-precision float encoding and decoding.
@@ -55,7 +57,7 @@
 				to retrieve the value during decoding. Must not be nil.
  @see			decodeHalfForKey:
  */
-- (void)encodeHalf:(_Float16)value forKey:(NSString * _Null_unspecified)key;
+- (void)encodeHalf:(_Float16)value forKey:(NSString *)key;
 
 /*!
  @method		-decodeHalfForKey:
@@ -76,8 +78,10 @@
 				the stored data is invalid.
  @see			encodeHalf:forKey:
  */
-- (_Float16)decodeHalfForKey:(NSString * _Null_unspecified)key;
+- (_Float16)decodeHalfForKey:(NSString *)key;
 
 @end
+
+NS_ASSUME_NONNULL_END
 
 #endif // NSCoder_Half_h

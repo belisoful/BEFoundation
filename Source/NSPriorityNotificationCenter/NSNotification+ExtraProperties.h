@@ -31,6 +31,8 @@
 
 #import <Foundation/Foundation.h>
 
+NS_ASSUME_NONNULL_BEGIN
+
 /*!
  @category		NSNotification (ExtraProperties)
  @abstract		Extension to NSNotification to provide additional tag and identifier properties.
@@ -68,8 +70,10 @@
 				otherwise it returns the notification object's identifier if it has an identifier property.
  @result		object of the notification identifier.
  */
-@property (nonatomic) id identifier;
+@property (nonatomic, nullable) id identifier;
 
 @end
+
+NS_ASSUME_NONNULL_END
 
 #endif

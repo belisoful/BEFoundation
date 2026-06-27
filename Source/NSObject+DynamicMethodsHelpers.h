@@ -25,7 +25,7 @@
 #define NSObject_DynamicMethodsHelpers_h
 
 #import <Foundation/Foundation.h>
-#import "NSMethodSignature+BlockSignatures.h"
+#import <BEFoundation/NSMethodSignature+BlockSignatures.h>
 
 /*!
  * @function recursiveProtocolsFromProtocol

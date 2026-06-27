@@ -55,6 +55,13 @@ Code is commit-ready only when every check below passes. These mirror the CI job
 
 `OptimizationProfiles/BEFoundation.profdata` is consumed by the Release config (`CLANG_USE_OPTIMIZATION_PROFILE=YES`). To refresh it: run `test` in Release with `-enableCodeCoverage YES ENABLE_CODE_COVERAGE=YES CLANG_USE_OPTIMIZATION_PROFILE=NO` for **both** macOS and iOS (the framework target's `ENABLE_CODE_COVERAGE` is `NO`, so the override is required to instrument it), then `xcrun llvm-profdata merge` the two `Coverage.profdata` files into one cross-platform profile.
 
+### Release Packaging
+
+The `Framework Release vX.Y.Z/` folders ship the Release framework as `BEFoundation.framework.zip` in two flavors: `BEFoundation (arm64)` (`ARCHS=arm64`) and `BEFoundation Universal (arm64, x86_64)` (`ARCHS='arm64 x86_64'`). Build each with `-configuration Release` so the binary picks up the PGO profile, then zip with `Scripts/package-release-zip.sh <BEFoundation.framework> <output.zip>`.
+
+- **The issue** — a framework's symlinks (`Versions/Current → A`, the top-level stub → `Versions/Current/BEFoundation`) are sealed by the ad-hoc signature. A zip made with `ditto -c -k` extracts cleanly under `ditto -x` but breaks under Info-ZIP `unzip` (symlinks mis-restored), so `codesign --verify` reports "a sealed resource is missing or invalid". Fresh Xcode builds also carry `com.apple.*` provenance xattrs that `unzip` drops.
+- **The fix (what the script does)** — `xattr -cr` the framework, re-sign ad-hoc (`codesign --force --deep --sign -`), then archive with `zip -y -r -X` (Info-ZIP, symlink-preserving). The result verifies after both `unzip` and `ditto`/Finder extraction. The script self-checks by unzipping and re-running `codesign --verify --deep --strict`.
+
 ## Project Structure
 
 - `Source/` — Framework source code (Objective-C and Swift); `BEPlatformTypes.h` holds the cross-platform aliases
@@ -62,6 +69,7 @@ Code is commit-ready only when every check below passes. These mirror the CI job
 - `BEFoundation.xcodeproj/` — Xcode project file
 - `BEFoundation.xctestplan` — Test plan configuration
 - `OptimizationProfiles/` — Profile-guided-optimization data (`BEFoundation.profdata`)
+- `Scripts/` — developer/release helpers (`package-release-zip.sh`, `run-noncompliant-tests.sh`)
 
 ### Vendored: NSMutableNumber
 
