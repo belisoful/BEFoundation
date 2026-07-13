@@ -135,8 +135,9 @@ typedef void(^NSDataErrorBlock)(NSError * _Nonnull error, BOOL auxiliary);
  */
 @interface BEDataDownloadHandler : NSObject <NSURLSessionDataDelegate, NSURLSessionDownloadDelegate>
 
-/*! @property task The underlying NSURLSessionTask being managed. */
-@property (nonatomic, readonly, nonnull) NSURLSessionTask *task;
+/*! @property task The underlying NSURLSessionTask being managed. nil until a task is
+	attached by one of the download methods. */
+@property (nonatomic, readonly, nullable) NSURLSessionTask *task;
 
 /*! @property isDataTask YES if the task is an NSURLSessionDataTask. */
 @property (nonatomic, readonly) BOOL isDataTask;

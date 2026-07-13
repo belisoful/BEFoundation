@@ -12,8 +12,9 @@
 #pragma mark - sRGB component access (never raises)
 
 // Fill r/g/b/a with the receiver's sRGB components. On macOS the receiver is first converted
-// into the sRGB space (NSColor's component accessors raise on non-RGB colors); on iOS the
-// RGBA accessor already reports sRGB. Components are left as reported (callers clamp).
+// into the sRGB space (NSColor's component accessors raise on non-RGB colors). On iOS the
+// RGBA accessor reports extended-sRGB components; wide-gamut colors yield values outside
+// [0, 1]. Components are left as reported (callers clamp).
 - (void)be_getSRGBRed:(CGFloat *)red green:(CGFloat *)green blue:(CGFloat *)blue alpha:(CGFloat *)alpha {
 	CGFloat r = 0, g = 0, b = 0, a = 1;
 #if TARGET_OS_OSX

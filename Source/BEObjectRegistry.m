@@ -44,8 +44,7 @@ static NSMutableDictionary *gSaltLocks;
 	if (self) {
 		_requireRegistryProtocol = YES;
 		_keySalt = 0;
-		_uuidKey = 0;
-		
+
 		// Create a map table with weak references to instances
 		registryTable = [NSMapTable mapTableWithKeyOptions:self.class.keyOptions
 											  valueOptions:self.class.valueOptions];
@@ -147,10 +146,6 @@ static NSMutableDictionary *gSaltLocks;
 	if (!object) {
 		return nil;
 	}
-	// Don't set CustomRegistryUUID objects
-	if ([object conformsToProtocol:@protocol(CustomRegistryUUID)]) {
-		return uuid;
-	}
 	@synchronized (registryTable) {
 		if (uuid) {
 			id<NSObject> instance = [registryTable objectForKey:uuid];
@@ -244,6 +239,10 @@ static NSMutableDictionary *gSaltLocks;
 		[NSException raise:NSInvalidArgumentException
 					format:@"*** -[%@ %@]: uuid is not a NSString nor nil",
 		 NSStringFromClass(self.class), NSStringFromSelector(_cmd)];
+	}
+	// CustomRegistryUUID objects manage their own identifiers; decline before any table mutation.
+	if ([object conformsToProtocol:@protocol(CustomRegistryUUID)]) {
+		return;
 	}
 	NSString *priorUUID = [self setSimpleRegistryUUID:uuid forObject:object];
 	if (priorUUID) {
@@ -421,7 +420,9 @@ static NSMutableDictionary *gSaltLocks;
 			id object = [registryTable objectForKey:uuid];
 			if (![object conformsToProtocol:@protocol(BERegistryProtocol)]) {
 				[self clearObjectByUUID:uuid];
-				if (clearObjectUUIDs && [self countForObject:object] <= 0) {
+				// CustomRegistryUUID objects keep their identifier across a clear.
+				if (clearObjectUUIDs && ![object conformsToProtocol:@protocol(CustomRegistryUUID)]
+					&& [self countForObject:object] <= 0) {
 					[self setSimpleRegistryUUID:nil forObject:object];
 				}
 			}

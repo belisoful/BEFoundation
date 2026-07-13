@@ -194,11 +194,11 @@ typedef NS_ENUM(NSInteger, BECharacterSetEquality) {
 /*!
  @method		hash
  @abstract		Returns a hash value for the character set.
- @discussion	The hash value is based on the underlying NSCharacterSet's hash. When the instance
-				or class is configured to not equate with NSCharacterSet instances, the hash is
-				XORed with a static value to ensure different hash values while maintaining
-				consistency for equivalent BECharacterSet instances.
- 
+ @discussion	The hash is the underlying NSCharacterSet's hash and is independent of the
+				equality-style setting. isEqual: compares two BECharacterSet instances by their
+				characters alone, and can equate a BECharacterSet with a plain NSCharacterSet,
+				so every equal pair shares the plain NSCharacterSet hash.
+
  @return		A hash value for the receiver.
  */
 - (NSUInteger)hash;

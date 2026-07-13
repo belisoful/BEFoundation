@@ -128,14 +128,17 @@ static NSURLSessionConfiguration *s_defaultSessionConfiguration = nil;
 	}
 	
 	
-	// Success - copy the accumulated data
+	// Success - copy the accumulated data. _data stays nil when no body was received
+	// (e.g. HTTP 204 fires no -didReceiveData:); the allowBothCompletions write path
+	// below relies on that nil to detect "no data". The data completion block and
+	// delegate declare data _Nonnull, so they receive an empty NSData in that case.
 	_data = [_receivedData copy];
 	
 	if (self.dataCompletionBlock) {
-		self.dataCompletionBlock(_data, task.response);
+		self.dataCompletionBlock(_data ?: [NSData data], task.response);
 	}
 	if ([delegate respondsToSelector:@selector(downloadDataComplete:urlResponse:)]) {
-		[delegate downloadDataComplete:_data urlResponse:task.response];
+		[delegate downloadDataComplete:(_data ?: [NSData data]) urlResponse:task.response];
 	}
 	
 	// Handle allowBothCompletions: write data to temp file
@@ -241,7 +244,8 @@ static NSURLSessionConfiguration *s_defaultSessionConfiguration = nil;
  @method     URLSession:downloadTask:didFinishDownloadingToURL:
  @abstract   Required delegate method called when a download task completes successfully.
  @discussion Provides the temporary file location where the downloaded content was saved.
-			 If allowBothCompletions is enabled, also loads the file into memory.
+			 If allowBothCompletions is enabled, also loads the file into memory; a failed
+			 read is reported as an auxiliary error.
  */
 - (void)URLSession:(NSURLSession *)session downloadTask:(NSURLSessionDownloadTask *)downloadTask didFinishDownloadingToURL:(NSURL *)location
 {
@@ -264,18 +268,28 @@ static NSURLSessionConfiguration *s_defaultSessionConfiguration = nil;
 	
 	// Handle allowBothCompletions: load file into memory
 	if (self.allowBothCompletions) {
-		if (self.dataCompletionBlock) {
+		BOOL delegateWantsData = [delegate respondsToSelector:@selector(downloadDataComplete:urlResponse:)];
+		if (self.dataCompletionBlock || delegateWantsData) {
 			_data = [NSData dataWithContentsOfURL:location];
 			if (_data) {
-				self.dataCompletionBlock(_data, downloadTask.response);
-			}
-		}
-		if ([delegate respondsToSelector:@selector(downloadDataComplete:urlResponse:)]) {
-			if (!_data) {
-				_data = [NSData dataWithContentsOfURL:location];
-			}
-			if (_data) {
-				[delegate downloadDataComplete:_data urlResponse:downloadTask.response];
+				if (self.dataCompletionBlock) {
+					self.dataCompletionBlock(_data, downloadTask.response);
+				}
+				if (delegateWantsData) {
+					[delegate downloadDataComplete:_data urlResponse:downloadTask.response];
+				}
+			} else {
+				// Report the failed read as an auxiliary error, matching the data-task path.
+				NSError *readError = [NSError errorWithDomain:NSCocoaErrorDomain code:NSFileReadUnknownError userInfo:@{NSLocalizedDescriptionKey: @"The downloaded file could not be read for the data completion callbacks."}];
+				_hasError = YES;
+				_error = readError;
+
+				if (self.errorBlock) {
+					self.errorBlock(readError, YES);
+				}
+				if ([delegate respondsToSelector:@selector(downloadError:auxiliary:)]) {
+					[delegate downloadError:readError auxiliary:YES];
+				}
 			}
 		}
 	} else if (self.dataCompletionBlock && !self.suppressCompletionWarnings) {

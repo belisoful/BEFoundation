@@ -503,7 +503,10 @@
 	[self.notificationCenter postNotificationName:@"TestNotification" object:nil userInfo:NSDictionary.new postBlock:^(NSNotification * _Nonnull notification) {
 		count++;
 	}];
-	
+
+	XCTAssertEqual(self.observer1.receivedCount, 1);
+	XCTAssertEqual(count, 1);
+
 	[self.notificationCenter removeObserver:self.observer1];
 }
 
@@ -753,17 +756,17 @@
 		count++;
 	}];
 	XCTAssertEqual(self.observer1.receivedCount, 1);
-	XCTAssertEqual(count, 2);	// NSPriorityNotificationCenter raising super observer included
-	
+	XCTAssertEqual(count, 1);
+
 	[self.observer1 reset];
 	count = 0;
-	
+
 	// Post with different object - should not receive
 	[self.notificationCenter postNotificationName:@"TestNotification" object:[[NSObject alloc] init] postBlock:^(NSNotification * _Nonnull notification) {
 		count++;
 	}];
 	XCTAssertEqual(self.observer1.receivedCount, 0);
-	XCTAssertEqual(count, 1);	// NSPriorityNotificationCenter raising super observer included
+	XCTAssertEqual(count, 0);
 }
 
 
@@ -785,7 +788,7 @@
 									   }];
 	
 	XCTAssertEqual(self.observer1.receivedCount, 1);
-	XCTAssertEqual(count, 2);
+	XCTAssertEqual(count, 1);
 	XCTAssertEqualObjects(self.observer1.receivedNotifications.firstObject.userInfo, userInfo);
 }
 
@@ -841,17 +844,17 @@
 		count++;
 	}];
 	XCTAssertEqual(self.observer1.receivedCount, 1);
-	XCTAssertEqual(count, 2);	// NSPriorityNotificationCenter raising super observer included
-	
+	XCTAssertEqual(count, 1);
+
 	[self.observer1 reset];
 	count = 0;
-	
+
 	// Post with different object - should not receive
 	[self.notificationCenter postNotificationName:@"TestNotification" object:[[NSObject alloc] init] postBlock:^(NSNotification * _Nonnull notification) {
 		count++;
 	}];
 	XCTAssertEqual(self.observer1.receivedCount, 0);
-	XCTAssertEqual(count, 1);
+	XCTAssertEqual(count, 0);
 }
 
 
@@ -874,8 +877,32 @@
 									   }];
 	
 	XCTAssertEqual(self.observer1.receivedCount, 1);
-	XCTAssertEqual(count, 2);	// NSPriorityNotificationCenter raising super observer included
+	XCTAssertEqual(count, 1);
 	XCTAssertEqualObjects(self.observer1.receivedNotifications.firstObject.userInfo, userInfo);
+}
+
+// Pins the postBlock contract on the default-center posting path: once per registered
+// observer, with no extra invocation for the internal super-post forwarding record.
+- (void)testPostBlockCalledOncePerObserver {
+	[self.notificationCenter addObserver:self.observer1
+								selector:@selector(handleNotification:)
+									name:@"TestNotification"
+								  object:nil];
+
+	[self.notificationCenter addObserver:self.observer2
+								selector:@selector(handleNotification:)
+									name:@"TestNotification"
+								  object:nil];
+
+	__block int count = 0;
+
+	[self.notificationCenter postNotificationName:@"TestNotification" object:nil postBlock:^(NSNotification * _Nonnull notification) {
+		count++;
+	}];
+
+	XCTAssertEqual(self.observer1.receivedCount, 1);
+	XCTAssertEqual(self.observer2.receivedCount, 1);
+	XCTAssertEqual(count, 2);
 }
 
 - (void)testPostNotificationObject {
@@ -916,38 +943,38 @@
 #pragma mark - Priority Ordering Tests
 
 - (void)testPriorityOrdering {
-	// Create observers that track their call order
-	__block NSMutableArray *callOrder = [[NSMutableArray alloc] init];
-	
 	[self.notificationCenter addObserver:self.observer1
 								selector:@selector(handleNotification:)
 									name:@"TestNotification"
 								  object:nil
 								priority:20]; // Lowest priority
-	
+
 	[self.notificationCenter addObserver:self.observer2
 								selector:@selector(handleNotification:)
 									name:@"TestNotification"
 								  object:nil
 								priority:5];  // Highest priority
-	
+
 	[self.notificationCenter addObserver:self.observer3
 								selector:@selector(handleNotification:)
 									name:@"TestNotification"
 								  object:nil
 								priority:10]; // Medium priority
-	
-	// Override handleNotification to track order
-	self.observer1.receivedNotifications = callOrder;
-	self.observer2.receivedNotifications = callOrder;
-	self.observer3.receivedNotifications = callOrder;
-	
-	[self.notificationCenter postNotificationName:@"TestNotification" object:nil];
-	
+
+	// The mutable userInfo lets each observer record its 1-based delivery position.
+	NSMutableDictionary *mutableUserInfo = NSMutableDictionary.new;
+
+	[self.notificationCenter postNotificationName:@"TestNotification" object:nil userInfo:mutableUserInfo];
+
 	// All should have been called
 	XCTAssertEqual(self.observer1.receivedCount, 1);
 	XCTAssertEqual(self.observer2.receivedCount, 1);
 	XCTAssertEqual(self.observer3.receivedCount, 1);
+
+	// Delivery follows priority order: 5, then 10, then 20.
+	XCTAssertEqual(self.observer2.handlingIndex, 1);
+	XCTAssertEqual(self.observer3.handlingIndex, 2);
+	XCTAssertEqual(self.observer1.handlingIndex, 3);
 }
 
 #pragma mark - Selector Validation Tests

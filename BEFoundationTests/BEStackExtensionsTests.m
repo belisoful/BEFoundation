@@ -35,6 +35,12 @@
 	XCTAssertEqualObjects(stack, (@[@"a", @"b", @"c"]));
 }
 
+- (void)testArrayPushObjectsNilFirstArgIsIgnored {
+	NSMutableArray *stack = [NSMutableArray array];
+	[stack pushObjects:nil];
+	XCTAssertEqual(stack.count, 0u);
+}
+
 - (void)testArrayPushArrayAndNil {
 	NSMutableArray *stack = [NSMutableArray arrayWithObject:@"a"];
 	[stack pushArray:@[@"b", @"c"]];
@@ -115,6 +121,13 @@
 	NSMutableOrderedSet *set = [NSMutableOrderedSet orderedSet];
 	[set pushArray:@[@"d", @"d", @"e"]];   // an ordered set never holds duplicates
 	XCTAssertEqualObjects(set.array, (@[@"d", @"e"]));
+}
+
+- (void)testOrderedSetPushObjectsNilFirstArgAndPushArrayNilAreIgnored {
+	NSMutableOrderedSet *set = [NSMutableOrderedSet orderedSet];
+	[set pushObjects:nil];
+	[set pushArray:nil];
+	XCTAssertEqual(set.count, 0u);
 }
 
 - (void)testOrderedSetPopAndShift {

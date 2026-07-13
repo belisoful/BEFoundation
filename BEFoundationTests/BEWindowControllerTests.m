@@ -126,6 +126,28 @@
 	[[NSNotificationCenter defaultCenter] removeObserver:token];
 }
 
+- (void)testWindowDidLoadPostsNotificationWithoutDelegate {
+	// With no window delegate, respondsToSelector:@selector(windowDidLoad:) is NO, so the
+	// delegate call is skipped and only the notification is posted.
+	NSWindow *window = [[NSWindow alloc] init];
+	BEWindowController *wc = [[BEWindowController alloc] initWithWindow:window];
+	XCTAssertNil(window.delegate, @"Precondition: window has no delegate.");
+
+	XCTestExpectation *notificationExpectation = [self expectationWithDescription:@"Notification posted without delegate"];
+	id token = [[NSNotificationCenter defaultCenter] addObserverForName:BEWindowDidLoadNotification
+																 object:window
+																  queue:nil
+															 usingBlock:^(NSNotification * _Nonnull note) {
+		[notificationExpectation fulfill];
+	}];
+
+	XCTAssertNoThrow([wc windowDidLoad]);
+
+	[self waitForExpectationsWithTimeout:1 handler:nil];
+
+	[[NSNotificationCenter defaultCenter] removeObserver:token];
+}
+
 #pragma mark - Parent/Child Relationship
 
 - (void)testParentChildSetAndRemove {
@@ -232,9 +254,23 @@
 - (void)testRemoveNonexistentChildReturnsNo {
 	TestWindowController *parent = [[TestWindowController alloc] init];
 	TestWindowController *child = [[TestWindowController alloc] init];
-	
+
 	BOOL removed = [parent removeChildWindowController:child];
 	XCTAssertFalse(removed);
+}
+
+- (void)testAddRemoveNonConformingChildSkipsBackReference {
+	// A plain NSWindowController does not conform to BEChildWindowController, so it joins the
+	// child set without any parentController back-reference being assigned or cleared.
+	TestWindowController *parent = [[TestWindowController alloc] init];
+	NSWindowController *plainChild = [[NSWindowController alloc] init];
+
+	[parent addChildWindowController:plainChild];
+	XCTAssertTrue([parent.childControllers containsObject:plainChild]);
+	XCTAssertEqual(parent.childControllers.count, 1u);
+
+	XCTAssertTrue([parent removeChildWindowController:plainChild]);
+	XCTAssertEqual(parent.childControllers.count, 0u);
 }
 
 #pragma mark - Primary Window Closing Logic
@@ -271,6 +307,17 @@
 
 	XCTAssertTrue(secondary.closed);
 	XCTAssertFalse(primary.closed, @"Closing non-primary window should not affect primary.");
+}
+
+- (void)testPrimaryWindowWithoutDocumentClosesCleanly {
+	// A primary controller with no document hits the nil-document early exit in
+	// closeDocumentWindowControllers and closes without touching any document array.
+	TestWindowController *primary = [[TestWindowController alloc] initWithWindow:nil];
+	primary.isPrimaryWindowController = YES;
+	XCTAssertNil(primary.document, @"Precondition: primary has no document.");
+
+	XCTAssertNoThrow([primary close]);
+	XCTAssertTrue(primary.closed);
 }
 
 #pragma mark Regression Tests (reparenting + nil safety)

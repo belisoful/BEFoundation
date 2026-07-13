@@ -4,7 +4,7 @@
  @date          2025-01-01
  @author		belisoful@icloud.com
  @brief         Protocols and categories for object mutability and recursive copying of collections.
- @discussion    This header provides a comprehensive framework for determining object mutability and
+ @discussion    This header provides protocols and categories for determining object mutability and
 				performing recursive copying operations on Foundation collections. It defines protocols
 				to categorize objects based on their mutability characteristics and provides methods
 				for deep copying of complex data structures.
@@ -216,12 +216,15 @@
  @brief         Creates a mutable recursive copy of the collection and all its elements.
  @discussion    This method performs a deep copy of the entire data structure, creating
 				mutable copies where possible. Collections conforming to BECollection are
-				recursively copied as mutable versions, and elements conforming to BEHasMutable
-				are converted to their mutable counterparts.
-				
-				The resulting data structure is fully mutable, allowing modifications
-				at any level of the hierarchy.
- @return        A mutable copy of the collection with all possible elements made mutable.
+				recursively copied as mutable versions, and other elements conforming to
+				NSMutableCopying are replaced by their mutable copies.
+
+				Elements that do not conform to NSMutableCopying are shared by reference
+				rather than copied. Reference cycles are detected and broken by referencing
+				the already-visited node, so the element at a cycle point references the
+				original object; mutating it mutates the source structure.
+ @return        A recursively copied mutable collection. Every nested collection is mutable;
+				non-NSMutableCopying leaves and cycle points reference the original objects.
  */
 - (nonnull id)mutableCopyRecursive;
 
@@ -967,12 +970,12 @@
  @category      NSMutableString(BEMutableProtocol)
  @brief         Extends NSMutableString with BEMutable protocol conformance and mutability checking.
  @discussion    This category adds BEMutable protocol conformance to NSMutableString, enabling
-				it to participate in the framework's mutability checking system as a mutable class.
-				
-				NSMutableString represents a mutable sequence of Unicode characters that can be
-				modified after creation. The mutability checking methods consistently return YES,
-				indicating that NSMutableString instances are always mutable.
-				
+				it to participate in the framework's mutability checking system.
+
+				NSString is a class cluster, so the static type does not determine mutability.
+				The mutability checking methods inspect the concrete backing class instead of
+				returning a constant.
+
 				@note This category works in conjunction with the NSString(BEMutableProtocol) category
 				to provide complete mutability support for string objects.
  */
@@ -980,19 +983,24 @@
 
 /*!
  @method        isMutable
- @brief         Class method that indicates NSMutableString instances are mutable.
- @discussion    This class method always returns YES, indicating that all instances of NSMutableString
-				are mutable and can be modified after creation.
- @return        YES, indicating that NSMutableString instances are mutable.
+ @brief         Class method that reports whether the receiver class backs mutable string instances.
+ @discussion    Mutability is inferred from the concrete class within the NSString class cluster.
+				Returns YES for __NSCFString (the backing class of mutable instances) and for
+				BEMutable-conforming classes such as NSMutableString itself; returns NO for
+				__NSCFConstantString.
+ @return        YES if the receiver class backs mutable string instances, NO otherwise.
  */
 + (BOOL)isMutable;
 
 /*!
  @method        isMutable
- @brief         Instance method that indicates this NSMutableString instance is mutable.
- @discussion    This instance method always returns YES, confirming that this specific NSMutableString
-				instance can be modified after creation.
- @return        YES, indicating that this NSMutableString instance is mutable.
+ @brief         Instance method that reports whether this string instance is mutable.
+ @discussion    Mutability is inferred from the concrete backing class within the NSString class
+				cluster. Returns YES only when the instance is backed by __NSCFString; any other
+				backing class, including __NSCFConstantString, returns NO. This method does not
+				consult BEMutable protocol conformance, so an instance of a conforming custom
+				subclass returns NO.
+ @return        YES if the instance is backed by __NSCFString, NO otherwise.
  */
 - (BOOL)isMutable;
 

@@ -178,6 +178,35 @@
 @end
 
 // ---------------------------------------------------------------------------
+#pragma mark - BEMissingRetentionCoder  (pre-1.1 .meta simulation)
+// ---------------------------------------------------------------------------
+
+/**
+ * A keyed decoder that reports no @c retentionCost key, simulating a pre-1.1
+ * .meta archive so BEFileCacheItem's retention fallback (retention = cost) is
+ * exercised.
+ */
+@interface BEMissingRetentionCoder : NSCoder
+@end
+
+@implementation BEMissingRetentionCoder
+- (BOOL)allowsKeyedCoding { return YES; }
+- (BOOL)requiresSecureCoding { return NO; }
+- (BOOL)containsValueForKey:(NSString *)key {
+	return ![key isEqualToString:@"retentionCost"];
+}
+- (NSInteger)decodeIntegerForKey:(NSString *)key {
+	return [key isEqualToString:@"cost"] ? 42 : 0;
+}
+- (id)decodeObjectOfClasses:(NSSet<Class> *)classes forKey:(NSString *)key {
+	return [key isEqualToString:@"key"] ? @"k" : nil;
+}
+- (id)decodeObjectOfClass:(Class)cls forKey:(NSString *)key {
+	return [key isEqualToString:@"dateStored"] ? [NSDate date] : nil;
+}
+@end
+
+// ---------------------------------------------------------------------------
 #pragma mark - BEFileCacheTests
 // ---------------------------------------------------------------------------
 
@@ -345,6 +374,14 @@
 	XCTAssertNotNil(decoded.dateStored);
 }
 
+- (void)testBEFileCacheItem_initWithCoder_missingRetention_defaultsToCost {
+	// A pre-1.1 .meta archive carries no retentionCost key; retention must
+	// default to cost.
+	BEFileCacheItem *item = [[BEFileCacheItem alloc] initWithCoder:[BEMissingRetentionCoder new]];
+	XCTAssertEqual(item.cost, 42u);
+	XCTAssertEqual(item.retentionCost, item.cost);
+}
+
 // ---------------------------------------------------------------------------
 #pragma mark - Properties
 // ---------------------------------------------------------------------------
@@ -434,6 +471,31 @@
 				   @"Non-NSSecureCoding object must not produce a .cache file");
 }
 
+/**
+ * Overwriting a persisted (serializable) entry with a non-NSSecureCoding object
+ * must purge the disk entry: after a memory eviction the stale disk value must
+ * not resurface as the visible value for the key.
+ */
+- (void)testSetObject_nonSecureCodingOverwrite_purgesDiskEntry {
+	[_cache setObject:[BETestObject objectWithValue:@"old-disk"] forKey:@"k" cost:5];
+	[self waitForDiskQueue];
+	XCTAssertEqual(_cache.diskCount, 1u, @"Pre-condition: serializable value persisted");
+
+	BETestObjectNoCoding *newObj = [BETestObjectNoCoding objectWithValue:@"new-memory"];
+	[_cache setObject:newObj forKey:@"k"];
+	[self waitForDiskQueue];
+	XCTAssertEqual(_cache.diskCount, 0u,
+				   @"Non-serializable overwrite must purge the prior disk entry");
+
+	// Memory hit returns the new value.
+	XCTAssertEqualObjects(((BETestObjectNoCoding *)[_cache objectForKey:@"k"]).value, @"new-memory");
+
+	// After a memory eviction the key is a genuine miss, not the stale disk value.
+	[_cache.memoryCache removeAllObjects];
+	XCTAssertNil([_cache objectForKey:@"k"],
+				 @"Evicting the memory tier must not resurface the overwritten disk value");
+}
+
 // ---------------------------------------------------------------------------
 #pragma mark - Disk persistence — objectForKey: disk-hit path
 // ---------------------------------------------------------------------------
@@ -456,6 +518,23 @@
 }
 
 /**
+ * When the .cache payload is deleted externally while its diskMeta entry
+ * survives, the disk-hit read must return nil rather than crash.
+ */
+- (void)testObjectForKey_diskHit_payloadFileMissing_returnsNil {
+	[_cache setObject:[BETestObject objectWithValue:@"v"] forKey:@"k" cost:1];
+	[self waitForDiskQueue];
+
+	// Delete only the payload file; the diskMeta entry still points at it.
+	NSString *cachePath = [self firstFileInDirWithExtension:BE_FILE_CACHE_EXTENSION];
+	[NSFileManager.defaultManager removeItemAtPath:cachePath error:nil];
+	[_cache.memoryCache removeAllObjects];
+
+	XCTAssertNil([_cache objectForKey:@"k"],
+				 @"A missing .cache payload on a disk-hit read must yield nil.");
+}
+
+/**
  * A new BEFileCache instance backed by the same directory should recover
  * all objects written by the previous instance (persistence across launches).
  */
@@ -473,6 +552,20 @@
 
 	XCTAssertEqualObjects(ra.value, @"A");
 	XCTAssertEqualObjects(rb.value, @"B");
+}
+
+- (void)testPersistence_NSURLKey_objectRecovered {
+	// BEFileCache.h advertises NSURL as a valid key type; a URL-keyed entry must survive an
+	// index reload, so the on-disk key-decode allow-lists must include NSURL.
+	BETestObject *a = [BETestObject objectWithValue:@"URLKeyed"];
+	NSURL *key = [NSURL fileURLWithPath:@"/tmp/befilecache-nsurl-key"];
+	[_cache setObject:a forKey:key cost:1];
+	[self waitForDiskQueue];
+
+	BEFileCache *cache2 = [self freshCacheOnSameDirectory];
+	BETestObject *ra = (BETestObject *)[cache2 objectForKey:key];
+
+	XCTAssertEqualObjects(ra.value, @"URLKeyed");
 }
 
 // ---------------------------------------------------------------------------
@@ -1522,6 +1615,40 @@
 						  @"Crash-orphaned pair must be adopted and readable.");
 	XCTAssertEqual(cache2.diskCount, 1u, @"Adopted entry must be counted.");
 	XCTAssertEqual(cache2.diskTotalCost, 5u, @"Adopted entry's cost must be restored.");
+}
+
+/**
+ * A crash-orphan pair whose .meta sidecar will not decode is unusable: both the
+ * .cache payload and the corrupt .meta are deleted, and nothing is adopted. The
+ * corrupt sidecar is skipped by the meta-scan rebuild and then removed by the
+ * directory reconciliation.
+ */
+- (void)testReconcile_deletesCrashOrphanPairWithCorruptSidecar {
+	[_cache setObject:[BETestObject objectWithValue:@"V"] forKey:@"k" cost:5];
+	[self waitForDiskQueue];
+
+	NSString *cachePath  = [self firstFileInDirWithExtension:BE_FILE_CACHE_EXTENSION];
+	NSString *metaPath   = [self firstFileInDirWithExtension:BE_FILE_CACHE_META_EXTENSION];
+	NSData   *cacheBytes = [NSData dataWithContentsOfFile:cachePath];
+	XCTAssertNotNil(cacheBytes);
+
+	// Drop the entry (removes files and the index record), delete the index file
+	// so the meta-scan rebuild runs, then recreate a valid payload paired with a
+	// corrupt sidecar.
+	[_cache removeObjectForKey:@"k"];
+	[self waitForDiskQueue];
+	[NSFileManager.defaultManager removeItemAtPath:
+		[_tempDir stringByAppendingPathComponent:@"BEFileCacheIndex"] error:nil];
+	[cacheBytes writeToFile:cachePath atomically:YES];
+	[[@"garbage" dataUsingEncoding:NSUTF8StringEncoding] writeToFile:metaPath atomically:YES];
+
+	BEFileCache *cache2 = [self freshCacheOnSameDirectory];
+	XCTAssertNil([cache2 objectForKey:@"k"]);   // also drains the queue
+	XCTAssertFalse([NSFileManager.defaultManager fileExistsAtPath:cachePath],
+				   @"Payload of a corrupt-sidecar pair must be deleted.");
+	XCTAssertFalse([NSFileManager.defaultManager fileExistsAtPath:metaPath],
+				   @"Corrupt sidecar must be deleted.");
+	XCTAssertEqual(cache2.diskCount, 0u, @"An unusable pair must not be adopted.");
 }
 
 /**

@@ -217,11 +217,42 @@
  */
 - (nullable NSDate *)dateWithFormat:(nullable NSString *)strFormat;
 
+/*!
+ @method		-objectAtIndexedSubscript:
+ @abstract		Provides indexed subscript access to individual characters.
+ @discussion	This makes NSStrings act more like C-Strings for accessing characters.
+ @param			index	The index of the character to access.
+ @result		An `NSNumber` boxing the character at `index`, or `nil` if `index` is out of range.
+ */
 - (nullable NSNumber *)objectAtIndexedSubscript:(NSUInteger)index;
 
+/*!
+ @method		-stringByInsertingString:atIndex:
+ @abstract		Returns a new string with a given string inserted at a given index.
+ @discussion	Raises `NSInvalidArgumentException` if `location` is greater than the length of the receiver.
+ @param			aString		The string to insert. This value must not be `nil`.
+ @param			location	The index at which to insert `aString`.
+ @result		A new string with `aString` inserted at `location`.
+ */
 - (nonnull NSString *)stringByInsertingString:(nonnull NSString*)aString atIndex:(NSUInteger)location;
 
+/*!
+ @method		-stringByPrependingString:
+ @abstract		Returns a new string with a given string prepended to the receiver.
+ @discussion	Raises `NSInvalidArgumentException` if `aString` is `nil` or not an `NSString`.
+ @param			aString	The string to prepend to the receiver.
+ @result		A new string with `aString` prepended.
+ */
 - (nonnull NSString *)stringByPrependingString:(NSString * _Nonnull)aString;
+
+/*!
+ @method		-stringByPrependingFormat:
+ @abstract		Returns a new string with a formatted string prepended to the receiver.
+ @discussion	Raises `NSInvalidArgumentException` if `format` is `nil` or not an `NSString`.
+ @param			format	A format string. This value must not be `nil`.
+ @param			...		A comma-separated list of arguments to substitute into `format`.
+ @result		A new string with the formatted string prepended.
+ */
 - (nonnull NSString *)stringByPrependingFormat:(NSString * _Nonnull)format, ... NS_FORMAT_FUNCTION(1,2);
 
 @end

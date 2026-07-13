@@ -62,7 +62,7 @@
 	
 	XCTAssertEqualObjects(key0, @"0");
 	XCTAssertEqualObjects(key42, @"42");
-	XCTAssertFalse(keyNegative.doubleValue < 0);
+	XCTAssertEqualObjects(keyNegative, @"18446744073709551516");
 	XCTAssertEqualObjects(keyMax, @"9223372036854775807");
 	XCTAssertEqualObjects(keyMin, @"18446744073709551615");
 }

@@ -360,7 +360,7 @@
  */
 - (nullable NSNumber *)objectAtIndexedSubscript:(NSUInteger)index
 {
-	if (index < 0 || index >= self.length) {
+	if (index >= self.length) {
 		return nil;
 	}
 	return @([self characterAtIndex:index]);
@@ -480,7 +480,7 @@
  */
 - (void)deleteAtIndex:(NSUInteger)index
 {
-	if (index < 0 || index >= self.length) {
+	if (index >= self.length) {
 		return;
 	}
 	[self deleteCharactersInRange:NSMakeRange(index, 1)];
@@ -515,8 +515,9 @@
 */
 - (NSUInteger)countCharactersInSet:(NSCharacterSet *)characterSet range:(NSRange)range
 {
-	if (!characterSet || range.location == NSNotFound || NSMaxRange(range) > self.length)
-		return 0; // avoid invalid input
+	if (!characterSet || range.location > self.length || range.length > self.length - range.location) {
+		return 0;
+	}
 
 	__block NSUInteger count = 0;
 

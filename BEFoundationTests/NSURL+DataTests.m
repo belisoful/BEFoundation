@@ -307,6 +307,23 @@
 	XCTAssertTrue(dataURL.isBase64, @"Binary data should auto-select base64");
 }
 
+/*!
+ @method     testDataURLWithPercentEncodingUndecodablePayloadReturnsNil
+ @abstract   Percent-encoding construction returns nil when the payload decodes under neither the
+			 declared charset nor the UTF-8 fallback.
+ @discussion 0xFF is not a valid Shift_JIS byte and is not valid UTF-8, so both decode attempts
+			 fail and the initializer returns nil.
+*/
+- (void)testDataURLWithPercentEncodingUndecodablePayloadReturnsNil {
+	NSData *undecodable = [NSData dataWithBytes:(unsigned char[]){0xFF} length:1];
+	NSURL *dataURL = [NSURL dataURLWithData:undecodable
+								   mimeType:@"text/plain"
+									charset:@"Shift_JIS"
+								   isBase64:NSURLBase64Type_No];
+
+	XCTAssertNil(dataURL, @"0xFF decodes as neither Shift_JIS nor UTF-8, so construction returns nil");
+}
+
 #pragma mark - Decoding Tests
 
 /*!
@@ -377,6 +394,25 @@
 	NSData *decodedData = dataURL.decodedData;
 	XCTAssertNotNil(decodedData, @"decodedData must not be nil for a charset-less percent-encoded URL");
 	XCTAssertEqualObjects(decodedData, [@"Café" dataUsingEncoding:NSUTF8StringEncoding]);
+}
+
+/*!
+ @method     testDecodedStringUTF8FallbackWhenDeclaredEncodingFails
+ @abstract   decodedString re-decodes the payload as UTF-8 when the declared non-UTF-8 charset
+			 cannot interpret the bytes.
+ @discussion The bytes E4 B8 96 are the UTF-8 encoding of U+4E16 (世) but are not a valid
+			 Shift_JIS sequence. The declared Shift_JIS decode returns nil, so the UTF-8 fallback
+			 yields "世".
+*/
+- (void)testDecodedStringUTF8FallbackWhenDeclaredEncodingFails {
+	NSURL *dataURL = [NSURL URLWithString:@"data:text/plain;charset=Shift_JIS,%E4%B8%96"];
+
+	XCTAssertEqual(dataURL.stringEncoding, NSShiftJISStringEncoding);
+	XCTAssertFalse(dataURL.isBase64);
+	// Hoisted: a compound literal's commas would split the assertion macro's arguments.
+	NSData *expectedBytes = [NSData dataWithBytes:(unsigned char[]){0xE4, 0xB8, 0x96} length:3];
+	XCTAssertEqualObjects(dataURL.decodedData, expectedBytes);
+	XCTAssertEqualObjects(dataURL.decodedString, @"世");
 }
 
 /*!
@@ -961,49 +997,88 @@
 
 /*!
  @method     testLatin1SpecificCharacters
- @abstract   Tests Latin1-specific characters (0x80-0xFF range).
+ @abstract   Tests Latin1-specific characters (0x80-0xFF range) round-trip through a
+			 percent-encoded data URL: decodedData recovers the original Latin-1 bytes
+			 and decodedString the original string.
 */
 - (void)testLatin1SpecificCharacters {
 	// Characters specific to ISO-8859-1
 	NSString *latin1String = @"Café ñoño Ü";
 	NSData *data = [latin1String dataUsingEncoding:NSISOLatin1StringEncoding];
-	
+
 	NSURL *dataURL = [NSURL dataURLWithData:data mimeType:@"text/plain" charset:@"iso-8859-1"];
-	
+
 	XCTAssertNotNil(dataURL);
 	XCTAssertEqual(dataURL.stringEncoding, NSISOLatin1StringEncoding);
+	XCTAssertEqualObjects(dataURL.decodedData, data);
+	XCTAssertEqualObjects(dataURL.decodedString, latin1String);
+}
+
+/*!
+ @method     testLatin1HandAuthoredPercentEncoding
+ @abstract   A percent-encoded payload carries the declared charset's raw bytes (RFC 2397):
+			 %E9 with charset=iso-8859-1 decodes to the 0xE9 byte and the string "é".
+*/
+- (void)testLatin1HandAuthoredPercentEncoding {
+	NSURL *dataURL = [NSURL URLWithString:@"data:text/plain;charset=iso-8859-1,%E9"];
+
+	XCTAssertTrue(dataURL.isDataURL);
+	XCTAssertFalse(dataURL.isBase64);
+	XCTAssertEqual(dataURL.stringEncoding, NSISOLatin1StringEncoding);
+	XCTAssertEqualObjects(dataURL.decodedData, [NSData dataWithBytes:(unsigned char[]){0xE9} length:1]);
+	XCTAssertEqualObjects(dataURL.decodedString, @"é");
+}
+
+/*!
+ @method     testLatin1HandAuthoredPercentEncodingLowercaseHex
+ @abstract   Lowercase hex escapes (%e9) decode identically to uppercase (%E9), exercising the
+			 a-f digit path of the percent decoder.
+*/
+- (void)testLatin1HandAuthoredPercentEncodingLowercaseHex {
+	NSURL *dataURL = [NSURL URLWithString:@"data:text/plain;charset=iso-8859-1,%e9"];
+
+	XCTAssertTrue(dataURL.isDataURL);
+	XCTAssertFalse(dataURL.isBase64);
+	XCTAssertEqual(dataURL.stringEncoding, NSISOLatin1StringEncoding);
+	XCTAssertEqualObjects(dataURL.decodedData, [NSData dataWithBytes:(unsigned char[]){0xE9} length:1]);
+	XCTAssertEqualObjects(dataURL.decodedString, @"é");
 }
 
 #pragma mark - Error Recovery Tests
 
 /*!
  @method     testInvalidBase64Recovery
- @abstract   Tests handling of invalid base64 data.
+ @abstract   An invalid base64 payload decodes to nil rather than partial data.
 */
 - (void)testInvalidBase64Recovery {
 	NSURL *dataURL = [NSURL URLWithString:@"data:text/plain;base64,Invalid!!!Base64"];
-	
+
 	XCTAssertTrue([dataURL isDataURL]);
 	XCTAssertTrue(dataURL.isBase64);
-	
-	// decodedData should handle invalid base64 gracefully
-	__unused NSData *decoded = dataURL.decodedData;
-	// May be nil or partial data depending on implementation
+	XCTAssertNil(dataURL.decodedData);
+	XCTAssertNil(dataURL.decodedString);
 }
 
 /*!
  @method     testInvalidPercentEncodingRecovery
- @abstract   Tests handling of invalid percent encoding.
+ @abstract   Tests handling of a stray "%" that does not begin a valid escape.
+ @discussion NSURL parsers that normalize the stray "%" to "%25" yield a payload that
+			 decodes to the literal source text; parsers that keep the malformed escape
+			 yield a payload the byte-wise decoder rejects with nil.
 */
 - (void)testInvalidPercentEncodingRecovery {
 	NSURL *dataURL = [NSURL URLWithString:@"data:text/plain,Invalid%XXPercent"];
-	
+
 	XCTAssertTrue([dataURL isDataURL]);
 	XCTAssertFalse(dataURL.isBase64);
-	
-	// Should handle invalid percent encoding
-	__unused NSString *decoded = dataURL.decodedString;
-	// May have fallback behavior
+
+	if ([dataURL.dataString containsString:@"%25"]) {
+		XCTAssertEqualObjects(dataURL.decodedString, @"Invalid%XXPercent");
+		XCTAssertEqualObjects(dataURL.decodedData, [@"Invalid%XXPercent" dataUsingEncoding:NSUTF8StringEncoding]);
+	} else {
+		XCTAssertNil(dataURL.decodedData);
+		XCTAssertNil(dataURL.decodedString);
+	}
 }
 
 #pragma mark - URL Scheme Tests

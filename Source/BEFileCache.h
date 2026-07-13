@@ -21,7 +21,7 @@
  *
  *     <hash>.BE_FILE_CACHE_EXTENSION       – archived cached object only
  *     <hash>.BE_FILE_CACHE_META_EXTENSION  – archived BEFileCacheItem
- *                                            (key + cost + dateStored only)
+ *                                            (key + cost + retentionCost + dateStored only)
  *
  * Cache directory resolution  (initWithCacheDirectory:)
  * ──────────────────────────────────────────────────────
@@ -137,7 +137,7 @@ NS_ASSUME_NONNULL_BEGIN
 /**
  * On-disk metadata envelope for a single cache entry.
  *
- * Stores only the entry's key, cost, and insertion date.  The cached object
+ * Stores only the entry's key, cost, retention cost, and insertion date.  The cached object
  * is stored separately in a .BE_FILE_CACHE_EXTENSION file so that index
  * rebuilds can scan .meta sidecars without opening large payload files.
  */

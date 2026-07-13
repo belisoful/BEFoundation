@@ -216,8 +216,8 @@
 			 Like every NSView, BETabView must be used on the main thread; the AppKit
 			 operations it performs (super add/remove, selection, drawing) are not
 			 thread-safe and @synchronized does not change that. The @synchronized(self)
-			 guarding the internal _allTabViewItems array exists only to keep that
-			 bookkeeping consistent — it is not a license to drive the view off-main.
+			 guarding the internal _allTabViewItems array keeps that bookkeeping
+			 consistent. It does not make off-main-thread use safe.
 
 			 Delegate management:
 			 When hiding/showing tabs, the delegate is temporarily set to nil to
@@ -442,7 +442,7 @@
 			 The hiddenTabView property is set to enable the hidden property to
 			 function correctly even when the tab is not currently in a tabView.
 			 
-			 Thread-safe with @synchronized.
+			 Must be called on the main thread.
  */
 - (void)addTabViewItem:(NSTabViewItem *)tabViewItem
 {
@@ -472,7 +472,7 @@
 			 The insertMode:YES parameter allows the method to calculate where to
 			 insert the tab even if it's going at the end of the array.
 			 
-			 Thread-safe with @synchronized.
+			 Must be called on the main thread.
  @exception  NSRangeException Raised by NSMutableArray if index is out of bounds.
  */
 - (void)insertTabViewItem:(NSTabViewItem *)tabViewItem atIndex:(NSInteger)index
@@ -518,7 +518,7 @@
 			 After removal, the tab's hiddenTabView property is set to nil to prevent
 			 stale references.
 			 
-			 Thread-safe with @synchronized.
+			 Must be called on the main thread.
  */
 - (void)removeTabViewItem:(NSTabViewItem *)tabViewItem
 {
@@ -561,14 +561,16 @@
 			 6. Restores the delegate reference
 			 7. Sets the hidden associated object to YES
 			 8. Calls delegate's didHideTabViewItem: if implemented
-			 
+			 9. Sends tabView:didSelectTabViewItem: once if hiding the selected tab
+				moved the selection
+
 			 Delegate management:
 			 The delegate is temporarily set to nil during removal to prevent
 			 NSTabView's standard delegate callbacks (willSelectTabViewItem:, etc.)
 			 which would be confusing during hide operations. The custom hide
 			 delegate methods are called explicitly before and after.
 			 
-			 Thread-safe with @synchronized.
+			 Must be called on the main thread.
  */
 - (void)hideTabViewItem:(NSTabViewItem *)tabViewItem
 {
@@ -626,7 +628,7 @@
  @discussion Convenience method that retrieves the tab at the given index and hides it.
 			 Does nothing if the index is out of range (allTabViewItemAtIndex: returns nil).
 			 
-			 Thread-safe with @synchronized.
+			 Must be called on the main thread.
  */
 - (void)hideTabViewItemAtIndex:(NSInteger)index
 {
@@ -648,7 +650,7 @@
 			 Returns early if identifier is nil (allTabViewItemWithIdentifier: returns nil).
 			 Does nothing if no matching tab is found.
 			 
-			 Thread-safe with @synchronized.
+			 Must be called on the main thread.
  */
 - (void)hideTabViewItemWithIdentifier:(id)identifier
 {
@@ -695,7 +697,7 @@
 			 Uses insertMode:YES to get the correct insertion point even if the tab
 			 is being added at the end of the visible tabs array.
 			 
-			 Thread-safe with @synchronized.
+			 Must be called on the main thread.
  */
 - (void)showTabViewItem:(NSTabViewItem *)tabViewItem
 {
@@ -744,7 +746,7 @@
  @discussion Convenience method that retrieves the tab at the given index and shows it.
 			 Does nothing if the index is out of range (allTabViewItemAtIndex: returns nil).
 			 
-			 Thread-safe with @synchronized.
+			 Must be called on the main thread.
  */
 - (void)showTabViewItemAtIndex:(NSInteger)index
 {
@@ -766,7 +768,7 @@
 			 Returns early if identifier is nil (allTabViewItemWithIdentifier: returns nil).
 			 Does nothing if no matching tab is found.
 			 
-			 Thread-safe with @synchronized.
+			 Must be called on the main thread.
  */
 - (void)showTabViewItemWithIdentifier:(id)identifier
 {
@@ -807,8 +809,9 @@
 			 @synthesize did not: it copies into a mutable backing store, removes the old
 			 visible items from the superclass, sets each new item's hiddenTabView
 			 back-pointer, and rebuilds the superclass's visible tabs in order. The delegate
-			 is suppressed during the structural rebuild; if the rebuild changes the selected
-			 tab, tabView:didSelectTabViewItem: is sent once for the new selection.
+			 is suppressed during the structural rebuild. After the rebuild,
+			 tabViewDidChangeNumberOfTabViewItems: is sent once if the all-tabs count changed,
+			 and tabView:didSelectTabViewItem: is sent once if the selected tab changed.
 
 			 Duplicate entries and NSNull/non-tab entries in the input are ignored (an item
 			 can appear at most once). As with NSTabView, each item must not already belong to
@@ -830,6 +833,7 @@
 		self.delegate = nil;
 
 		NSTabViewItem *previouslySelected = self.selectedTabViewItem;
+		NSUInteger previousCount = _allTabViewItems.count;
 
 		// Tear down the current visible tabs and clear old back-pointers.
 		for (NSTabViewItem *item in [self.tabViewItems copy]) {
@@ -851,10 +855,18 @@
 
 		self.delegate = savedDelegate;
 
+		id<BETabViewDelegate> delegate = (id<BETabViewDelegate>)savedDelegate;
+
+		// The rebuild suppresses super's count-change notifications; report a net change once.
+		if (_allTabViewItems.count != previousCount) {
+			if ([delegate respondsToSelector:@selector(tabViewDidChangeNumberOfTabViewItems:)]) {
+				[delegate tabViewDidChangeNumberOfTabViewItems:self];
+			}
+		}
+
 		// A wholesale replace changes the selection; report it once (as hideTabViewItem: does).
 		NSTabViewItem *nowSelected = self.selectedTabViewItem;
 		if (nowSelected != nil && nowSelected != previouslySelected) {
-			id<BETabViewDelegate> delegate = (id<BETabViewDelegate>)savedDelegate;
 			if ([delegate respondsToSelector:@selector(tabView:didSelectTabViewItem:)]) {
 				[delegate tabView:self didSelectTabViewItem:nowSelected];
 			}

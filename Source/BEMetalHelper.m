@@ -3,8 +3,7 @@
  @copyright		-© 2025 Delicense - @belisoful. All rights released.
  @date			2025-01-01
  @author		belisoful@icloud.com
- @abstract
- @discussion
+ @abstract		Implementation of the BEMetalHelper texture-to-image and grayscale-to-RGB vImage conversions.
 */
 
 #import "BEMetalHelper.h"
@@ -175,7 +174,6 @@ static inline BOOL BEMulOverflowsSize(size_t a, size_t b) {
 	NSUInteger bitsPerComponent = 0;
 	CGBitmapInfo bitmapInfo = 0;
 	BOOL needsConversion = NO;
-	BOOL isFloat = NO;
 
 	void *imageBytes = NULL;
 	NSUInteger imageBytesPerRow = 0;
@@ -197,7 +195,6 @@ static inline BOOL BEMulOverflowsSize(size_t a, size_t b) {
 			bitsPerComponent = 32;
 			bytesPerPixel = 16;	// R G B A
 			bitmapInfo = (CGBitmapInfo)kCGImageAlphaPremultipliedLast | kCGBitmapFloatComponents;
-			isFloat = YES;
 			break;
 
 
@@ -324,7 +321,6 @@ static inline BOOL BEMulOverflowsSize(size_t a, size_t b) {
 		imageBytes       = argbBytes;
 		imageBytesPerRow = argbBytesPerRow;
 		bitsPerComponent = newBitsPerComponent;
-		bytesPerPixel    = newBytesPerPixel;
 		bitmapInfo       = newBitmapInfo;
 	}
 

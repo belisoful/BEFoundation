@@ -178,10 +178,25 @@
 		return NO;
 	}];
 	NSSet *reference = [NSSet setWithObjects:@2, @6, @10, [NSNull null], nil];
-	
+
 	XCTAssertTrue([result isKindOfClass:NSSet.class]);
 	XCTAssertEqual(result.count, reference.count);
 	XCTAssertEqualObjects(result, reference);
+}
+
+/*!
+ @discussion	A block that returns YES while niling @c *obj must exclude the
+				object through the @c && obj guard, distinct from returning NO.
+ */
+- (void)testMapUsingBlock_ReturnsYesButNilsObject
+{
+	NSSet *input = [NSSet setWithObjects:@1, @2, @3, nil];
+	NSSet *result = [input mapUsingBlock:^BOOL(id  _Nullable __autoreleasing * _Nonnull obj, BOOL * _Nonnull stop) {
+		*obj = nil;
+		return YES;
+	}];
+	XCTAssertTrue([result isKindOfClass:NSSet.class]);
+	XCTAssertEqual(result.count, 0u);
 }
 
 

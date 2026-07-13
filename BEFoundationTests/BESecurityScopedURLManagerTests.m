@@ -46,6 +46,10 @@
 - (nullable instancetype)initWithURL:(NSURL *)url
 							lifetime:(BESecurityScopedURLBookmarkLifetime)lifetime;
 @property (nonatomic, strong, readwrite, nullable) NSData *bookmarkData;
+/// The public header declares bookmarkError readonly. Redeclaring it readwrite here lets
+/// the setter-round-trip test invoke the thread-safe setter, which production code never
+/// calls (it assigns the backing ivar directly).
+@property (nonatomic, strong, readwrite, nullable) NSError *bookmarkError;
 @end
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -981,6 +985,31 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 }
 
 /*!
+ @testcase testBookmarkEntrySetBookmarkErrorRoundTrips
+ @abstract The thread-safe bookmarkError setter must store the value so the getter
+		   returns it.
+		   Covers: -[BESecurityScopedURLBookmarkEntry setBookmarkError:]
+ @discussion Production code assigns the _bookmarkError ivar directly inside the url
+			 getter and the initializer, never through the property setter, so the
+			 setter is unreachable via the production call chain. The readwrite
+			 redeclaration in BETestPrivateAccess exposes it for a direct round-trip.
+ */
+- (void)testBookmarkEntrySetBookmarkErrorRoundTrips {
+	BESecurityScopedURLBookmarkEntry *entry =
+		[[BESecurityScopedURLBookmarkEntry alloc]
+			initWithURL:self.tempFileURL
+			   lifetime:BESecurityScopedURLBookmarkLifetimeShortLived];
+	XCTAssertNotNil(entry, @"Pre-condition: entry must initialize");
+
+	NSError *injected = [NSError errorWithDomain:@"BETestBookmarkErrorDomain"
+											code:42
+										userInfo:@{NSLocalizedDescriptionKey: @"injected"}];
+	entry.bookmarkError = injected;
+	XCTAssertEqualObjects(entry.bookmarkError, injected,
+						  @"bookmarkError getter must return the value stored by the setter");
+}
+
+/*!
  @testcase testBookmarkEntryURLPropertyStaleBookmarkCallsUpdateStaleBookmark
  @abstract When the underlying file has been moved, URLByResolvingBookmarkData: returns
 		   isStale=YES. The url property must set isStale=YES and call updateStaleBookmark,
@@ -1373,6 +1402,36 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 	XCTAssertEqual([self.manager.refCounts countForObject:newURL], 1UL,
 				   @"Relocation must transfer the active count to the new URL");
 	XCTAssertEqual([self.manager.refCounts countForObject:resolvedURL], 0UL,
+				   @"The old resolved URL must no longer hold the count after relocation");
+}
+
+/*!
+ @testcase testStartAccessingURLPopulatesResolvedFormForRelocation
+ @abstract The primary startAccessingURL: path records the resolved access form, so a later
+		   relocation transfers the active count without manual seeding.
+ @discussion Before the fix only startAccessingURLInternal: (the startAccessingAllURLs path)
+			 recorded resolvedAccessURLByKey; an access begun through the public
+			 startAccessingURL: was dropped by handleBookmarkRelocationFromPath:toPath:.
+ */
+- (void)testStartAccessingURLPopulatesResolvedFormForRelocation {
+	[self.manager addURLToCatalog:self.tempDirURL
+						  lifetime:BESecurityScopedURLBookmarkLifetimeLongLived];
+	NSString *oldPath = self.manager.catalog.allKeys.firstObject;
+	XCTAssertNotNil(oldPath, @"Pre-condition: entry must be in catalog");
+
+	NSURL *accessed = [self.manager startAccessingURL:[NSURL URLWithString:oldPath]];
+	XCTAssertNotNil(accessed, @"Pre-condition: access must start through the public path");
+	XCTAssertEqual([self.manager.refCounts countForObject:accessed], 1UL);
+	XCTAssertEqualObjects(self.manager.resolvedAccessURLByKey[oldPath], accessed,
+						  @"startAccessingURL: must record the resolved form under the catalog key");
+
+	NSURL *newURL = [NSURL URLWithString:@"file:///be_test_reloc_public_new"];
+	[self.manager handleBookmarkRelocationFromPath:oldPath toPath:newURL.absoluteString];
+	[self drainAccessQueue];
+
+	XCTAssertEqual([self.manager.refCounts countForObject:newURL], 1UL,
+				   @"Relocation must transfer a count begun via startAccessingURL:");
+	XCTAssertEqual([self.manager.refCounts countForObject:accessed], 0UL,
 				   @"The old resolved URL must no longer hold the count after relocation");
 }
 
@@ -1955,6 +2014,63 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 	}
 }
 
+/*!
+ @testcase testURLFromCatalogInputPathFallbackForURLWithoutPath
+ @abstract A string that parses to a URL with a nil path (an opaque scheme such as
+		   "scheme:only") must fall back to the percent-decode branch for the input path
+		   and still resolve to nil on an empty catalog.
+		   Covers: urlFromCatalogWithAbsolutePathInternal — if (!inputPath) { inputPath = ... }
+ @discussion Well-formed file:// keys always parse to a non-nil -[NSURL path], so the
+			 fallback is skipped on every normal call. "scheme:only" is a valid opaque URL
+			 whose .path is nil, which drives inputPath to nil and executes the fallback
+			 assignment. With no bookmarked directories the Tier 3/4 loops find nothing and
+			 the method returns nil.
+ */
+- (void)testURLFromCatalogInputPathFallbackForURLWithoutPath {
+	NSURL *result = [self.manager urlFromCatalogWithAbsolutePath:@"scheme:only"];
+	XCTAssertNil(result,
+				 @"an opaque URL string with a nil path must route through the percent-decode "
+				 @"fallback and resolve to nil against an empty catalog");
+}
+
+/*!
+ @testcase testURLFromCatalogTier3And4SkipDirectoryEntryThatResolvesToNil
+ @abstract A bookmarked directory entry whose .url resolves to nil must be skipped by both
+		   the Tier 3 (containment) and Tier 4 (filename) loops, so a query for a path inside
+		   it resolves to nil rather than crashing or matching.
+		   Covers: urlFromCatalogWithAbsolutePathInternal — Tier 3 if (!directoryURL) { continue; }
+				   and Tier 4 if (!directoryURL) { continue; }
+ @discussion In the coverage environment successful bookmarks make dirEntry.url non-nil, so
+			 the continue guards are never taken. Corrupting the sole directory entry's
+			 bookmarkData before its url is ever resolved forces URLByResolvingBookmarkData:
+			 to fail, so dirEntry.url returns nil. addURLToCatalog: deliberately does not read
+			 entry.url, so the corruption takes effect on the first resolution inside the loops.
+ */
+- (void)testURLFromCatalogTier3And4SkipDirectoryEntryThatResolvesToNil {
+	[self.manager addURLToCatalog:self.tempDirURL
+						  lifetime:BESecurityScopedURLBookmarkLifetimeLongLived];
+	[self drainAccessQueue];
+
+	XCTAssertEqual(self.manager.catalog.count, 1UL,
+				   @"Pre-condition: exactly one (directory) entry in the catalog");
+	BESecurityScopedURLBookmarkEntry *dirEntry = self.manager.catalog.allValues.firstObject;
+	XCTAssertTrue(dirEntry.isDirectory,
+				  @"Pre-condition: the seeded entry must be a directory");
+
+	// Corrupt bookmarkData before the entry's url is resolved, so both tier loops see
+	// dirEntry.url == nil and take the `continue` guard.
+	dirEntry.bookmarkData = [NSData dataWithBytes:"garbage_bookmark" length:16];
+	XCTAssertNil(dirEntry.url,
+				 @"Pre-condition: corrupted bookmarkData must make the directory url resolve to nil");
+
+	// Query a path contained in tempDirURL. Tier 1/2 miss; Tier 3 and Tier 4 each reach the
+	// directory entry, find directoryURL == nil, and continue. The method returns nil.
+	NSURL *contained = [self.tempDirURL URLByAppendingPathComponent:@"be_tier_skip_child.txt"];
+	NSURL *result = [self.manager urlFromCatalogWithAbsolutePath:contained.absoluteString];
+	XCTAssertNil(result,
+				 @"a directory entry that resolves to nil must be skipped by Tier 3 and Tier 4");
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 #pragma mark - objectForKeyedSubscript: (subscript operator)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -2414,6 +2530,26 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 	NSURL *nilURL = nil;
 	NSURL *result = [self.manager startAccessingURLInternal:nilURL];
 	XCTAssertNil(result, @"startAccessingURLInternal: must return nil when url is nil");
+}
+
+/*!
+ @testcase testStartAccessingURLInternalUnresolvableURLReturnsNil
+ @abstract A non-nil URL that resolves to nothing (not in the catalog, not in refCounts,
+		   and matched by no bookmarked directory) must return nil at the resolvedURL guard
+		   without touching refCounts.
+		   Covers: startAccessingURLInternal: — if (!resolvedURL) { return nil; }
+ @discussion The nil-URL test returns at the earlier if (!url) guard and never reaches the
+			 resolvedURL check. Here the URL is non-nil, so it passes the first guard, then
+			 urlFromCatalogWithAbsolutePathInternal: misses every tier on an empty manager
+			 and returns nil, exercising the second guard.
+ */
+- (void)testStartAccessingURLInternalUnresolvableURLReturnsNil {
+	NSURL *unknown = [NSURL fileURLWithPath:@"/be_test_internal_unresolvable_path"];
+	NSURL *result = [self.manager startAccessingURLInternal:unknown];
+	XCTAssertNil(result,
+				 @"non-nil URL that resolves to nothing must return nil at the resolvedURL guard");
+	XCTAssertFalse([self.manager endAccessingURL:unknown],
+				   @"a URL that never resolved must not be tracked in refCounts");
 }
 
 /*!

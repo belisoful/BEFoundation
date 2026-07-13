@@ -12,16 +12,17 @@ This header provides priority ordering support for collections, allowing items t
 
 ## Usage
 
-### Priority Item Protocol
+### Priority Protocols
 
-Objects can implement `BEPriorityItem` to participate in priority ordering:
+Objects implement `BEPriorityItem` to expose a read-only priority for sorting:
 
 ```objc
-@protocol BEPriorityItem <NSObject>
-@property (readonly) NSNumber *defaultItemPriority;
-@property NSNumber *itemPriority;
+@protocol BEPriorityItem
+@property (readonly, nullable) NSNumber *itemPriority;
 @end
 ```
+
+Lower numeric values sort first. When `itemPriority` is nil, sorting uses the default priority (`BEDefaultSortedItemPriority`). `BEPriorityCapture` declares the settable counterpart; the sorting system assigns the default priority to a conforming object that has none. `BEPriorityProperty` combines both protocols for read-write priority support.
 
 ### Sorting by Priority
 

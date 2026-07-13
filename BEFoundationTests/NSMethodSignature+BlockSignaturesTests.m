@@ -41,6 +41,8 @@
 		return "L";
 	} else if (idx == 3) {
 		return "(union=csi)";
+	} else if (idx == 4) {
+		return "?";		// block/unknown encoding: the strcmp(type,"?")==0 leg of the pointer case
 	}
 	return 0;
 }
@@ -362,7 +364,7 @@
 #if defined(__arm64__) || defined(__aarch64__)
 	XCTAssertEqual([signature frameLength], 248);
 #else
-	XCTAssertEqual([signature frameLength], 288);	// long double (16B) + struct-by-value differ on x86_64
+	XCTAssertEqual([signature frameLength], 288);	// struct-by-value args pad differently on x86_64
 #endif
 	
 	XCTAssertEqual(signature.numberOfArguments, 12);
@@ -466,6 +468,10 @@
 	}
 	XCTAssertEqualObjects([signature getArgumentTypeStringAtIndex:3], @"(union=csi)");
 	XCTAssertEqual([signature getArgumentSizeAtIndex:3], sizeof(void*));
+
+	// A bare "?" (block/unknown) encoding takes the strcmp(type,"?")==0 leg of the pointer case.
+	XCTAssertEqualObjects([signature getArgumentTypeStringAtIndex:4], @"?");
+	XCTAssertEqual([signature getArgumentSizeAtIndex:4], sizeof(void*));
 }
 
 
@@ -667,6 +673,111 @@
 	const char *sig = NSSignatureForBlock(globalBlock);
 	XCTAssertTrue(sig != NULL && sig[0] == 'v', @"void-returning block signature starts with 'v'");
 }
+
+#if BE_APPLE_TERMS_COMPLIANT
+#pragma mark - Small-descriptor path (synthetic)
+
+// No current Apple toolchain emits BLOCK_SMALL_DESCRIPTOR for Objective-C blocks, so the
+// small-descriptor branch of BEBlockSignatureChar cannot be reached with a compiler-produced
+// block. These fabricate a block whose descriptor matches libclosure's compact layout
+// ({uint32_t size; int32_t signature; int32_t layout; ...}), where `signature` is a 32-bit
+// offset relative to its own field address. The offset is computed against the reader's actual
+// cursor (descriptor + sizeof(uint32_t)) so struct padding cannot skew it. Compiled only under
+// BE_APPLE_TERMS_COMPLIANT (the default), where the hand-rolled reader is the active path; the
+// BE_APPLE_TERMS_COMPLIANT=0 build routes through the runtime extractor on a real block instead.
+
+- (void)testBEBlockSignatureChar_SmallDescriptor_PositiveOffset
+{
+	struct FakeSmallDescriptorPos {
+		uint32_t size;
+		int32_t  signature;   // relative offset, read by the reader at descriptor + sizeof(uint32_t)
+		int32_t  layout;
+		char     sig[8];      // signature string embedded after the fields (positive offset)
+	} desc = { .size = sizeof(struct FakeSmallDescriptorPos), .layout = 0 };
+	strcpy(desc.sig, "i16@?0i");
+	const uint8_t *cursor = (const uint8_t *)&desc + sizeof(uint32_t);
+	desc.signature = (int32_t)((const uint8_t *)desc.sig - cursor);
+	XCTAssertGreaterThan(desc.signature, 0);
+
+	Block_literal fake = {
+		.isa = &_NSConcreteGlobalBlock,
+		.flags = BLOCK_IS_GLOBAL | BLOCK_HAS_SIGNATURE | BLOCK_SMALL_DESCRIPTOR,
+		.reserved = 0,
+		.invoke = 0,
+		.descriptor = (Block_descriptor *)&desc};
+
+	const char *sig = BEBlockSignatureChar((const void *)&fake);
+	XCTAssertTrue(sig != NULL);
+	XCTAssertEqual(strcmp(sig, "i16@?0i"), 0, @"signature recovered from a positive relative offset");
+}
+
+- (void)testBEBlockSignatureChar_SmallDescriptor_NegativeOffset
+{
+	// Signature placed before the descriptor fields, so the relative offset is negative.
+	struct FakeSmallDescriptorNeg {
+		char     sig[8];
+		uint32_t size;
+		int32_t  signature;
+		int32_t  layout;
+	} desc = { .size = sizeof(struct FakeSmallDescriptorNeg), .layout = 0 };
+	strcpy(desc.sig, "v8@?0");
+	// The descriptor begins at `size`; the reader's cursor is at descriptor + sizeof(uint32_t).
+	const uint8_t *cursor = (const uint8_t *)&desc.size + sizeof(uint32_t);
+	desc.signature = (int32_t)((const uint8_t *)desc.sig - cursor);
+	XCTAssertLessThan(desc.signature, 0);
+
+	Block_literal fake = {
+		.isa = &_NSConcreteGlobalBlock,
+		.flags = BLOCK_IS_GLOBAL | BLOCK_HAS_SIGNATURE | BLOCK_SMALL_DESCRIPTOR,
+		.reserved = 0,
+		.invoke = 0,
+		.descriptor = (Block_descriptor *)&desc.size};
+
+	const char *sig = BEBlockSignatureChar((const void *)&fake);
+	XCTAssertTrue(sig != NULL);
+	XCTAssertEqual(strcmp(sig, "v8@?0"), 0, @"signature recovered from a negative relative offset");
+}
+
+- (void)testBEBlockSignatureChar_SmallDescriptor_ZeroOffsetIsNoSignature
+{
+	// A zero relative offset means "no signature", even with BLOCK_HAS_SIGNATURE set.
+	struct FakeSmallDescriptorBare {
+		uint32_t size;
+		int32_t  signature;
+		int32_t  layout;
+	} desc = { .size = sizeof(struct FakeSmallDescriptorBare), .signature = 0, .layout = 0 };
+
+	Block_literal fake = {
+		.isa = &_NSConcreteGlobalBlock,
+		.flags = BLOCK_IS_GLOBAL | BLOCK_HAS_SIGNATURE | BLOCK_SMALL_DESCRIPTOR,
+		.reserved = 0,
+		.invoke = 0,
+		.descriptor = (Block_descriptor *)&desc};
+
+	XCTAssertEqual(BEBlockSignatureChar((const void *)&fake), NULL,
+				   @"a zero relative offset in a small descriptor yields no signature");
+}
+
+- (void)testBEBlockSignatureChar_SmallDescriptor_NoSignatureFlagReturnsNull
+{
+	// Without BLOCK_HAS_SIGNATURE the small-descriptor branch is never entered.
+	struct FakeSmallDescriptorBare {
+		uint32_t size;
+		int32_t  signature;
+		int32_t  layout;
+	} desc = { .size = sizeof(struct FakeSmallDescriptorBare), .signature = 8, .layout = 0 };
+
+	Block_literal fake = {
+		.isa = &_NSConcreteGlobalBlock,
+		.flags = BLOCK_IS_GLOBAL | BLOCK_SMALL_DESCRIPTOR,   // BLOCK_HAS_SIGNATURE omitted
+		.reserved = 0,
+		.invoke = 0,
+		.descriptor = (Block_descriptor *)&desc};
+
+	XCTAssertEqual(BEBlockSignatureChar((const void *)&fake), NULL,
+				   @"no BLOCK_HAS_SIGNATURE returns NULL before the small-descriptor read");
+}
+#endif
 
 #if !BE_APPLE_TERMS_COMPLIANT
 // This test is compiled in ONLY when the suite is built with BE_APPLE_TERMS_COMPLIANT=0, so it runs

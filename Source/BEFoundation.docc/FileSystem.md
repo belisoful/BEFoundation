@@ -7,3 +7,4 @@ This group covers file system utilities including path monitoring, persistent ca
 - [BEPathWatcher](doc:BEPathWatcher)
 - [BEFileCache](doc:BEFileCache)
 - [BESecurityScopedURLManager](doc:BESecurityScopedURLManager)
+- [NSOpenPanel+BESecurityScopedURLManager](doc:NSOpenPanel_BESecurityScopedURLManager)

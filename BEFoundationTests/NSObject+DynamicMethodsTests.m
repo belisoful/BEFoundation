@@ -42,10 +42,16 @@
 
 
 
+// A struct whose size is >= 256 bytes forces dynamicForwardInvocation:'s large-return
+// (malloc/free) branch instead of the alloca fast path.
+typedef struct { uint8_t b[320]; } DMBig320;
+
 @protocol NSObjectTestDynamicMethod
 	@optional
 
 //Todo: structures, arrays and unions
+- (DMBig320)newMethodTest_bigRet;
++ (DMBig320)newMethodTest_bigClassRet;
 - (double)newMethodTest_100:(char)charValue uchar:(unsigned char)ucharValue
 			   shortValue:(short)shortValue ushortValue:(unsigned short)ushortValue
 				 intValue:(int)intValue uintValue:(unsigned int)uintValue
@@ -420,6 +426,25 @@
 	XCTAssertEqual(SubBasicDynamicObject.isDynamicMethodsEnabled, DMInheritEnabled);
 }
 
+- (void)testResetDynamicMethods_InheritedDisabled_ReturnsNO
+{
+	[BasicNonDynamicObject reset];
+
+	// Parent explicitly disabled; the subclass inherits the disabled state with no explicit setting of its own.
+	[BasicNonDynamicObject disableDynamicMethods];
+	XCTAssertEqual(SubBasicNonDynamicObject.isDynamicMethodsEnabled, DMInheritDisabled);
+
+	// The subclass has no explicit state to reset, so resetDynamicMethods returns NO.
+	XCTAssertFalse([SubBasicNonDynamicObject resetDynamicMethods]);
+	// The parent holds an explicit setting, so its reset succeeds.
+	XCTAssertTrue([BasicNonDynamicObject resetDynamicMethods]);
+
+	XCTAssertEqual(BasicNonDynamicObject.isDynamicMethodsEnabled, DMInheritNone);
+	XCTAssertEqual(SubBasicNonDynamicObject.isDynamicMethodsEnabled, DMInheritNone);
+
+	[BasicNonDynamicObject reset];
+}
+
 - (void)testSetIsDynamicMethodsEnabled_statusRotation
 {
 	[BasicNonDynamicObject reset];
@@ -461,6 +486,28 @@
 	[BasicNonDynamicObject reset];
 }
 
+/*!
+ * @discussion isSelfDynamicMethodsEnabled is the BOOL wrapper over the NSNumber "self enabled"
+ * flag. It reports YES only for a class that set the flag on itself, not for a subclass that
+ * merely inherits an enabled ancestor.
+ */
+- (void)testIsSelfDynamicMethodsEnabled_BOOLWrapper
+{
+	// Neutral class: no self flag is set, so the BOOL wrapper reads boolValue over nil -> NO.
+	[BasicNonDynamicObject reset];
+	XCTAssertFalse([BasicNonDynamicObject isSelfDynamicMethodsEnabled]);
+
+	// Explicitly enabling sets the self flag, so the BOOL wrapper reports YES.
+	XCTAssertTrue([BasicNonDynamicObject enableDynamicMethods]);
+	XCTAssertTrue([BasicNonDynamicObject isSelfDynamicMethodsEnabled]);
+
+	// A subclass inherits enablement but carries no self flag of its own.
+	XCTAssertFalse([SubBasicNonDynamicObject isSelfDynamicMethodsEnabled]);
+
+	[BasicNonDynamicObject reset];
+	XCTAssertFalse([BasicNonDynamicObject isSelfDynamicMethodsEnabled]);
+}
+
 - (void)testEnableDynamicMethods_InvalidCases
 {
 	XCTAssertFalse([NSObject enableDynamicMethods], @"Cannot enable dynamicMethods on NSObject.");
@@ -487,6 +534,11 @@
 	
 	NSDynamicMethodsTestObject.allowNSDynamicMethods = YES;
 	XCTAssertEqual(NSDynamicMethodsTestObject.isDynamicMethodsEnabled, DMSelfEnabled, @"NS allowed classes can enable dynamic methods.");
+
+	//Reset
+	[NSDynamicMethodsTestObject resetDynamicMethods];
+	NSDynamicMethodsTestObject.allowNSDynamicMethods = NO;
+	XCTAssertEqual(NSDynamicMethodsTestObject.isDynamicMethodsEnabled, DMInheritNone);
 }
 
 - (void)testEnableDynamicMethods_NSClassBlocked
@@ -728,6 +780,55 @@
 
 	XCTAssertTrue([ndObject removeObjectMethod:objectSelector]);
 	XCTAssertThrowsSpecificNamed([ndObject objectProperty], NSException, NSInvalidArgumentException);
+
+	[BasicNonDynamicObject resetDynamicMethods];
+}
+
+// A remove or replace that races an in-flight dispatch must not free the IMP trampoline under the
+// invoke: the dispatch path holds a strong meta reference and the trampoline is released only in
+// BEDynamicMethodMeta -dealloc. Run under AddressSanitizer to surface a use-after-free.
+- (void)testObjectMethod_ConcurrentRemoveReplaceVersusInvoke_Stress
+{
+	SEL objectSelector = NSSelectorFromString(@"objectProperty");
+	BasicNonDynamicObject *ndObject = BasicNonDynamicObject.new;
+	[BasicNonDynamicObject enableDynamicMethods];
+	XCTAssertTrue([ndObject addObjectMethod:objectSelector block:^NSInteger(id _self) { return 11; }]);
+
+	const NSUInteger iterations = 2000;
+	dispatch_queue_t queue = dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0);
+	dispatch_group_t group = dispatch_group_create();
+
+	dispatch_group_async(group, queue, ^{
+		for (NSUInteger i = 0; i < iterations; i++) {
+			if (i % 4 == 3) {
+				[ndObject removeObjectMethod:objectSelector];
+				[ndObject addObjectMethod:objectSelector block:^NSInteger(id _self) { return 11; }];
+			} else {
+				NSInteger value = (i % 2) ? 11 : 22;
+				[ndObject addObjectMethod:objectSelector block:^NSInteger(id _self) { return value; }];
+			}
+		}
+	});
+
+	__block NSUInteger dispatched = 0;
+	__block NSUInteger unrecognized = 0;
+	dispatch_group_async(group, queue, ^{
+		for (NSUInteger i = 0; i < iterations; i++) {
+			@try {
+				NSInteger value = [ndObject objectProperty];
+				if (value == 11 || value == 22) {
+					dispatched++;
+				}
+			} @catch (NSException *exception) {
+				if ([exception.name isEqualToString:NSInvalidArgumentException]) {
+					unrecognized++;	// the invoke raced a remove
+				}
+			}
+		}
+	});
+
+	XCTAssertEqual(dispatch_group_wait(group, dispatch_time(DISPATCH_TIME_NOW, 30 * NSEC_PER_SEC)), 0L, @"stress loops must finish");
+	XCTAssertEqual(dispatched + unrecognized, iterations, @"every invoke returns a registered value or raises unrecognized selector");
 
 	[BasicNonDynamicObject resetDynamicMethods];
 }
@@ -1943,6 +2044,66 @@
 	XCTAssertEqual(blockExecutionCount, counter);
 }
 
+/*!
+ * @discussion A cmd-capturing object method returning a struct of 320 bytes drives
+ * dynamicForwardInvocation:'s large-return branch, which mallocs and frees the return buffer
+ * (returnLength >= 256) rather than using alloca. The forwarded struct arrives intact.
+ */
+- (void)testBasicDynamicObject_AddObjectMethod_LargeStructReturn
+{
+	BasicDynamicObject<NSObjectTestDynamicMethod> *dObject = (BasicDynamicObject<NSObjectTestDynamicMethod> *)BasicDynamicObject.new;
+
+	SEL methodSelector = @selector(newMethodTest_bigRet);
+
+	__block SEL blockCommand = nil;
+	XCTAssertTrue([dObject addObjectMethod:methodSelector block:^DMBig320(id _self, SEL __cmd) {
+		blockCommand = __cmd;
+		DMBig320 r;
+		memset(&r, 3, sizeof(r));
+		return r;
+	}]);
+
+	XCTAssertTrue([dObject isDynamicObjectMethod:methodSelector]);
+
+	DMBig320 got = [dObject newMethodTest_bigRet];
+
+	XCTAssertEqualObjects(NSStringFromSelector(blockCommand), NSStringFromSelector(methodSelector));
+	XCTAssertEqual(got.b[0], 3);
+	XCTAssertEqual(got.b[319], 3);
+
+	XCTAssertTrue([dObject removeObjectMethod:methodSelector]);
+}
+
+/*!
+ * @discussion An object method registered on the class object with a cmd-capturing block and a
+ * 320-byte struct return drives dynamicClassForwardInvocation:'s large-return branch, which
+ * mallocs and frees the return buffer (returnLength >= 256).
+ */
+- (void)testBasicDynamicObject_AddClassObjectMethod_LargeStructReturn
+{
+	Class<NSObjectTestDynamicMethod> cls = BasicDynamicObject.class;
+
+	SEL methodSelector = @selector(newMethodTest_bigClassRet);
+
+	__block SEL blockCommand = nil;
+	XCTAssertTrue([(id)cls addObjectMethod:methodSelector block:^DMBig320(id _self, SEL __cmd) {
+		blockCommand = __cmd;
+		DMBig320 r;
+		memset(&r, 7, sizeof(r));
+		return r;
+	}]);
+
+	XCTAssertTrue([(id)cls isDynamicObjectMethod:methodSelector]);
+
+	DMBig320 got = [cls newMethodTest_bigClassRet];
+
+	XCTAssertEqualObjects(NSStringFromSelector(blockCommand), NSStringFromSelector(methodSelector));
+	XCTAssertEqual(got.b[0], 7);
+	XCTAssertEqual(got.b[319], 7);
+
+	XCTAssertTrue([(id)cls removeObjectMethod:methodSelector]);
+}
+
 typedef union myUnion {
 	char c;
 	short s;
@@ -2063,12 +2224,54 @@ typedef union myUnion {
 	XCTAssertTrue([dObject.class isDynamicClassMethod:dynamicMethodSelector]);
 	
 	XCTAssertTrue([dObject.class removeClassMethod:dynamicMethodSelector]);
-	
+
 	XCTAssertFalse([dObject isDynamicMethod:dynamicMethodSelector]);
 	XCTAssertFalse([dObject isDynamicObjectMethod:dynamicMethodSelector]);
 	XCTAssertFalse([dObject.class isDynamicMethod:dynamicMethodSelector]);
 	XCTAssertFalse([dObject.class isDynamicObjectMethod:dynamicMethodSelector]);
 	XCTAssertFalse([dObject.class isDynamicClassMethod:dynamicMethodSelector]);
+}
+
+/*!
+ * @discussion addClassMethod: does not auto-enable a class, so a class left in the neutral
+ * DMInheritNone state has a registered class-method meta yet is neither enabled nor disabled.
+ * dynamicClassMethodMeta: finds the meta, falls into the neutral else-break, and returns nil,
+ * so isDynamicClassMethod: reports NO.
+ */
+- (void)testDynamicClassMethodMeta_NeutralStateBreaks
+{
+	[BasicNonDynamicObject reset];
+	XCTAssertEqual([BasicNonDynamicObject isDynamicMethodsEnabled], DMInheritNone);
+
+	SEL sel = NSSelectorFromString(@"neutralClassMethod");
+	XCTAssertTrue([BasicNonDynamicObject addClassMethod:sel block:^NSInteger(id _self) { return 5; }]);
+
+	XCTAssertNil([BasicNonDynamicObject dynamicClassMethodMeta:sel]);
+	XCTAssertFalse([BasicNonDynamicObject isDynamicClassMethod:sel]);
+
+	XCTAssertTrue([BasicNonDynamicObject removeClassMethod:sel]);
+	[BasicNonDynamicObject reset];
+}
+
+/*!
+ * @discussion dynamicObjectMethodMeta: sent to a class object takes the Class-traversal branch.
+ * With an object method registered on the class object while the class is neutral (DMInheritNone),
+ * the traversal finds the meta but hits the neutral else-break and returns nil.
+ */
+- (void)testDynamicObjectMethodMeta_ClassTraversalNeutralBreaks
+{
+	[BasicNonDynamicObject reset];
+	XCTAssertEqual([BasicNonDynamicObject isDynamicMethodsEnabled], DMInheritNone);
+
+	SEL sel = NSSelectorFromString(@"neutralObjMethodOnClass");
+	XCTAssertTrue([(id)BasicNonDynamicObject.class addObjectMethod:sel block:^(id _self) {}]);
+
+	XCTAssertTrue(object_isClass(BasicNonDynamicObject.class));
+	XCTAssertNil([(id)BasicNonDynamicObject.class dynamicObjectMethodMeta:sel]);
+	XCTAssertFalse([(id)BasicNonDynamicObject.class isDynamicObjectMethod:sel]);
+
+	XCTAssertTrue([(id)BasicNonDynamicObject.class removeObjectMethod:sel]);
+	[BasicNonDynamicObject reset];
 }
 
 

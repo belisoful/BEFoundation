@@ -88,7 +88,7 @@
 
 - (BOOL)isPushOnTop {
 	NSNumber *value = objc_getAssociatedObject(self, @selector(isPushOnTop));
-	if (!value) {
+	if (value == nil) {
 		return YES;   // default
 	}
 	return value.boolValue;

@@ -37,7 +37,7 @@
  *             result includes the root protocol itself and maintains the order of discovery.
  *             Returns an empty set if the protocol parameter is nil.
  */
-extern NSOrderedSet<Protocol *> *_Nonnull recursiveProtocolsFromProtocol(Protocol *_Nonnull protocol);
+extern NSOrderedSet<Protocol *> *_Nonnull recursiveProtocolsFromProtocol(Protocol *_Nullable protocol);
 
 /*!
  * @enum BEDynamicMethodsSwizzleState

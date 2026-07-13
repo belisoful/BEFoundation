@@ -54,7 +54,7 @@ For comprehensive documentation, see the [BEFoundation Documentation](Source/BEF
 ### 📚 Data Structures
 - [`BEStackExtensions`](Source/BEFoundation.docc/BEStackExtensions.md): Array-based Stack and Queue
 - [`BEPriorityExtensions`](Source/BEFoundation.docc/BEPriorityExtensions.md): Priority ordering extensions for `NSArray` and `NSOrderedSet`
-- [`FxTime`](Source/BEFoundation.docc/FxTime.md): Object to encapsulate CMTime and methods
+- [`FxTime`](Source/BEFoundation.docc/FxTime.md): Immutable object to encapsulate CMTime and methods; `FxMutableTime` adds read-write components and in-place arithmetic
 
 ### 📡 File & Path Monitoring
 - [`BEPathWatcher`](Source/BEFoundation.docc/BEPathWatcher.md): Path watcher class to observe file system changes
@@ -65,6 +65,7 @@ For comprehensive documentation, see the [BEFoundation Documentation](Source/BEF
 - [`NSMutableNumber`](Source/BEFoundation.docc/NSMutableNumber.md): Mutable variant of `NSNumber`
 - [`NSNumber+Primes16b`](Source/BEFoundation.docc/NSNumber_Primes16b.md): Contains all 16-bit prime numbers with rounding
 - [`NSDateFormatterRFC3339`](Source/BEFoundation.docc/NSDateFormatterRFC3339.md): Proper RFC 3339 date formatting initialization and setting
+- [`NSDateFormatterRFC2822`](Source/BEFoundation.docc/NSDateFormatterRFC2822.md): Fixed-format RFC 2822 (Internet Message Format) date formatting initialization and setting
 
 ### 🧪 Predicate Logic
 - [`BEPredicateRule`](Source/BEFoundation.docc/BEPredicateRule.md): Evaluation system that can accept, reject, or remain neutral based on predicate evaluation
@@ -88,7 +89,7 @@ For comprehensive documentation, see the [BEFoundation Documentation](Source/BEF
 
 ## 🧪 Unit Testing
 
-BEFoundation includes **comprehensive unit tests** for all major components, using `XCTest`. Tests cover behavior, edge cases, runtime behaviors, and error conditions. In v1.1, unit test coverage was extended to `NSObject+Macroable` (57 tests covering `BEMacroMeta`, class macros, object macros, invocation, isolation, and subclass inheritance).
+BEFoundation includes **comprehensive unit tests** for all major components, using `XCTest`. Tests cover behavior, edge cases, runtime behaviors, and error conditions. In v1.1, unit test coverage was extended to `NSObject+Macroable` (65 tests covering `BEMacroMeta`, class macros, object macros, invocation, isolation, and subclass inheritance).
 
 ---
 
@@ -134,6 +135,7 @@ BEFoundation was initially conceived and engineered by belisoful@icloud.com to r
  - [`BEColor+BExtension`](Source/BEFoundation.docc/BEColor_BExtension.md): hex-string colors and appearance-aware dynamic colors.
  - [`BEView+BExtension`](Source/BEFoundation.docc/BEView_BExtension.md): Auto Layout convenience constraints (pin, center, size).
  - [`BEImage+BExtension`](Source/BEFoundation.docc/BEImage_BExtension.md): `CGImage`/`CIImage` round-trips, PNG/JPEG export, pixel size, and aspect-aware resizing.
+ - **Behavior change:** the `BEImage+BExtension` round-trip and data members are renamed to representation-style names — `CGImageRepresentation`, `CIImageRepresentation`, `imageFromCGImage:`, `imageFromCIImage:`, `pngRepresentation`, `jpegRepresentationWithCompressionQuality:`. Apple frameworks attach same-named category methods to `NSImage` at runtime (PencilKit adds a private `+[NSImage imageWithCGImage:]` and `-CGImage`), and which duplicate wins is undefined, so the 1.0 UIImage-parity spellings were unsafe. `pixelSize` and the `resizedTo…` members keep their names. The round-trip members are also available on iOS now, and the factories return `nil` for `NULL`/`nil` input on both platforms.
  - [`NSPasteboard+BExtension`](Source/BEFoundation.docc/NSPasteboard_BExtension.md) (macOS): typed read/write for strings, URLs, and images.
 
 **Foundation & Networking**
@@ -144,7 +146,11 @@ BEFoundation was initially conceived and engineered by belisoful@icloud.com to r
  - [`NSData+URLDownload`](Source/BEFoundation.docc/NSData_URLDownload.md): for easy download of internet data via in-memory or temporary file.
  - [`BEFileCache`](Source/BEFoundation.docc/BEFileCache.md): persistent file-backed caching.
  - [`BESecurityScopedURLManager`](Source/BEFoundation.docc/BESecurityScopedURLManager.md): security-scoped bookmark lifecycle management.
+ - [`NSDateFormatterRFC2822`](Source/BEFoundation.docc/NSDateFormatterRFC2822.md): fixed-format RFC 2822 (Internet Message Format) date formatter for email-style dates.
  - `NSObject+Macroable`: Macro system for attaching block-based methods to a class (available on all instances) or to a specific object instance at runtime, built on `NSObject+DynamicMethods`.
+ - [`FxTime`](Source/BEFoundation.docc/FxTime.md) is now immutable and thread-safe. The new `FxMutableTime` subclass carries the read-write components and in-place arithmetic; code that mutated an `FxTime` must now use `FxMutableTime`. `-copy` returns an immutable `FxTime`; `-mutableCopy` returns an `FxMutableTime`.
+ - **Behavior change:** `FxTime` `-compare:`/`-compareTime:` now follow the Cocoa `NSComparisonResult` convention. The result sign is inverted versus 1.0; code that compensated for the old inversion must drop the workaround.
+ - **Behavior change:** `NSCoder+AtIndex.h` no longer imports `<simd/simd.h>` (it was unused). Clients that relied on the transitive include through the umbrella header must import `<simd/simd.h>` themselves.
 
 **AppKit**
  - [`BEPathControl`](Source/BEFoundation.docc/BEPathControl.md): an NSPathControl that displays paths relative to a sub-directory.

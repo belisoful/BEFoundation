@@ -96,6 +96,7 @@ The repo is upstream: prefer its conventions, mirror any edit to both places, an
 - Extract Method → Predicate/Guard Clause (Fowler) is preferred over nested conditionals.
 - **Backward compatibility** — point releases must stay backward compatible. Minor releases may break, but minimize the breaks.
 - Document the introducing version on new public methods and classes.
+- **Category methods on Apple classes must not reuse Apple method names.** Apple attaches private same-named categories at runtime (PencilKit defines `+[NSImage imageWithCGImage:]`), and duplicate resolution is undefined. Public: descriptive non-Apple names (`imageFromCGImage:`, `pngRepresentation`); private helpers should avoid the "common name" or prefix with "be_". Verify the selector at runtime, not just in headers. See `CATEGORY_NAMING.md`.
 
 ## Code Comments
 

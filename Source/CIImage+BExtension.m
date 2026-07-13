@@ -3,8 +3,7 @@
  @copyright		-© 2025 Delicense - @belisoful. All rights released.
  @date			2025-01-01
  @author		belisoful@icloud.com
- @abstract
- @discussion
+ @abstract		Implementation of the CIImage text-generation and alpha-compositing conveniences.
 */
 
 #import "BE_ARC.h"
@@ -13,16 +12,7 @@
 @implementation CIImage (BExtension)
 
 /*!
-	@class   	CIImage (BExtension)
-	@abstract   This adds creating a CIImage containing attributed text and easily
-				combining two images.
-	@discussion	This wraps the creation of a text CIImage into a handy method and
-				easily combining two images with an alpha transparency of the top image.
-				These are useful for, e.g., FxPlug Effects.
- */
-
-/*!
-	@method     -createImageText:fontName:fontSize:angle:color:blur:position:
+	@method     +createImageText:fontName:fontSize:angle:color:blur:position:
 	@abstract   This generates an image with the specified text, font name, font size, angle, color, blur, and position.
 	@param      text		The text to render.
 	@param      fontName	The font name of the font the text is rendered with.
@@ -32,7 +22,7 @@
 	@param      blur		The blur, in pixels, applied to the text.
 	@param      position	The position of the text to be rendered.
 	@discussion	This is a compound function to generate text in a specific font, size, angle, color, blur, and position.
-	@result     This method returns a CIImage containing the rendered text.
+	@result     Returns a CIImage containing the rendered text, or nil if @c text or @c color is nil or text image generation fails.
  */
 + (CIImage *)createImageText:(NSString *)text
 					fontName:(NSString *)fontName
@@ -89,14 +79,14 @@
 }
 
 /*!
-	@method     -combineImage:alpha:withImage:
+	@method     +combineImage:alpha:withImage:
 	@abstract   This combines two images with the topImage having an alpha over the bottomImage.
 	@param      topImage	The image composited on top.
  	@param		topAlpha	The opacity applied to topImage, from 0.0 (transparent) to 1.0 (opaque).
 	@param      bottomImage	The background image composited underneath.
 	@discussion	Adjusts the alpha of topImage via CIColorMatrix, then composites it over
 				bottomImage using CISourceOverCompositing.
-	@result     This method returns a CIImage containing the combined images.
+	@result     Returns a CIImage containing the combined images, or nil if either image is nil.
  */
 + (CIImage *)combineImage:(CIImage *)topImage
 					alpha:(CGFloat)topAlpha

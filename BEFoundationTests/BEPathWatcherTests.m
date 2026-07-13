@@ -316,7 +316,8 @@
 	XCTAssertEqualObjects(self.watcher.path, newPath, "Path should be updated.");
 	XCTAssertTrue(self.watcher.isActive, "Watcher should remain active after path change.");
 	self.watcher.path = self.watcher.path;
-	XCTAssertEqualObjects(self.watcher.path, self.watcher.path, "Path should be the same.");
+	XCTAssertEqualObjects(self.watcher.path, newPath, "Self-assigned path should be unchanged.");
+	XCTAssertTrue(self.watcher.isActive, "Watcher should remain active after self-assigning the path.");
 	
 	// Test that the new path is being watched
 	XCTestExpectation *expectation2 = [self expectationWithDescription:@"Callback for new path"];
@@ -331,7 +332,7 @@
 	[self waitForExpectations:@[expectation2] timeout:3.0];
 	
 	self.watcher.path = nil;
-	XCTAssertFalse(self.watcher.isActive, "Watcher should remain active after path change.");
+	XCTAssertFalse(self.watcher.isActive, "Watcher should become inactive when the path is set to nil.");
 	XCTAssertNil(self.watcher.path, "Path should be nil.");
 }
 

@@ -31,7 +31,7 @@ static const void * const kBEBookmarkLifetimeKey = &kBEBookmarkLifetimeKey;
 
 - (BESecurityScopedURLBookmarkLifetime)ss_bookmarkLifetime {
 	NSNumber *lifetimeNum = objc_getAssociatedObject(self, kBEBookmarkLifetimeKey);
-	return lifetimeNum ? (BESecurityScopedURLBookmarkLifetime)[lifetimeNum unsignedIntegerValue]
+	return lifetimeNum != nil ? (BESecurityScopedURLBookmarkLifetime)[lifetimeNum unsignedIntegerValue]
 					   : BESecurityScopedURLBookmarkLifetimeLongLived;
 }
 

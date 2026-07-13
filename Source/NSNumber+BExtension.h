@@ -59,13 +59,14 @@ uint64_t pow_uint64(uint64_t base, uint64_t exponent);
 /*!
  @function floatToFpXX
  @abstract Converts a double-precision float to an arbitrary-format floating-point integer encoding.
- @discussion Encodes a double value into a packed integer using a configurable IEEE 754-style format with a 1-bit sign, configurable exponent field, and configurable mantissa field. Pass 0 for exponentBits or mantissaBits to use the defaults (5 and 10, producing fp16/half-float layout). Pass INT_MIN for exponentBias to auto-compute the standard bias ((exponentMaxValue >> 1)). When IEEEConformance is YES, subnormals, infinities, and NaN are encoded per IEEE 754 conventions; when NO, exponent 0 and exponentMaxValue are treated as normal exponents and values saturate at the extremes.
+ @discussion Encodes a double value into a packed integer using a configurable IEEE 754-style format with a 1-bit sign, configurable exponent field, and configurable mantissa field. Pass 0 for exponentBits or mantissaBits to use the defaults (5 and 10, producing fp16/half-float layout). Pass INT_MIN for exponentBias to auto-compute the standard bias ((exponentMaxValue >> 1)). When IEEEConformance is YES, subnormals, infinities, and NaN are encoded per IEEE 754 conventions; when NO, exponent 0 and exponentMaxValue are treated as normal exponents and values saturate at the extremes, and an infinite or NaN input saturates at the maximum representable magnitude.
  @param value The double value to encode.
  @param exponentBits Number of exponent bits (pass 0 to use default of 5).
  @param mantissaBits Number of mantissa bits (pass 0 to use default of 10).
  @param exponentBias Exponent bias (pass INT_MIN to auto-compute as exponentMaxValue >> 1).
  @param IEEEConformance YES to handle subnormals, infinities, and NaN per IEEE 754.
  @return The packed integer encoding, or 0 if the format parameters are invalid.
+ @since 1.1
  */
 int64_t floatToFpXX(double value, int exponentBits, int mantissaBits, int exponentBias, BOOL IEEEConformance);
 

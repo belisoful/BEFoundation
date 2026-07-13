@@ -21,9 +21,9 @@
  
  `-mapUsingBlock:`: Maps all objects to a new set, removing `NULL` mappings and not passing.
  
- `-objectsClasses`:  Gets and counts  the `Class` of the objects in the set.
+ `-objectsClasses`:  An ordered set of the objects' distinct `Class` (deduped, in order, no counts).
  
- `-objectsClassNames`:  Gets and counts  the `className` of the objects in the set.
+ `-objectsClassNames`:  An ordered set of the objects' distinct `className` (deduped, in order, no counts).
  
  `-objectsUniqueClasses`:  Gets and counts  the `Class` of the objects in the set.
  

@@ -255,7 +255,7 @@ typedef NS_ENUM(NSInteger, BEDynamicMethodsActivationState) {
  @discussion	Returns true if the class has an explicit dynamic methods setting
 				(either enabled or disabled) rather than inheriting from parents.
  */
-#define isDynamicMethodsSelf(state) ((state) & 0x2)
+#define isDynamicMethodsSelf(state) (((state) == DMSelfDisabled) || ((state) == DMSelfEnabled))
 
 #pragma mark - NSObject Dynamic Methods Category
 
@@ -605,8 +605,10 @@ typedef NS_ENUM(NSInteger, BEDynamicMethodsActivationState) {
 				When an unrecognized method is called, the system will forward
 				the method call to the target object if it responds to the selector.
 				
-				Multiple forward targets can be registered. The system will try each
-				one in registration order until it finds one that responds to the selector.
+				Multiple forward targets can be registered, at most one per target
+				class; registering a second target of the same class returns NO.
+				The system consults the targets in unspecified order and forwards
+				the call to the first target found that responds to the selector.
 				
 				@note Class methods cannot be implemented for object protocols. Dynamic
 				class methods must use addInstanceProtocol:withClass:.

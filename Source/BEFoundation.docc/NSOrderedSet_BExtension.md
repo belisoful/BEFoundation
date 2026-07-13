@@ -53,7 +53,7 @@ NSOrderedSet *doubledEvens = [numbers mapUsingBlock:^BOOL(id *obj, NSUInteger id
     }
     return NO;
 }];
-// Result: @{@2, @4} in order
+// Result: @{@4, @8} in order
 ```
 
 ### Mutable Ordered Set Operations

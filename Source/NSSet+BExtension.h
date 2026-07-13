@@ -114,7 +114,7 @@
 /*!
  @method		-mapUsingBlock:
  @abstract		Maps each object in the set
- @param			filterBlock	The block is applied to each object in the set. The
+ @param			block	The block is applied to each object in the set. The
 							block could mutate the object, or set it to `nil` if
 							the object should be excluded from the resulting set.
 							This must return YES for an object to be included in
@@ -127,7 +127,7 @@
  @result		Returns a new instance of the same Class containing each passing
 				object from the `block` function.
  */
-- (nonnull instancetype)mapUsingBlock:(BOOL (^_Nullable)(ObjectType _Nullable * _Nonnull obj, BOOL * _Nonnull stop))filterBlock;
+- (nonnull instancetype)mapUsingBlock:(BOOL (^_Nullable)(ObjectType _Nullable * _Nonnull obj, BOOL * _Nonnull stop))block;
 
 @end
 

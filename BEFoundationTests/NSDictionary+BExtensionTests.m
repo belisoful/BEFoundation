@@ -165,10 +165,10 @@
 	// Test synchronous behavior (no NSEnumerationConcurrent)
 	NSDictionary *result = [input mapUsingBlock:^BOOL(id * _Nonnull key, id  _Nullable __autoreleasing * _Nonnull obj, BOOL * _Nonnull stop) {
 		if (*obj == [NSNull null]) {
-			return [NSNull null];  // Return nil for the NSNull element
+			return YES;  // keep the NSNull element unchanged
 		}
 		if (![*obj integerValue]) {
-			return nil;
+			return NO;   // drop non-integer values
 		}
 		*obj = @([*obj integerValue] * 2);
 		return YES;

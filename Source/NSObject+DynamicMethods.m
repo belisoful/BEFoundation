@@ -136,7 +136,6 @@
 	// it. _block is a strong ivar released by ARC; do NOT also Block_release it.
 	if (_implementation) {
 		imp_removeBlock(_implementation);
-		_implementation = NULL;
 	}
 }
 
@@ -290,7 +289,7 @@ static NSString * const BEDMProtocolTargetLUTKey = @"__reverseTargetLUT";
 
 
 + (NSNumber*)isSelfDynamicMethodsEnabledObject {
-	if (![self allowNSDynamicMethods] && [NSStringFromClass(self.class) hasPrefix:@"NS"]) {\
+	if (![self allowNSDynamicMethods] && [NSStringFromClass(self.class) hasPrefix:@"NS"]) {
 		return nil;
 	}
 	@synchronized (self) {
@@ -328,7 +327,7 @@ static NSString * const BEDMProtocolTargetLUTKey = @"__reverseTargetLUT";
 	
 	do {
 		enabledNumber = [cls isSelfDynamicMethodsEnabledObject];
-		if (enabledNumber) {
+		if (enabledNumber != nil) {
 			index = [enabledNumber boolValue] ? 1 : -1;
 			break;
 		}
@@ -1157,7 +1156,7 @@ static NSString * const BEDMProtocolTargetLUTKey = @"__reverseTargetLUT";
 		}
 		
 		NSUInteger hash = 0;
-		unsigned char digest[CC_SHA1_DIGEST_LENGTH];	// is 20 bytes
+		unsigned char digest[CC_SHA1_DIGEST_LENGTH] = {0};	// is 20 bytes
 		if (isNoProtocol) {
 			NSMutableArray<NSString*> *noProtocolTargets = [dynamicInstanceProtocols objectForKey:protocolString];
 			if (!noProtocolTargets) {

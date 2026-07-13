@@ -10273,6 +10273,31 @@
 	XCTAssertFalse([InstanceBaseProtocolTargetObject isDynamicInstanceProtocol:nilProtocol]);
 }
 
+/*!
+ * @discussion With a forward (no-protocol) class registered, the instance-protocols dictionary
+ * exists and its NSNoProtocol key maps to the mutable array of forward targets.
+ * Querying isDynamicInstanceProtocol: with the NSNoProtocol sentinel reaches the
+ * `protocol == noProtocol` branch, which returns that array without setting hasProtocol,
+ * so the sentinel never reports as a matched protocol.
+ */
+- (void)test_isDynamicInstanceProtocol_noProtocolSentinel
+{
+	InstanceBaseProtocolTargetObject *object = InstanceBaseProtocolTargetObject.new;
+	XCTAssertTrue([object.class enableDynamicMethods]);
+
+	// Registering a forward class populates the instance-protocols dictionary under the
+	// NSNoProtocol key.
+	XCTAssertTrue([object.class addInstanceForwardClass:ProtocolIMPGeneralClassMethod.class]);
+
+	// Querying the NSNoProtocol sentinel hits dynamicClassForProtocol:hasProtocol:'s
+	// `protocol == noProtocol` branch, which returns the target array without setting
+	// hasProtocol, so isDynamicInstanceProtocol: reports NO.
+	XCTAssertFalse([object.class isDynamicInstanceProtocol:@protocol(NSNoProtocol)]);
+
+	XCTAssertTrue([object.class removeInstanceForwardClass:ProtocolIMPGeneralClassMethod.class]);
+	XCTAssertTrue([object.class resetDynamicMethods]);
+}
+
 - (void)test_targetForProtocol
 {
 	InstanceBaseProtocolTargetObject *object = InstanceBaseProtocolTargetObject.new;

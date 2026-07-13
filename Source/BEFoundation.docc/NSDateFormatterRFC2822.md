@@ -8,7 +8,7 @@ RFC 2822 date formatting support for NSDateFormatter.
 
 ## Overview
 
-This category adds convenience methods to `NSDateFormatter` for working with RFC 2822 formatted dates. RFC 2822 (Internet Message Format) defines the date format used in email headers — and, near-identically, in HTTP and RSS — derived from RFC 822. It is unrelated to ISO 8601; for ISO 8601 / Internet timestamps use <doc:NSDateFormatterRFC3339> instead.
+This category adds convenience methods to `NSDateFormatter` for working with RFC 2822 formatted dates. RFC 2822 (Internet Message Format) defines the date format used in email headers, derived from RFC 822. HTTP and RSS use a near-identical format. It is unrelated to ISO 8601; for ISO 8601 / Internet timestamps use <doc:NSDateFormatterRFC3339> instead.
 
 ## Usage
 

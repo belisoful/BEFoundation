@@ -70,7 +70,7 @@ static NSString * const kItemDate      = @"dateStored";
 	if ((self = [super init])) {
 		// Accept any NSSecureCoding-conforming class for the key; callers are
 		// responsible for using well-known Foundation key types.
-		NSSet *any  = [NSSet setWithArray:@[NSString.class, NSNumber.class, NSDate.class, NSData.class, NSArray.class, NSDictionary.class, NSNull.class]];
+		NSSet *any  = [NSSet setWithArray:@[NSString.class, NSNumber.class, NSDate.class, NSData.class, NSArray.class, NSDictionary.class, NSNull.class, NSURL.class]];
 		_key        = [coder decodeObjectOfClasses:any forKey:kItemKey];
 		_cost       = (NSUInteger)[coder decodeIntegerForKey:kItemCost];
 		// Pre-1.1 .meta files have no retentionCost; default it to cost.
@@ -142,6 +142,7 @@ static NSSet<Class> *BEIndexAllowedClasses(void) {
 			 [NSString     class],
 			 [NSNumber     class],
 			 [NSDate       class],
+			 [NSURL        class],
 			 nil];
 	});
 	return s;
@@ -474,6 +475,9 @@ static NSString * _Nullable BEMetaFileName(id<NSCopying, NSSecureCoding> key) {
 	} else {
 		// Memory-only, but serialized on the disk queue so it can't interleave with trim/remove.
 		dispatch_sync(_diskQueue, ^{
+			// Purge any persisted value under the same key: the non-serializable object
+			// replaces it, and a stale disk entry would resurface after memory eviction.
+			[self removeDiskEntryOnQueue:key notifyDelegate:NO];
 			[self->_memoryCache setObject:obj forKey:key cost:g];
 		});
 	}
@@ -631,7 +635,7 @@ static NSString * _Nullable BEMetaFileName(id<NSCopying, NSSecureCoding> key) {
 			if (entries) {
 				NSFileManager *fm = [NSFileManager defaultManager];
 				// Accept any NSSecureCoding-conforming type for key objects.
-				NSSet *anyClass   = [NSSet setWithArray:@[NSString.class, NSNumber.class, NSDate.class, NSData.class, NSArray.class, NSDictionary.class, NSNull.class]];
+				NSSet *anyClass   = [NSSet setWithArray:@[NSString.class, NSNumber.class, NSDate.class, NSData.class, NSArray.class, NSDictionary.class, NSNull.class, NSURL.class]];
 
 				for (NSDictionary *entry in entries) {
 					// Pull each required field; skip entries with missing data.
@@ -644,7 +648,7 @@ static NSString * _Nullable BEMetaFileName(id<NSCopying, NSSecureCoding> key) {
 					NSDate   *access        = entry[kIdxAccess] ?: date;  // pre-1.1 indexes lack access
 
 					if (!keyData || !objectFileRef || !metaFileRef
-						|| !cost || !date) continue;
+						|| cost == nil || !date) continue;
 
 					// Recompose against the current cacheDirectory so a relocated cache still
 					// resolves; -lastPathComponent also normalizes legacy absolute-path indexes.
@@ -709,7 +713,7 @@ static NSString * _Nullable BEMetaFileName(id<NSCopying, NSSecureCoding> key) {
  *
  * @discussion
  *   This is the slow-path fallback used on first launch or when the index file
- *   is missing or corrupt.  Because @c .meta files are small (key + cost + date
+ *   is missing or corrupt.  Because @c .meta files are small (key + cost + retention cost + date
  *   only) the scan is fast even for a large number of cached entries.
  *
  *   For each valid @c .meta file the method verifies that the sibling @c .cache
@@ -1032,7 +1036,7 @@ static NSString * _Nullable BEMetaFileName(id<NSCopying, NSSecureCoding> key) {
 	}
 
 	// ── Archive the metadata sidecar ──────────────────────────────────────────
-	// BEFileCacheItem stores key + cost + dateStored and nothing else.
+	// BEFileCacheItem stores key + cost + retentionCost + dateStored.
 	BEFileCacheItem *item =
 		[[BEFileCacheItem alloc] initWithKey:key cost:cost retentionCost:retentionCost];
 	NSError *metaErr  = nil;
@@ -1050,7 +1054,9 @@ static NSString * _Nullable BEMetaFileName(id<NSCopying, NSSecureCoding> key) {
 	__block BOOL ok = NO;
 	dispatch_sync(_diskQueue, ^{
 		// Warm the memory tier in the same critical section as the disk update so the two
-		// cannot diverge. Done unconditionally so the value survives even a failed disk write.
+		// cannot diverge. Done unconditionally so the value survives even a failed disk write;
+		// the failure paths below purge any prior disk entry so an older value cannot
+		// resurface after memory eviction.
 		[self->_memoryCache setObject:obj forKey:key cost:cost];
 
 		NSError *writeErr = nil;
@@ -1062,6 +1068,7 @@ static NSString * _Nullable BEMetaFileName(id<NSCopying, NSSecureCoding> key) {
 		if (!ok) {
 			NSLog(@"[BEFileCache] object write failed: %@",
 				  writeErr.localizedDescription);
+			[self removeDiskEntryOnQueue:key notifyDelegate:NO];
 			return;     // meta not yet written — nothing to roll back
 		}
 
@@ -1075,6 +1082,7 @@ static NSString * _Nullable BEMetaFileName(id<NSCopying, NSSecureCoding> key) {
 			// Roll back the object file to keep the sibling pair in sync.
 			[[NSFileManager defaultManager]
 				removeItemAtPath:objectFilePath error:nil];
+			[self removeDiskEntryOnQueue:key notifyDelegate:NO];
 			return;
 		}
 

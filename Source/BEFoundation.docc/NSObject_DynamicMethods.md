@@ -1,6 +1,6 @@
 # NSObject+DynamicMethods
 
-A comprehensive system for adding and managing dynamic methods to Objective-C objects at runtime using blocks.
+A system for adding and managing dynamic methods to Objective-C objects at runtime using blocks.
 
 ```objc
 #import <BEFoundation/NSObject+DynamicMethods.h>
@@ -8,7 +8,7 @@ A comprehensive system for adding and managing dynamic methods to Objective-C ob
 
 ## Overview
 
-This category provides a powerful runtime method injection system that allows you to add methods to existing objects and classes using blocks. The system supports both instance methods (added to specific object instances) and class methods (added to all instances of a class).
+This category provides a runtime method injection system that adds methods to existing objects and classes using blocks. The system supports both instance methods (added to specific object instances) and class methods (added to all instances of a class).
 
 ![A flowchart showing how a selector resolves: object dynamic method, then protocol target (required or optional-with-respondsToSelector), then no-protocol forward target, then class dynamic method, otherwise normal forwarding.](dynamic-method-resolution)
 

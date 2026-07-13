@@ -102,5 +102,6 @@ These keys are defined internally and are not configurable. Avoid writing to the
 
 ## See Also
 
+- [NSOpenPanel+BESecurityScopedURLManager](doc:NSOpenPanel_BESecurityScopedURLManager)
 - [BEPathWatcher](doc:BEPathWatcher)
 - [BEFileCache](doc:BEFileCache)

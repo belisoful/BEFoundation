@@ -232,6 +232,7 @@ typedef NS_ENUM(NSUInteger, BESecurityScopedURLBookmarkLifetime) {
 					[manager endAccessingURL:file];
 				}
 				@endcode
+ @since         1.1
  */
 @interface BESecurityScopedURLManager : NSObject <NSFastEnumeration>
 
@@ -244,6 +245,7 @@ typedef NS_ENUM(NSUInteger, BESecurityScopedURLBookmarkLifetime) {
 				Initialization with -init can be used for private instances if needed, though the shared
 				manager is recommended for most use cases.
  @return        The shared BESecurityScopedURLManager instance.
+ @since         1.1
  */
 + (instancetype)sharedManager;
 
@@ -297,7 +299,8 @@ typedef NS_ENUM(NSUInteger, BESecurityScopedURLBookmarkLifetime) {
 /*!
  @method        removeURLFromCatalog:
  @abstract      Removes the bookmark associated with the given URL from the catalog and persistence.
- @discussion    This is a convenience method that resolves the URL and calls the canonical removal method.
+ @discussion    This is the canonical removal method. The entry is matched by the exact stored
+				catalog key, including the trailing-slash form used for directory entries.
 				Also ends any active reference-counted access sessions associated with this URL.
 				Changes are persisted to configured storage locations. This is a thread-safe operation.
  @param         url The file URL associated with the bookmark to remove.
@@ -307,9 +310,9 @@ typedef NS_ENUM(NSUInteger, BESecurityScopedURLBookmarkLifetime) {
 /*!
  @method        removeAbsolutePathFromCatalog:
  @abstract      Removes the bookmark entry associated with the given absolute path string.
- @discussion    This is the core removal implementation used internally by other removal methods.
-				Ends any active reference-counted access sessions and persists the change.
-				This is a thread-safe operation.
+ @discussion    This is a convenience method that converts the string to an NSURL and calls
+				removeURLFromCatalog:. Ends any active reference-counted access sessions and
+				persists the change. This is a thread-safe operation.
  @param         absolutePathString The canonical absolute string path of the bookmark key.
  */
 - (void)removeAbsolutePathFromCatalog:(NSString *)absolutePathString;
@@ -419,7 +422,7 @@ typedef NS_ENUM(NSUInteger, BESecurityScopedURLBookmarkLifetime) {
 				the count reaches zero. This allows multiple parts of the application to safely share access
 				to the same resource. This is a thread-safe operation.
  @param         absolutePathString The canonical absolute string of the URL in the catalog.
- @return        YES if access was successfully ended or was not active, NO if path not found.
+ @return        YES if a tracked reference count was ended, NO if the path had no active access or could not be resolved.
  */
 - (BOOL)endAccessingURLWithAbsolutePath:(NSString *)absolutePathString;
 

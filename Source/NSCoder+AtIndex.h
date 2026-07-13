@@ -15,7 +15,6 @@
 #define NSCoder_AtIndex_AtTime_h
 
 #import <Foundation/Foundation.h>
-#import <simd/simd.h>
 
 NS_ASSUME_NONNULL_BEGIN
 

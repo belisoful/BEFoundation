@@ -12,10 +12,6 @@ This is useful for displaying file paths within a project or document structure,
 
 ## Usage
 
-### Creating a Path Control
-
-- [initWithFrame:](doc:BEPathControl)
-
 ### Configuring the Relative URL
 
 - [relativeURL](doc:BEPathControl/relativeURL)
@@ -24,7 +20,7 @@ This is useful for displaying file paths within a project or document structure,
 
 - [containsURL:](doc:BEPathControl/containsURL:)
 
-## Usage
+## Examples
 
 ### Basic Relative Path Display
 

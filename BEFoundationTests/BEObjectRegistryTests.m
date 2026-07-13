@@ -49,6 +49,19 @@
 
 
 
+@interface TestNilCustomUUIDObject : TestObjectRegistryObject <CustomRegistryUUID>
+@end
+@implementation TestNilCustomUUIDObject
+
+- (NSString*)objectRegistryUUID:(BEObjectRegistry *)registry
+{
+	return nil;
+}
+
+@end
+
+
+
 // Test class that does NOT conform to ObjectRegistryProtocol
 @interface ObjectNonConformingTestObject : NSObject
 @property (nonatomic, strong) NSString *testValue;
@@ -454,8 +467,8 @@
 	[self.registry registerObject:self.testObject1];
 	XCTAssertTrue([self.registry isObjectRegistered:self.testObject1], @"Object should be registered");
 	
-	BOOL success = [self.registry unregisterObject:self.testObject1];
-	XCTAssertTrue(success, @"Unregistration should succeed");
+	BEUnregisterStatus status = [self.registry unregisterObject:self.testObject1];
+	XCTAssertEqual(status, BEUnregisterStatus_Unregistered, @"Single registration should be fully removed");
 	XCTAssertFalse([self.registry isObjectRegistered:self.testObject1], @"Object should not be registered after unregistration");
 	XCTAssertEqual(self.registry.registeredObjectsCount, 0, @"Registry should be empty");
 	XCTAssertEqual([self.registry registeredCountForObject:self.testObject1], 0, @"Registered Count should be 0 after unregistration");
@@ -471,15 +484,15 @@
 	XCTAssertEqual([self.registry registeredCountForObject:self.testObject1], 2, @"Registered Count should be 2");
 	XCTAssertEqual([self.registry countForObject:self.testObject1], 2, @"Count should be 2");
 	
-	BOOL success = [self.registry unregisterObject:self.testObject1];
-	XCTAssertTrue(success, @"First unregistration should succeed");
+	BEUnregisterStatus status = [self.registry unregisterObject:self.testObject1];
+	XCTAssertEqual(status, BEUnregisterStatus_Decremented, @"First unregistration should decrement, not fully remove");
 	XCTAssertTrue([self.registry isObjectRegistered:self.testObject1], @"Object should still be registered");
 	XCTAssertEqual([self.registry registeredCountForObject:self.testObject1], 1, @"Count should be 1");
 	XCTAssertEqual([self.registry registeredCountForObject:self.testObject1], 1, @"Registered Count should be 1 after first unregistration");
 	XCTAssertEqual([self.registry countForObject:self.testObject1], 1, @"Count should be 1 after first unregistration");
 	
-	success = [self.registry unregisterObject:self.testObject1];
-	XCTAssertTrue(success, @"Second unregistration should succeed");
+	status = [self.registry unregisterObject:self.testObject1];
+	XCTAssertEqual(status, BEUnregisterStatus_Unregistered, @"Second unregistration should fully remove");
 	XCTAssertFalse([self.registry isObjectRegistered:self.testObject1], @"Object should not be registered");
 	XCTAssertEqual([self.registry registeredCountForObject:self.testObject1], 0, @"Count should be 0");
 	XCTAssertEqual([self.registry registeredCountForObject:self.testObject1], 0, @"Registered Count should be 0 after unregistration");
@@ -516,8 +529,8 @@
 	}
 	
 	
-	BOOL success = [self.registry unregisterObject:self.nonConformingObject1];
-	XCTAssertTrue(success, @"Unregistering non-conforming object should return NO");
+	BEUnregisterStatus status = [self.registry unregisterObject:self.nonConformingObject1];
+	XCTAssertEqual(status, BEUnregisterStatus_Unregistered, @"Single registration should be fully removed");
 	XCTAssertEqual([self.registry registeredCountForObject:self.nonConformingObject1], 0, @"Registered Count should be 0 after unregistration");
 	XCTAssertEqual([self.registry countForObject:self.nonConformingObject1], 0, @"Count should be 0 after unregistration");
 }
@@ -552,8 +565,8 @@
 		XCTAssertEqual([self.registry registeredCountForObject:self.nonConformingObject1], 1, @"Non-conforming object count should be one");
 	}
 	
-	BOOL success = [self.registry unregisterObjectByUUID:uuid];
-	XCTAssertTrue(success, @"Unregistering non-conforming object should return NO");
+	BEUnregisterStatus status = [self.registry unregisterObjectByUUID:uuid];
+	XCTAssertEqual(status, BEUnregisterStatus_Unregistered, @"Single registration should be fully removed");
 }
 
 
@@ -567,9 +580,9 @@
 	XCTAssertEqual([self.registry registeredCountForObject:self.testObject1], 1, @"Registered Count should be 1 after second registration");
 	XCTAssertEqual([self.registry countForObject:self.testObject1], 2, @"Count should be 2 after second registration");
 	
-	BOOL success = [self.registry unregisterObjectByUUID:uuid];
-	XCTAssertTrue(success, @"Unregistering object should return YES");
-	
+	BEUnregisterStatus status = [self.registry unregisterObjectByUUID:uuid];
+	XCTAssertEqual(status, BEUnregisterStatus_Unregistered, @"Single registration in this registry should be fully removed");
+
 	XCTAssertEqual([registry registeredCountForObject:self.testObject1], 1, @"Registered Count should be 1 after second registration");
 	XCTAssertEqual([registry countForObject:self.testObject1], 1, @"Count should be 2 after second registration");
 	XCTAssertEqual([self.registry registeredCountForObject:self.testObject1], 0, @"Registered Count should be 1 after second registration");
@@ -589,16 +602,16 @@
 	XCTAssertEqual([self.registry registeredCountForObject:self.testObject1], 2, @"Registered Count should be 2 after second registration");
 	XCTAssertEqual([self.registry countForObject:self.testObject1], 4, @"Count should be 4 after second registration");
 	
-	BOOL success = [self.registry unregisterObjectByUUID:uuid];
-	XCTAssertTrue(success, @"Unregistering object should return YES");
-	
+	BEUnregisterStatus status = [self.registry unregisterObjectByUUID:uuid];
+	XCTAssertEqual(status, BEUnregisterStatus_Decremented, @"First unregistration of a twice-registered object should decrement");
+
 	XCTAssertEqual([registry registeredCountForObject:self.testObject1], 2, @"Registered Count should be 1 after second registration");
 	XCTAssertEqual([registry countForObject:self.testObject1], 3, @"Count should be 2 after second registration");
 	XCTAssertEqual([self.registry registeredCountForObject:self.testObject1], 1, @"Registered Count should be 1 after second registration");
 	XCTAssertEqual([self.registry countForObject:self.testObject1], 3, @"Count should be 2 after second registration");
-	
-	success = [self.registry unregisterObjectByUUID:uuid];
-	XCTAssertTrue(success, @"Unregistering object should return YES");
+
+	status = [self.registry unregisterObjectByUUID:uuid];
+	XCTAssertEqual(status, BEUnregisterStatus_Unregistered, @"Second unregistration should fully remove");
 	
 	XCTAssertEqual([registry registeredCountForObject:self.testObject1], 2, @"Registered Count should be 1 after second registration");
 	XCTAssertEqual([registry countForObject:self.testObject1], 2, @"Count should be 2 after second registration");
@@ -1021,6 +1034,45 @@
 	[self waitForExpectationsWithTimeout:30.0 handler:nil];
 }
 
+- (void)testConcurrentSameSaltRegistriesDoNotDeadlock {
+	// Two registries built with the same key salt share one salt lock while each holds its own
+	// registryTable lock. Hammering both concurrently wedges AB-BA if any path acquires the
+	// shared salt lock before its own registryTable lock.
+	BEObjectRegistry *registryA = [[BEObjectRegistry alloc] initWithKeySalt:42];
+	BEObjectRegistry *registryB = [[BEObjectRegistry alloc] initWithKeySalt:42];
+
+	XCTestExpectation *done = [self expectationWithDescription:@"no deadlock across same-salt registries"];
+	done.expectedFulfillmentCount = 2;
+
+	dispatch_queue_t queue = dispatch_queue_create("test.registry.saltlock", DISPATCH_QUEUE_CONCURRENT);
+
+	dispatch_async(queue, ^{
+		for (int i = 0; i < 2000; i++) {
+			[registryA registerObject:self.testObject1];
+			(void)[registryB countForObject:self.testObject1];
+			[registryA unregisterObject:self.testObject1];
+		}
+		[done fulfill];
+	});
+
+	dispatch_async(queue, ^{
+		for (int i = 0; i < 2000; i++) {
+			[registryB registerObject:self.testObject1];
+			(void)[registryA countForObject:self.testObject1];
+			[registryB unregisterObject:self.testObject1];
+		}
+		[done fulfill];
+	});
+
+	[self waitForExpectationsWithTimeout:30.0 handler:nil];
+
+	// Register/unregister are balanced per thread, so the salt-shared count drains to zero.
+	XCTAssertEqual([registryA countForObject:self.testObject1], 0);
+	XCTAssertEqual([registryB countForObject:self.testObject1], 0);
+	XCTAssertEqual([registryA registeredCountForObject:self.testObject1], 0);
+	XCTAssertEqual([registryB registeredCountForObject:self.testObject1], 0);
+}
+
 - (void)testUnregisterByUUIDReturnsSameStatusAsUnregisterObject {
 	NSString *uuid = [self.registry registerObject:self.testObject1];
 	[self.registry registerObject:self.testObject1];
@@ -1043,6 +1095,67 @@
 	TestObjectRegistryObject *fresh = [[TestObjectRegistryObject alloc] initWithTestValue:@"fresh"];
 	XCTAssertEqual([self.registry registeredCountForObject:fresh], 0);
 	XCTAssertFalse([self.registry isObjectRegistered:fresh]);
+}
+
+- (void)testRegisterCustomUUIDObjectReturningNil_AssignsGeneratedUUID {
+	TestNilCustomUUIDObject *object = [[TestNilCustomUUIDObject alloc] initWithTestValue:@"nilCustom"];
+
+	NSString *uuid = [self.registry registerObject:object];
+
+	XCTAssertNotNil(uuid, @"Registration should assign a generated UUID when objectRegistryUUID: returns nil");
+	XCTAssertTrue([uuid isKindOfClass:NSString.class]);
+	XCTAssertEqualObjects([self.registry registryUUIDForObject:object], uuid, @"The assigned UUID should be stable");
+	XCTAssertEqual([self.registry registeredObjectForUUID:uuid], object, @"The table entry should be under the assigned UUID");
+	XCTAssertEqual(self.registry.registeredObjectsCount, 1);
+	XCTAssertTrue([self.registry isObjectRegistered:object]);
+}
+
+- (void)testUnregisterCustomUUIDObjectReturningNil_RemovesTableEntry {
+	TestNilCustomUUIDObject *object = [[TestNilCustomUUIDObject alloc] initWithTestValue:@"nilCustom"];
+	NSString *uuid = [self.registry registerObject:object];
+	XCTAssertEqual(self.registry.registeredObjectsCount, 1);
+
+	XCTAssertEqual([self.registry unregisterObject:object], BEUnregisterStatus_Unregistered);
+	XCTAssertFalse([self.registry isObjectRegistered:object]);
+	XCTAssertEqual(self.registry.registeredObjectsCount, 0, @"The table entry should be removed on full unregistration");
+	XCTAssertNil([self.registry registeredObjectForUUID:uuid]);
+	XCTAssertEqual([self.registry registeredCountForObject:object], 0);
+}
+
+- (void)testReregisterCustomUUIDObjectReturningNil_AfterUnregister {
+	TestNilCustomUUIDObject *object = [[TestNilCustomUUIDObject alloc] initWithTestValue:@"nilCustom"];
+	NSString *uuid1 = [self.registry registerObject:object];
+	[self.registry registerObject:object];
+
+	XCTAssertEqual([self.registry unregisterObject:object], BEUnregisterStatus_Decremented);
+	XCTAssertEqual([self.registry unregisterObject:object], BEUnregisterStatus_Unregistered);
+
+	NSString *uuid2 = [self.registry registerObject:object];
+	XCTAssertEqualObjects(uuid2, uuid1, @"The assigned UUID persists across unregistration, matching non-custom objects");
+	XCTAssertTrue([self.registry isObjectRegistered:object]);
+	XCTAssertEqual(self.registry.registeredObjectsCount, 1);
+	XCTAssertEqual([self.registry registeredObjectForUUID:uuid2], object);
+	XCTAssertEqual([self.registry unregisterObject:object], BEUnregisterStatus_Unregistered);
+	XCTAssertEqual(self.registry.registeredObjectsCount, 0);
+}
+
+- (void)testSetRegistryUUID_CustomUUIDObject_DoesNotRekeyOtherObject {
+	// The documented decline of setRegistryUUID:forObject: for CustomRegistryUUID objects must
+	// leave the registry untouched. The old decline returned the input uuid as the "prior"
+	// uuid, so the setter evicted another object registered under that uuid and re-keyed the
+	// table to the declined custom object.
+	NSString *uuidA = [self.registry registerObject:self.testObject1];
+	XCTAssertEqual([self.registry registeredObjectForUUID:uuidA], self.testObject1);
+
+	NSString *customUUIDBefore = [self.registry registryUUIDForObject:self.testCustomObject1];
+	[self.registry setRegistryUUID:uuidA forObject:self.testCustomObject1];
+
+	XCTAssertEqual([self.registry registeredObjectForUUID:uuidA], self.testObject1,
+				   @"The other object must remain registered under its uuid");
+	XCTAssertTrue([self.registry isObjectRegistered:self.testObject1]);
+	XCTAssertEqualObjects([self.registry registryUUIDForObject:self.testCustomObject1], customUUIDBefore,
+						  @"The custom object's own identifier must be unchanged");
+	XCTAssertEqual(self.registry.registeredObjectsCount, 1);
 }
 
 @end

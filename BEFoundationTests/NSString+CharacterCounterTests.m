@@ -153,6 +153,47 @@
 }
 
 /*!
+ @method        testRangedCountOverflowRange
+ @abstract      Tests the ranged method with ranges whose location plus length wraps NSUInteger.
+*/
+- (void)testRangedCountOverflowRange {
+	NSString *testString = @"Hello, World!";
+	NSCharacterSet *vowels = [NSCharacterSet characterSetWithCharactersInString:@"aeiouAEIOU"];
+
+	// 1. Length wraps past NSUIntegerMax
+	NSRange range = NSMakeRange(5, NSUIntegerMax);
+	__block NSUInteger count = 0;
+	XCTAssertNoThrow(count = [testString countCharactersInSet:vowels range:range],
+					 @"Wrapping range should not raise.");
+	XCTAssertEqual(count, 0, @"Wrapping range should return 0.");
+
+	// 2. Location at NSUIntegerMax
+	range = NSMakeRange(NSUIntegerMax, 1);
+	XCTAssertNoThrow(count = [testString countCharactersInSet:vowels range:range],
+					 @"NSUIntegerMax range location should not raise.");
+	XCTAssertEqual(count, 0, @"NSUIntegerMax range location should return 0.");
+}
+
+/*!
+ @method        testRangedCountBoundaryRange
+ @abstract      Tests the ranged method with valid ranges that end exactly at the string length.
+*/
+- (void)testRangedCountBoundaryRange {
+	NSString *testString = @"Hello, World!"; // Length is 13
+	NSCharacterSet *vowels = [NSCharacterSet characterSetWithCharactersInString:@"aeiouAEIOU"];
+
+	// Range = "World!" (ends at index 13, the string length)
+	NSRange range = NSMakeRange(7, 6);
+	NSUInteger count = [testString countCharactersInSet:vowels range:range];
+	XCTAssertEqual(count, 1, @"Should find 1 vowel in 'World!'");
+
+	// Zero-length range at the string length is valid
+	range = NSMakeRange(13, 0);
+	count = [testString countCharactersInSet:vowels range:range];
+	XCTAssertEqual(count, 0, @"Zero-length range at string length should return 0.");
+}
+
+/*!
  @method        testRangedCountNilSet
  @abstract      Tests the ranged method with a nil character set.
 */

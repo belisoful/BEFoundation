@@ -131,6 +131,12 @@ int64_t floatToFpXX(double value, int exponentBits, int mantissaBits, int expone
 		exponent = exponentMaxValue;	// infinity
 	} else if (value == 0.0) {
 		mantissa = 0;
+	} else if (!isfinite(value)) {
+		// Reached only when IEEEConformance is NO (the conformant branches above consume NaN
+		// and infinity). The format has no non-finite encodings, so saturate at the maximum
+		// representable magnitude; letting log2(inf)/log2(NaN) through is undefined behavior.
+		exponent = exponentMaxValue;
+		mantissa = (1LL << mantissaBits) - 1;
 	} else {
 		exponent = (int64_t)floor(log2(value)) + exponentBias;
 		if (IEEEConformance && exponent <= 0) {
@@ -187,19 +193,21 @@ NSNumber* numberOperation(NSNumberMathOperation operation, NSNumber *first, NSNu
 #define kOperationWithFloat				11
 #define kOperationWithDouble			12
 		
+		// On LP64, long/unsigned long share "q"/"Q" with the long long entries; the "l"/"L"
+		// literals keep those slots distinct so indexOfObject: resolves the long long entries.
 		typeOrder = @[
 			[NSString stringWithFormat:@"%s", @encode(char)],
 			[NSString stringWithFormat:@"%s", @encode(short)],
 			[NSString stringWithFormat:@"%s", @encode(int)],
 			(strcmp(@encode(long), @encode(long long))) ? [NSString stringWithFormat:@"%s", @encode(long)] : @"l",
 			[NSString stringWithFormat:@"%s", @encode(long long)],
-			
+
 			[NSString stringWithFormat:@"%s", @encode(BOOL)],
-			
+
 			[NSString stringWithFormat:@"%s", @encode(unsigned char)],
 			[NSString stringWithFormat:@"%s", @encode(unsigned short)],
 			[NSString stringWithFormat:@"%s", @encode(unsigned int)],
-			(strcmp(@encode(unsigned long), @encode(unsigned long long))) ? [NSString stringWithFormat:@"%s", @encode(long)] : @"L",
+			(strcmp(@encode(unsigned long), @encode(unsigned long long))) ? [NSString stringWithFormat:@"%s", @encode(unsigned long)] : @"L",
 			[NSString stringWithFormat:@"%s", @encode(unsigned long long)],
 			
 			[NSString stringWithFormat:@"%s", @encode(float)],
@@ -227,9 +235,7 @@ NSNumber* numberOperation(NSNumberMathOperation operation, NSNumber *first, NSNu
 		if (highestIndex >= 5 && highestIndex <= 9) {
 			highestIndex -= 5; //convert unsigned (5..9) to next largest signed, except for largest unsigned.
 			newHighest = MAX(highestIndex, lowestIndex);
-			newLowest = MIN(highestIndex, lowestIndex);
 			highestIndex = newHighest;
-			lowestIndex = newLowest;
 		}
 	}
 	
@@ -256,7 +262,24 @@ NSNumber* numberOperation(NSNumberMathOperation operation, NSNumber *first, NSNu
 			_secondUnsigned = YES;
 		}
 		hasUnsigned = _firstUnsigned | _secondUnsigned;
-		
+
+		// The remap above promotes an unsigned type below 64 bits to the next-larger signed
+		// type, which decides the result's signedness. The operation must run in the same
+		// signedness: sign-sensitive operations (divide, modulus) computed in the unsigned
+		// domain produce garbage for negative operands. Every remapped unsigned operand is at
+		// most 32 bits, so its value transfers into the signed domain losslessly.
+		if (highestIndex <= 4) {
+			if (_firstUnsigned) {
+				firstValue = (SInt64)uFirstValue;
+				_firstUnsigned = NO;
+			}
+			if (_secondUnsigned) {
+				secondValue = (SInt64)uSecondValue;
+				_secondUnsigned = NO;
+			}
+			hasUnsigned = NO;
+		}
+
 		// Perform the mathematical operation
 		unsigned long long ullResult = 0;
 		long long llResult = 0;

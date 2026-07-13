@@ -8,7 +8,7 @@ Protocols and categories for object mutability detection and recursive copying o
 
 ## Overview
 
-This header provides a comprehensive framework for determining object mutability and performing recursive copying operations on Foundation collections. It defines protocols to categorize objects based on their mutability characteristics.
+This header provides a framework for determining object mutability and performing recursive copying operations on Foundation collections. It defines protocols to categorize objects based on their mutability characteristics.
 
 ![A protocol hierarchy: the base protocols BEHasMutable, BECollectionAbstract, and BEMutable, with BECollection conforming to BECollectionAbstract and BEHasMutable, and BEMutableCollection conforming to BECollectionAbstract and BEMutable.](bemutable-protocols)
 

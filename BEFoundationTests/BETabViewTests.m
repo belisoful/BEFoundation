@@ -29,6 +29,7 @@
 @property (nonatomic, strong) NSMutableArray *willShowCallbacks;
 @property (nonatomic, strong) NSMutableArray *didShowCallbacks;
 @property (nonatomic, strong) NSMutableArray *didChangeNumberCallbacks;
+@property (nonatomic, strong) NSMutableArray *didSelectCallbacks;
 @end
 
 @implementation BETabViewTestDelegate
@@ -41,6 +42,7 @@
 		_willShowCallbacks = [NSMutableArray array];
 		_didShowCallbacks = [NSMutableArray array];
 		_didChangeNumberCallbacks = [NSMutableArray array];
+		_didSelectCallbacks = [NSMutableArray array];
 	}
 	return self;
 }
@@ -65,12 +67,17 @@
 	[self.didChangeNumberCallbacks addObject:@(tabView.numberOfTabViewItems)];
 }
 
+- (void)tabView:(NSTabView *)tabView didSelectTabViewItem:(NSTabViewItem *)tabViewItem {
+	[self.didSelectCallbacks addObject:tabViewItem ?: [NSNull null]];
+}
+
 - (void)reset {
 	[self.willHideCallbacks removeAllObjects];
 	[self.didHideCallbacks removeAllObjects];
 	[self.willShowCallbacks removeAllObjects];
 	[self.didShowCallbacks removeAllObjects];
 	[self.didChangeNumberCallbacks removeAllObjects];
+	[self.didSelectCallbacks removeAllObjects];
 }
 
 @end
@@ -131,6 +138,17 @@
 	[tabView superAddTabViewItem:tabItem];
 	[tabView awakeFromNib];
 	XCTAssertNotNil(tabView);
+	XCTAssertEqual(tabView.numberOfAllTabViewItems, 1);
+}
+
+- (void)testAwakeFromNibTwiceDoesNotRetrackVisibleTab {
+	// commonInit is idempotent: a second run over an already-tracked visible tab must not add
+	// it a second time.
+	BETabView *tabView = [[BETabView alloc] init];
+	NSTabViewItem *tabItem = [[NSTabViewItem alloc] init];
+	[tabView superAddTabViewItem:tabItem];
+	[tabView awakeFromNib];
+	[tabView awakeFromNib];
 	XCTAssertEqual(tabView.numberOfAllTabViewItems, 1);
 }
 
@@ -1157,11 +1175,14 @@
 	[self.tabView selectTabViewItem:t1];
 	XCTAssertEqualObjects(self.tabView.selectedTabViewItem, t1);
 
+	[self.testDelegate reset];
 	[self.tabView hideTabViewItem:t1];
 
 	XCTAssertEqualObjects(self.tabView.selectedTabViewItem, t2,
 						  @"Hiding the selected tab must move the selection to a remaining visible tab.");
 	XCTAssertTrue(t1.hidden);
+	XCTAssertEqualObjects(self.testDelegate.didSelectCallbacks, (@[t2]),
+						  @"The moved selection must be reported to the delegate exactly once.");
 }
 
 - (void)testInitWithCoderPopulatesAllTabViewItems {
@@ -1213,6 +1234,72 @@
 	[self.testDelegate.didChangeNumberCallbacks removeAllObjects];
 	[self.tabView removeTabViewItem:t1];
 	XCTAssertEqual(self.testDelegate.didChangeNumberCallbacks.count, 1u, @"Removing fires count-change.");
+}
+
+- (void)testAllTabViewItemsSetterFiresNumberChangeWhenCountChanges {
+	NSTabViewItem *t1 = [self createTabWithIdentifier:@"a" label:@"A"];
+	NSTabViewItem *t2 = [self createTabWithIdentifier:@"b" label:@"B"];
+	NSTabViewItem *t3 = [self createTabWithIdentifier:@"c" label:@"C"];
+	[self.tabView addTabViewItem:t1];
+	[self.tabView addTabViewItem:t2];
+
+	[self.testDelegate reset];
+	self.tabView.allTabViewItems = @[t1, t2, t3];
+	XCTAssertEqual(self.testDelegate.didChangeNumberCallbacks.count, 1u,
+				   @"A replace that changes the all-tabs count must fire count-change once.");
+
+	[self.testDelegate reset];
+	self.tabView.allTabViewItems = @[t1, t2, t3];
+	XCTAssertEqual(self.testDelegate.didChangeNumberCallbacks.count, 0u,
+				   @"A replace that keeps the all-tabs count must not fire count-change.");
+}
+
+- (void)testAllTabViewItemsSetterReportsSelectionChangeOnce {
+	NSTabViewItem *t1 = [self createTabWithIdentifier:@"a" label:@"A"];
+	NSTabViewItem *t2 = [self createTabWithIdentifier:@"b" label:@"B"];
+	NSTabViewItem *t3 = [self createTabWithIdentifier:@"c" label:@"C"];
+	[self.tabView addTabViewItem:t1];
+	[self.tabView addTabViewItem:t2];
+	[self.tabView selectTabViewItem:t1];
+
+	[self.testDelegate reset];
+	self.tabView.allTabViewItems = @[t2, t3]; // drops the selected t1; all-tabs count stays 2
+
+	XCTAssertEqualObjects(self.tabView.selectedTabViewItem, t2);
+	XCTAssertEqualObjects(self.testDelegate.didSelectCallbacks, (@[t2]),
+						  @"The rebuilt selection must be reported to the delegate exactly once.");
+}
+
+- (void)testOptionalDelegateCallbacksSkippedWhenDelegateDoesNotRespond {
+	// A delegate that implements none of the optional BETabViewDelegate methods must be safe:
+	// every respondsToSelector: guard for hidden add, hide-selection move, show, and the
+	// allTabViewItems rebuild takes the not-implemented path and skips the callback.
+	NSObject *inertDelegate = [[NSObject alloc] init];
+	self.tabView.delegate = (id)inertDelegate;
+
+	NSTabViewItem *hidden = [self createTabWithIdentifier:@"h" label:@"H"];
+	hidden.hidden = YES;
+	XCTAssertNoThrow([self.tabView addTabViewItem:hidden]); // hidden add -> count-change guard
+	XCTAssertEqual(self.tabView.numberOfAllTabViewItems, 1);
+
+	NSTabViewItem *a = [self createTabWithIdentifier:@"a" label:@"A"];
+	NSTabViewItem *b = [self createTabWithIdentifier:@"b" label:@"B"];
+	[self.tabView addTabViewItem:a];
+	[self.tabView addTabViewItem:b];
+	[self.tabView selectTabViewItem:a];
+
+	XCTAssertNoThrow([self.tabView hideTabViewItem:a]); // willHide/didHide + moved-selection guards
+	XCTAssertEqualObjects(self.tabView.selectedTabViewItem, b);
+
+	XCTAssertNoThrow([self.tabView showTabViewItem:a]); // willShow/didShow guards
+	XCTAssertFalse(a.hidden);
+
+	// A rebuild that both drops the all-tabs count and changes the selection reaches the
+	// count-change and selection-change guards in the setter.
+	[self.tabView selectTabViewItem:a];
+	XCTAssertNoThrow((self.tabView.allTabViewItems = @[b]));
+	XCTAssertEqual(self.tabView.numberOfAllTabViewItems, 1);
+	XCTAssertEqualObjects(self.tabView.selectedTabViewItem, b);
 }
 
 @end

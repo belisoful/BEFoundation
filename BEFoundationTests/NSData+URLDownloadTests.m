@@ -38,6 +38,11 @@
 #import <XCTest/XCTest.h>
 #import "NSData+URLDownload.h"
 
+// setTask: is a private funnel; the test exercises its "never clear an assigned task to nil" guard.
+@interface BEDataDownloadHandler (URLDownloadTests_PrivateAccess)
+- (void)setTask:(nullable NSURLSessionTask *)task;
+@end
+
 #pragma mark - Mock HTTP Server Helper
 
 /*!
@@ -50,6 +55,7 @@
 + (void)setMockResponse:(NSData *)data statusCode:(NSInteger)statusCode headers:(NSDictionary *)headers;
 + (void)setMockError:(NSError *)error;
 + (void)setProgressSimulation:(BOOL)enabled chunkSize:(NSUInteger)chunkSize;
++ (void)setSimulateNoDataCallback:(BOOL)enabled;
 + (void)reset;
 @end
 
@@ -59,6 +65,7 @@ static NSDictionary *mockHeaders = nil;
 static NSError *mockError = nil;
 static BOOL simulateProgress = NO;
 static NSUInteger progressChunkSize = 1024;
+static BOOL simulateNoDataCallback = NO;
 
 @implementation MockURLProtocol
 
@@ -87,6 +94,10 @@ static NSUInteger progressChunkSize = 1024;
 	progressChunkSize = chunkSize;
 }
 
++ (void)setSimulateNoDataCallback:(BOOL)enabled {
+	simulateNoDataCallback = enabled;
+}
+
 + (void)reset {
 	mockResponseData = nil;
 	mockStatusCode = 200;
@@ -94,6 +105,7 @@ static NSUInteger progressChunkSize = 1024;
 	mockError = nil;
 	simulateProgress = NO;
 	progressChunkSize = 1024;
+	simulateNoDataCallback = NO;
 }
 
 - (void)startLoading {
@@ -119,7 +131,7 @@ static NSUInteger progressChunkSize = 1024;
 			offset += length;
 			usleep(1000);
 		}
-	} else {
+	} else if (!simulateNoDataCallback) {
 		[self.client URLProtocol:self didLoadData:mockResponseData];
 	}
 	
@@ -276,6 +288,21 @@ static NSLock *nsdata_lock = nil;
 	XCTAssertEqual(handler.task, task);
 	XCTAssertTrue(handler.isDataTask);
 	XCTAssertFalse(handler.isDownloadTask);
+}
+
+- (void)testSetTaskDoesNotClearAssignedTaskToNil {
+	// delayResume keeps the assigned task off the network so it can be inspected synchronously.
+	NSURL *url = [NSURL URLWithString:@"http://example.com/test.txt"];
+	BEDataDownloadHandler *handler = [[BEDataDownloadHandler alloc] init];
+	handler.delayResume = YES;
+
+	NSURLSessionDataTask *task = [NSData dataDownloadWithContentsOfURL:url handler:handler];
+	XCTAssertEqual(handler.task, task);
+
+	[handler setTask:nil];
+	XCTAssertEqual(handler.task, task, @"the guard must never clear an already-assigned task to nil");
+
+	[handler cancel];
 }
 
 - (void)testHandlerDownloadTaskAssignment {
@@ -628,6 +655,32 @@ static NSLock *nsdata_lock = nil;
 	XCTAssertEqual(completionCount, 1);
 }
 
+- (void)testFileDownloadUsesHandlerSessionConfiguration {
+	NSData *testData = [@"Per-handler file config" dataUsingEncoding:NSUTF8StringEncoding];
+	[MockURLProtocol setMockResponse:testData statusCode:200 headers:nil];
+
+	// Clear the app-wide default so the handler's own configuration is the path exercised on the
+	// file-download funnel.
+	NSData.defaultSessionConfiguration = nil;
+
+	XCTestExpectation *expectation = [self expectationWithDescription:@"File download via handler configuration"];
+
+	NSURL *url = [NSURL URLWithString:@"http://example.com/file.dat"];
+	BEDataDownloadHandler *handler = [[BEDataDownloadHandler alloc] init];
+	handler.sessionConfiguration = self.testConfiguration;
+	handler.tempCompletionBlock = ^(NSURL *tempFileLocation, NSURLResponse *response) {
+		XCTAssertNotNil(tempFileLocation);
+		[expectation fulfill];
+	};
+
+	NSURLSessionDownloadTask *task = [NSData downloadFileWithURL:url handler:handler];
+	XCTAssertNotNil(task);
+	XCTAssertNotNil(handler.sessionConfiguration);
+
+	[self waitForExpectations:@[expectation] timeout:5.0];
+	XCTAssertTrue(handler.isComplete);
+}
+
 - (void)testFileDownloadWithProgress {
 	NSMutableData *testData = [NSMutableData dataWithLength:8000];
 	[MockURLProtocol setMockResponse:testData statusCode:200 headers:@{@"Content-Length": @"8000"}];
@@ -878,6 +931,25 @@ static NSLock *nsdata_lock = nil;
 		[expectation fulfill];
 	} error:nil];
 	
+	[self waitForExpectations:@[expectation] timeout:5.0];
+}
+
+- (void)testDataDownload_NoBodyResponse_DeliversNonNilData {
+	// A 204/no-body response fires no -didReceiveData:, so the accumulated buffer stays nil.
+	// The completion block declares data _Nonnull, so it must receive a non-nil (empty) NSData.
+	[MockURLProtocol setMockResponse:nil statusCode:204 headers:nil];
+	[MockURLProtocol setSimulateNoDataCallback:YES];
+
+	XCTestExpectation *expectation = [self expectationWithDescription:@"No-body data download"];
+
+	NSURL *url = [NSURL URLWithString:@"http://example.com/nobody"];
+	__unused BEDataDownloadHandler *handler = [NSData dataDownloadWithContentsOfURL:url
+																completion:^(NSData *data, NSURLResponse *response) {
+		XCTAssertNotNil(data);
+		XCTAssertEqual(data.length, 0);
+		[expectation fulfill];
+	} error:nil];
+
 	[self waitForExpectations:@[expectation] timeout:5.0];
 }
 
@@ -1449,22 +1521,70 @@ static NSLock *nsdata_lock = nil;
 	NSString *testString = @"Delegate both completions";
 	NSData *testData = [testString dataUsingEncoding:NSUTF8StringEncoding];
 	[MockURLProtocol setMockResponse:testData statusCode:200 headers:nil];
-	
+
 	TestDownloadDelegate *delegate = [[TestDownloadDelegate alloc] init];
 	delegate.completionExpectation = [self expectationWithDescription:@"Delegate completions"];
 	delegate.completionExpectation.expectedFulfillmentCount = 2; // Both data and file
-	
+
 	NSURL *url = [NSURL URLWithString:@"http://example.com/test.txt"];
 	BEDataDownloadHandler *handler = [[BEDataDownloadHandler alloc] init];
 	handler.allowBothCompletions = YES;
 	handler.delegate = delegate;
-	
+
 	[NSData downloadFileWithURL:url handler:handler];
-	
+
 	[self waitForExpectations:@[delegate.completionExpectation] timeout:5.0];
-	
+
 	XCTAssertNotNil(delegate.completedData);
 	XCTAssertNotNil(delegate.completedFileURL);
+}
+
+- (void)testFileDownloadWithBothCompletionsBlockReadError {
+	XCTestExpectation *errorExpectation = [self expectationWithDescription:@"Auxiliary read error"];
+
+	BEDataDownloadHandler *handler = [[BEDataDownloadHandler alloc] init];
+	handler.allowBothCompletions = YES;
+	handler.dataCompletionBlock = ^(NSData *data, NSURLResponse *response) {
+		XCTFail(@"dataCompletionBlock should not fire when the downloaded file cannot be read");
+	};
+	handler.errorBlock = ^(NSError *error, BOOL auxiliary) {
+		XCTAssertNotNil(error);
+		XCTAssertTrue(auxiliary);
+		[errorExpectation fulfill];
+	};
+
+	NSURL *missingLocation = [NSURL fileURLWithPath:[NSTemporaryDirectory() stringByAppendingPathComponent:NSUUID.UUID.UUIDString]];
+
+	// hack to trigger a bad file read
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wnonnull"
+	[handler URLSession:nil downloadTask:nil didFinishDownloadingToURL:missingLocation];
+#pragma clang diagnostic pop
+
+	[self waitForExpectations:@[errorExpectation] timeout:5.0];
+}
+
+- (void)testFileDownloadWithBothCompletionsDelegateReadError {
+	TestDownloadDelegate *delegate = [[TestDownloadDelegate alloc] init];
+	delegate.errorExpectation = [self expectationWithDescription:@"Delegate auxiliary read error"];
+
+	BEDataDownloadHandler *handler = [[BEDataDownloadHandler alloc] init];
+	handler.allowBothCompletions = YES;
+	handler.delegate = delegate;
+
+	NSURL *missingLocation = [NSURL fileURLWithPath:[NSTemporaryDirectory() stringByAppendingPathComponent:NSUUID.UUID.UUIDString]];
+
+	// hack to trigger a bad file read
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wnonnull"
+	[handler URLSession:nil downloadTask:nil didFinishDownloadingToURL:missingLocation];
+#pragma clang diagnostic pop
+
+	[self waitForExpectations:@[delegate.errorExpectation] timeout:5.0];
+
+	XCTAssertNil(delegate.completedData);
+	XCTAssertNotNil(delegate.error);
+	XCTAssertTrue(delegate.errorIsAuxiliary);
 }
 
 #pragma mark - suppressCompletionWarnings Tests

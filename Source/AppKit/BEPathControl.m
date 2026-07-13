@@ -48,9 +48,10 @@ NS_ASSUME_NONNULL_BEGIN
  @abstract   Sets the relative root URL for the path control.
  @param      relativeURL The new relative root URL.
  @discussion This setter updates the internal @c _relativeURL instance variable,
-			 standardizes the URL, and then calls @c rebuildRelativeItems: with
-			 a @c nil URL argument to re-evaluate the currently displayed path
-			 against the new relative root.
+			 standardizes the URL, and then calls @c rebuildRelativeItems: to re-evaluate the
+			 displayed path. If the new relative root is non-nil it passes @c nil
+			 (reusing the current @c self.URL); if the relative root is being cleared
+			 it passes @c self.URL so the superclass regenerates the full, untrimmed path.
  */
 - (void)setRelativeURL:(nullable NSURL *)relativeURL {
 	_relativeURL = relativeURL.standardizedURL;

@@ -45,7 +45,12 @@
 #define NSMNumberCType_BOOL 13
 
 FOUNDATION_STATIC_INLINE NSUInteger NSMNumberCTypeFromEncoded(const char * type) {
-	const NSUInteger t = *(const uint16_t*)type; /// can't hardcode @encode result, just use in runtime.
+	uint16_t pair = 0;
+	// An empty encoding allocates one byte; type[1] exists only when type[0] is non-NUL.
+	if (type[0] != '\0') {
+		memcpy(&pair, type, sizeof(pair));
+	}
+	const NSUInteger t = pair; /// can't hardcode @encode result, just use in runtime.
 	if (t == *(const uint16_t*)@encode(int)) return NSMNumberCType_int;
 	// char before BOOL: on x86_64 BOOL and char share the encoding "c". Matching NSNumber, the
 	// ambiguous "c" must resolve to a full-range char rather than normalizing to 0/1. On arm64 BOOL
@@ -230,7 +235,7 @@ public:
 				if (reserved[0] == sizeof(float)) snprintf(buff, buffLen, "%.6g", (float)data.r);
 				else if (reserved[0] == sizeof(double)) snprintf(buff, buffLen, "%.15g", (double)data.r);
 				break;
-			default: strncpy(buff, "(null)", 6); break;
+			default: snprintf(buff, buffLen, "(null)"); break;
 		}
 		unlock();
 	}

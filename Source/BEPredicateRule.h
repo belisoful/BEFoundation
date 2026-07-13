@@ -18,7 +18,7 @@ extern NSInteger	const  BEPredicateRuleDefaultPriority;
 /*!
  @typedef		BEPredicateRuleOutcome
  @abstract		This is the result of checking a collection (NSArray, NSSet, NSOrderedSet)
-				of NSPredicate or BEPredicateRules.
+				of BEPredicateRules.
 				If a rule set is not matched `BEPredicateRuleNA` is returned.
 				If a rule is matched in a rule set, then its outcome is returned as
 				`BEPredicateRuleAccept` (value: 1) or
@@ -84,10 +84,10 @@ NS_ENUM(BEPredicateRuleOutcome) {
 
 /*!
  @property		isUniqueItemPriority
- @abstract		This is to specify if the itemPriority should be used to determine equality when YES. Default NO.
- @result		Returns BOOL if itemPriority is used to determine class equality.
- @discussion	By default this is NO.   This is useful when using the same rule with different itemPriority in
- 				a NSSet or NSOrderedSet.
+ @abstract		Whether `itemPriority` participates in `-isEqual:` and `-hash`. Default NO.
+ @discussion	Two rules are equal only when this flag matches on both. When YES, their
+				priorities must also match, which lets the same rule appear with different
+				priorities in an NSSet or NSOrderedSet.
  */
 @property (readwrite) BOOL isUniqueItemPriority;
 
@@ -200,7 +200,7 @@ NS_ENUM(BEPredicateRuleOutcome) {
 
 /*!
  @method		-ruleOutcomeWithObject:
- @abstract		This loops through all the internal NSPredicate and BEPredicateRule
+ @abstract		This loops through the internal BEPredicateRule elements (non-BEPredicateRule elements are ignored)
  				in priority order (lowest first) and returns the outcome of the first matching.
  @param		object	The object to test against the predicates.
  @result		Returns `BEPredicateRuleOutcome` based on the object matching
@@ -210,7 +210,7 @@ NS_ENUM(BEPredicateRuleOutcome) {
 
 /*!
  @method		-ruleOutcomeWithObject:
- @abstract		This loops through all the internal NSPredicate and BEPredicateRule
+ @abstract		This loops through the internal BEPredicateRule elements (non-BEPredicateRule elements are ignored)
 				in priority order (lowest first) and returns the outcome of the first matching.
  @param		object		The object to test against the predicates.
  @param		bindings	The bindings to replace any variable expressions. Every variable
@@ -234,7 +234,7 @@ NS_ENUM(BEPredicateRuleOutcome) {
 
 /*!
  @method		-ruleOutcomeWithObject:
- @abstract		This loops through all the internal NSPredicate and BEPredicateRule
+ @abstract		This loops through the internal BEPredicateRule elements (non-BEPredicateRule elements are ignored)
 				in priority order (lowest first) and returns the outcome of the first matching.
  @param		object	The object to test against the predicates.
  @result		Returns `BEPredicateRuleOutcome` based on the object matching
@@ -244,7 +244,7 @@ NS_ENUM(BEPredicateRuleOutcome) {
 
 /*!
  @method		-ruleOutcomeWithObject:
- @abstract		This loops through all the internal NSPredicate and BEPredicateRule
+ @abstract		This loops through the internal BEPredicateRule elements (non-BEPredicateRule elements are ignored)
 				in priority order (lowest first) and returns the outcome of the first matching.
  @param		object		The object to test against the predicates.
  @param		bindings	The bindings to replace any variable expressions. Every variable
@@ -268,7 +268,7 @@ NS_ENUM(BEPredicateRuleOutcome) {
 
 /*!
  @method		-ruleOutcomeWithObject:
- @abstract		This loops through all the internal NSPredicate and BEPredicateRule
+ @abstract		This loops through the internal BEPredicateRule elements (non-BEPredicateRule elements are ignored)
 				in priority order (lowest first) and returns the outcome of the first matching.
  @param		object	The object to test against the predicates.
  @result		Returns `BEPredicateRuleOutcome` based on the object matching
@@ -278,7 +278,7 @@ NS_ENUM(BEPredicateRuleOutcome) {
 
 /*!
  @method		-ruleOutcomeWithObject:
- @abstract		This loops through all the internal NSPredicate and BEPredicateRule
+ @abstract		This loops through the internal BEPredicateRule elements (non-BEPredicateRule elements are ignored)
 				in priority order (lowest first) and returns the outcome of the first matching.
  @param		object		The object to test against the predicates.
  @param		bindings	The bindings to replace any variable expressions. Every variable

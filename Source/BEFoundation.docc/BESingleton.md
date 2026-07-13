@@ -51,11 +51,13 @@ MyClass *instance = [MyClass sharedInstance];
 Implement `initForSingleton:` for custom initialization:
 
 ```objc
-// MyClass.m
+// MyClass.h
 @interface MyClass : NSObject <BESingleton>
 @property (nonatomic, strong) NSString *configValue;
++ (instancetype)sharedInstance;
 @end
 
+// MyClass.m
 @implementation MyClass
 
 + (BOOL)isSingleton {
@@ -76,17 +78,19 @@ Implement `initForSingleton:` for custom initialization:
 
 @end
 
-// Usage
-[NSObject singletonInitInfo] = @{@"configKey": @"customValue"};
+// Usage: set the init info on the singleton class before the first sharedInstance call.
+MyClass.singletonInitInfo = @{@"configKey": @"customValue"};
 MyClass *instance = [MyClass sharedInstance];
 ```
 
 ## How It Works
 
-1. The `__BESingleton` method checks if `isSingleton` returns `YES`
-2. If yes, it creates the instance once using `init` or `initForSingleton:`
-3. Subsequent calls return the cached instance
-4. Thread-safety is handled internally using dispatch_once
+1. The `__BESingleton` method checks that the class conforms to `BESingleton` and that `isSingleton` returns `YES`
+2. If so, it creates the instance using `initForSingleton:` when implemented, or `init` otherwise
+3. The instance is cached as an associated object on the class and propagated to `BESingleton`-conforming superclasses, so a subclass and its ancestors share one instance
+4. Subsequent calls return the cached instance
+5. Thread-safety uses double-checked locking: an unsynchronized read of the cache, then creation inside `@synchronized` on the class with a re-check
+6. An `atexit` handler clears the cached instances at process exit
 
 ## See Also
 

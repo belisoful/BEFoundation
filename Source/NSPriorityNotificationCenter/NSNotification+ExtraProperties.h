@@ -40,7 +40,7 @@ NS_ASSUME_NONNULL_BEGIN
  
 				- Tag property: Returns a NSInteger value for quick identification
 				- Identifier property: Returns an object for logical grouping and categorization
-				- Automatic fallback: If the notification's own properties are not set, they fall back to the object's properties if available
+				- Automatic fallback: If the notification's own properties are not set, they fall back to the object's properties, then to the matching userInfo entry, if available
 
 				@code
 				// Tag and identify a notification for later filtering.
@@ -48,8 +48,8 @@ NS_ASSUME_NONNULL_BEGIN
 				note.tag = 456;
 				note.identifier = @"userLogin";
 
-				NSInteger tag = note.tag;       // falls back to note.object.tag when unset
-				id ident = note.identifier;     // falls back to note.object.identifier when unset
+				NSInteger tag = note.tag;       // falls back to note.object.tag, then userInfo[@"tag"], when unset
+				id ident = note.identifier;     // falls back to note.object.identifier, then userInfo[@"identifier"], when unset
 				@endcode
  */
 @interface NSNotification (ExtraProperties)
@@ -58,7 +58,8 @@ NS_ASSUME_NONNULL_BEGIN
  @property		tag
  @abstract		Returns the set tag or the notification.object.tag, if the object has a tag.
  @discussion	If the tag of the notification is set, the set tag is returned,
- 				otherwise it returns the notification object's tag if it has a tag property.
+ 				otherwise the notification object's tag if the object has a tag property,
+ 				otherwise the NSNumber value of userInfo[@"tag"] when present, otherwise 0.
  @result		NSInteger of the notification tag.
  */
 @property (nonatomic) NSInteger tag;
@@ -67,7 +68,8 @@ NS_ASSUME_NONNULL_BEGIN
  @property		identifier
  @abstract		Returns the set identifier or the notification.object.identifier, if the object has an identifier.
  @discussion	If the identifier of the notification is set, the set identifier is returned,
-				otherwise it returns the notification object's identifier if it has an identifier property.
+				otherwise the notification object's identifier if the object has an identifier property,
+				otherwise userInfo[@"identifier"] when present, otherwise nil.
  @result		object of the notification identifier.
  */
 @property (nonatomic, nullable) id identifier;

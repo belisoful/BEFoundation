@@ -396,7 +396,7 @@
 		[aCoder encodeBool:self.reverse forKey:@"reverse"];
 		
 		NSNumber *tag = objc_getAssociatedObject(self, @selector(tag));
-		if (tag) {
+		if (tag != nil) {
 			[aCoder encodeInteger:tag.integerValue forKey:@"tag"];
 		}
 		
@@ -427,7 +427,7 @@
 		NSInteger extraProperties = 0;
 		
 		NSNumber *tag = objc_getAssociatedObject(self, @selector(tag));
-		if (tag) {
+		if (tag != nil) {
 			extraProperties |= (1 << 0);
 		}
 		
@@ -436,7 +436,7 @@
 			extraProperties |= (1 << 1);
 		}
 		[aCoder encodeObject:@(extraProperties)];
-		if (tag) {
+		if (tag != nil) {
 			[aCoder encodeObject:tag];
 		}
 		if (identifier) {
@@ -478,7 +478,7 @@
 	typeof(self) notification = [self.class.alloc initWithName:_name object:_object userInfo:_userInfo reverse:_reverse postBlock:_postBlock];
 	
 	NSNumber *tag = objc_getAssociatedObject(self, @selector(tag));
-	if (tag) {
+	if (tag != nil) {
 		notification.tag = tag.integerValue;
 	}
 	
@@ -564,7 +564,7 @@
 - (BOOL)isPriorityPost
 {
 	NSNumber *isPriorityPost = objc_getAssociatedObject(self, @selector(isPriorityPost));
-	if (!isPriorityPost) {
+	if (isPriorityPost == nil) {
 		return NO;
 	}
 	return isPriorityPost.boolValue;

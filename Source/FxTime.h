@@ -417,6 +417,8 @@ typedef struct SRational32 SRational32;
 
  FxTime *snapshot = [t copy];      // immutable; safe as a dictionary key
  @endcode
+
+ @since 1.1
  */
 @interface FxMutableTime : FxTime
 

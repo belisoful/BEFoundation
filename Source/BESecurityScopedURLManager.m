@@ -828,8 +828,9 @@ static NSString * const kIsSecurityScopedKey = @"isSecurityScoped";
 /*!
  @method        removeURLFromCatalog:
  @abstract      Removes the bookmark associated with the given URL from the catalog and persistence.
- @discussion    This is a convenience method that resolves the URL and calls the canonical removal method.
-				Automatically ends any active reference-counted access sessions and persists the removal.
+ @discussion    This is the canonical removal method; removeAbsolutePathFromCatalog: converts its
+				path to an NSURL and calls it. Removes the catalog entry keyed by the URL, ends any
+				active reference-counted access sessions, and persists the removal.
 				This is a thread-safe operation.
  @param         url The file URL whose bookmark should be removed. If nil, this method returns without error.
  */
@@ -1033,6 +1034,9 @@ static NSString * const kIsSecurityScopedKey = @"isSecurityScoped";
 		
 		if (success) {
 			[self.refCounts addObject:resolvedURL];
+			// Remember the resolved form keyed by the catalog key, so relocation can transfer
+			// the count even when the key (url.absoluteString) and the resolved form differ.
+			self.resolvedAccessURLByKey[url.absoluteString] = resolvedURL;
 		} else {
 			// Access failed (likely stale bookmark) - prepare for delegate callback
 			entry = self.mutableCatalog[url.absoluteString];
@@ -1098,6 +1102,7 @@ static NSString * const kIsSecurityScopedKey = @"isSecurityScoped";
 				if (success) {
 					[self.refCounts addObject:delegateURL];
 					resolvedURL = delegateURL;
+					NSString *catalogKey = entryStillValid ? url.absoluteString : nil;
 
 					// If the relocated URL differs from the original, refresh the bookmark
 					// and move the catalog entry to the new key — but only if the entry is
@@ -1110,26 +1115,43 @@ static NSString * const kIsSecurityScopedKey = @"isSecurityScoped";
 															  includingResourceValuesForKeys:nilResourceKeys
 																			  relativeToURL:nilRelativeURL
 																					  error:&bookmarkError];
-						
+
 						if (!bookmarkError && newBookmarkData) {
 							entry.bookmarkData = newBookmarkData;
 							entry.url = delegateURL;
 							entry.isStale = NO;
-							
+
 							NSString *newAbsolutePath = delegateURL.absoluteString;
 							if (entry.isDirectory && ![newAbsolutePath hasSuffix:@"/"]) {
 								newAbsolutePath = [newAbsolutePath stringByAppendingString:@"/"];
 							}
-							
+
 							if (![newAbsolutePath isEqualToString:url.absoluteString]) {
 								[self.mutableCatalog removeObjectForKey:url.absoluteString];
 								self.mutableCatalog[newAbsolutePath] = entry;
+
+								// Transfer counts held under the old key's resolved form so an
+								// earlier access session survives the re-key (mirrors
+								// handleBookmarkRelocationFromPath:toPath:).
+								NSURL *oldResolved = self.resolvedAccessURLByKey[url.absoluteString];
+								NSUInteger transferCount = oldResolved ? [self.refCounts countForObject:oldResolved] : 0;
+								for (NSUInteger i = 0; i < transferCount; i++) {
+									[self.refCounts removeObject:oldResolved];
+									[self.refCounts addObject:delegateURL];
+								}
+								[self.resolvedAccessURLByKey removeObjectForKey:url.absoluteString];
+								catalogKey = newAbsolutePath;
 							}
-							
+
 							if (entry.lifetime == BESecurityScopedURLBookmarkLifetimeLongLived) {
 								[self saveCatalogSynchronously:NO];
 							}
 						}
+					}
+
+					if (catalogKey) {
+						// Track the resolved form under the live catalog key for relocation transfer.
+						self.resolvedAccessURLByKey[catalogKey] = delegateURL;
 					}
 				}
 			});
@@ -1403,7 +1425,7 @@ static NSString * const kIsSecurityScopedKey = @"isSecurityScoped";
 				only if the count reaches zero. This allows multiple parts of the application to safely
 				share access to the same resource. This is a thread-safe operation.
  @param         url The URL for which to end access. If nil, returns NO.
- @return        YES if access was successfully ended or was not active, NO if an error occurred.
+ @return        YES if access was successfully ended, NO if the URL was not active or an error occurred.
  */
 - (BOOL)endAccessingURL:(NSURL *)url {
 	if (!url) {
@@ -1443,11 +1465,11 @@ static NSString * const kIsSecurityScopedKey = @"isSecurityScoped";
 /*!
  @method        endAccessingURLWithAbsolutePath:
  @abstract      Ends reference-counted access for a bookmarked URL path.
- @discussion    Convenience method that resolves the URL string and calls endAccessingURL:.
+ @discussion    Resolves the path through the catalog and ends the matching reference-counted access, falling back to the raw input URL when the reference-count table holds a pre-resolution (symlink) form.
 				Decrements the reference count and stops underlying resource access if the count
 				reaches zero. This is a thread-safe operation.
  @param         absolutePathString The canonical absolute string of the URL in the catalog.
- @return        YES if access was successfully ended or was not active, NO if path not found.
+ @return        YES if a tracked reference count was ended, NO if the path had no active access or could not be resolved.
  */
 - (BOOL)endAccessingURLWithAbsolutePath:(NSString *)absolutePathString {
 	if (!absolutePathString) {

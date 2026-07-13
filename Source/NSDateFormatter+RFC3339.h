@@ -98,9 +98,9 @@ NS_ASSUME_NONNULL_BEGIN
 				- Locale: en_US_POSIX (prevents localization issues)
 				- Timezone: UTC (GMT+0)
 				
-				This method creates a one-time formatter for RFC 3339 dates
-				and don't want to manually configure the formatter settings. The returned formatter
-				can be used immediately for date parsing and formatting operations.
+				This method creates a fresh, fully configured formatter for RFC 3339 dates.
+				The returned formatter can be used immediately for date parsing and formatting
+				operations with no further setup.
 
 				Performance: each call allocates and configures a fresh NSDateFormatter, which is
 				relatively expensive. If you format or parse many dates, keep one formatter and reuse

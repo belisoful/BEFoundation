@@ -255,8 +255,38 @@
 	charset.isEqualToNSCharacterSet = NSCharacterSetUnequal;
 	BECharacterSet.isClassEqualToNSCharacterSet = NSCharacterSetAllEqual;
 	XCTAssertFalse([charset isEqual:NSCharacterSet.alphanumericCharacterSet]);
-	
-	
+
+
+}
+
+/*!
+ @testcase testBECharacterSet_hash_matchesIsEqualAcrossEqualitySettings
+ @abstract Equal objects hash identically for every combination of equality-style settings.
+ @discussion Before the fix, -hash XORed a constant when the effective setting was
+			 unequal-style, while isEqual: ignores the setting for BE-to-BE comparison, so
+			 two equal instances carrying different settings hashed differently.
+ */
+- (void)testBECharacterSet_hash_matchesIsEqualAcrossEqualitySettings
+{
+	BECharacterSet.isClassEqualToNSCharacterSet = 0;
+
+	BECharacterSet *flaggedEqual = BECharacterSet.alphanumericCharacterSet;
+	BECharacterSet *classStyle = BECharacterSet.alphanumericCharacterSet;
+	flaggedEqual.isEqualToNSCharacterSet = NSCharacterSetEqual;
+
+	XCTAssertTrue([flaggedEqual isEqual:classStyle]);
+	XCTAssertEqual([flaggedEqual hash], [classStyle hash],
+				   @"Equal BECharacterSets must hash identically regardless of equality settings");
+
+	// When configured to equate with NSCharacterSet, the hash matches the plain set's hash.
+	XCTAssertTrue([flaggedEqual isEqual:NSCharacterSet.alphanumericCharacterSet]);
+	XCTAssertEqual([flaggedEqual hash], [NSCharacterSet.alphanumericCharacterSet hash]);
+
+	// The pair behaves as one member in hashed collections.
+	NSMutableSet *set = [NSMutableSet setWithObject:flaggedEqual];
+	XCTAssertTrue([set containsObject:classStyle]);
+	[set addObject:classStyle];
+	XCTAssertEqual(set.count, 1u);
 }
 
 - (void)testBExCharacterSet_controlCharacterSet

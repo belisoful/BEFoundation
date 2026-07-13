@@ -602,4 +602,16 @@
 	XCTAssertFalse([self.pathControl containsURL:httpURL], @"Different scheme must not be contained.");
 }
 
+- (void)testContainsURL_BothSchemesNil_ComparesComponents {
+	// When both the root and the candidate are schemeless relative URLs, the scheme-equality
+	// guard is skipped and containment falls through to component comparison.
+	self.pathControl.relativeURL = [NSURL URLWithString:@"Users/test/Projects"];
+	XCTAssertNil(self.pathControl.relativeURL.scheme, @"Schemeless root must keep a nil scheme.");
+
+	XCTAssertTrue([self.pathControl containsURL:[NSURL URLWithString:@"Users/test/Projects/File.m"]],
+				  @"A schemeless descendant must be contained when both schemes are nil.");
+	XCTAssertFalse([self.pathControl containsURL:[NSURL URLWithString:@"Users/test/ProjectsX/File.m"]],
+				   @"A schemeless sibling sharing a name prefix must NOT be contained.");
+}
+
 @end

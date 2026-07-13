@@ -294,9 +294,6 @@
 	XCTAssertTrue([description containsString:self.testName], @"Description should contain notification name");
 	XCTAssertTrue([description containsString:@"reverse:1"], @"Description should contain reverse value");
 	
-	// Note: The original code has a bug with dereferencing pointers (*name, *object, *userInfo)
-	// This test assumes the description method works as intended
-	
 	[notification recycle];
 }
 

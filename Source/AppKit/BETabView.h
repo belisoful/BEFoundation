@@ -330,7 +330,9 @@
 			 Setting this property replaces all tabs (both visible and hidden) with
 			 the provided array. Tabs with hidden=YES remain hidden; the rest become
 			 visible. Each item's hiddenTabView back-pointer is set automatically, and the
-			 superclass's visible tabs are rebuilt in order.
+			 superclass's visible tabs are rebuilt in order. After the rebuild, the delegate
+			 receives tabViewDidChangeNumberOfTabViewItems: once if the all-tabs count
+			 changed, and tabView:didSelectTabViewItem: once if the selected tab changed.
 
 			 Like all of BETabView, this must be used on the main thread.
 
@@ -425,7 +427,9 @@
 			 3. Removes tab from visible tabs (with delegate temporarily disabled)
 			 4. Sets the hidden property to YES
 			 5. Calls delegate's didHideTabViewItem: if implemented
-			 
+			 6. Sends tabView:didSelectTabViewItem: once if hiding the selected tab
+				moved the selection
+
 			 If the tab is already hidden, not in the tab view, or nil, this method
 			 does nothing and returns silently.
 

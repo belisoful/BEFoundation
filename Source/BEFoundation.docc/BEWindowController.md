@@ -23,7 +23,7 @@ This class provides a default, built-in implementation for both the parent and c
 - [BEWindowDidLoadNotification](doc:BEWindowController/BEWindowDidLoadNotification)
 - [kBEIsPrimaryWindowControllerKey](doc:BEWindowController/kBEIsPrimaryWindowControllerKey)
 
-## Usage
+## Examples
 
 ### Creating a Subclass with Parent/Child Support
 
@@ -127,7 +127,7 @@ Extends `NSWindowDelegate` to include a `windowDidLoad:` notification-based call
 ### BEWindowDidLoadNotification
 
 ```objc
-APPITKIT_EXTERN NSNotificationName const BEWindowDidLoadNotification;
+APPKIT_EXTERN NSNotificationName const BEWindowDidLoadNotification;
 ```
 
 A notification posted after the window has loaded, the delegate has been notified, and super has been called.

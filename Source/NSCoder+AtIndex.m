@@ -50,14 +50,15 @@
 
 
 /*!
- @method		-encodeConditionalObject::
+ @method		-encodeConditionalObject:atIndex:
  @abstract		An encoding method for subclasses to override to conditionally
  				encode an object, preserving common references to it, only if
  				it has been unconditionally encoded.
+ @param			object	The object to conditionally encode. May be `nil`.
  @param			index	The index to associate the object data with.
  @discussion	The encoded object is decoded with the decodeObjectForKey:
- 				method. If objv was never encoded unconditionally,
- 				decodeObjectForKey: returns nil in place of objv.
+ 				method. If the object was never encoded unconditionally,
+ 				decodeObjectForKey: returns nil in place of it.
  */
 - (void)encodeConditionalObject:(nullable id)object atIndex:(uint64_t)index
 {
@@ -94,7 +95,7 @@
  @abstract		Encodes a system sized NSInteger value and associates it with
 				the integer index.
  @param			value	The system sized NSInteger value to encode.
- @param			index	The index to associate the float data with.
+ @param			index	The index to associate the NSInteger data with.
  */
 - (void)encodeInteger:(NSInteger)value atIndex:(uint64_t)index
 {
@@ -173,7 +174,7 @@
  				associates it with the integer index.
  @param			bytes	The pointer to the bytes to encode.
  @param			length	The length of data in bytes to encode.
- @param			index	The index to associate the float data with.
+ @param			index	The index to associate the byte data with.
  */
 - (void)encodeBytes:(nullable const uint8_t *)bytes length:(NSUInteger)length atIndex:(uint64_t)index
 {
@@ -538,9 +539,8 @@
  @abstract		Decodes a property list for the integer index.
  @param			index	The integer index that identifies the propery list to
  						decode.
- @return		Returns \c nil if the object for \c index is not of the expected
-				types, or cannot be decoded, and sets the \c error on the
-				decoder.
+ @return		Returns the decoded property list object, or \c nil if no value
+				is encoded for \c index or it cannot be decoded.
  */
 - (nullable id)decodePropertyListAtIndex:(uint64_t)index
 {

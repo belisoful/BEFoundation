@@ -80,6 +80,28 @@ tracked separately in `README.md`'s Change Log.
   (observed: failed in a full-suite run at 3.0s, passed solo at 1.0s). Replaced the fixed sleep with
   a run-loop poll bounded at 15s that exits as soon as `dataTaskError` arrives.
 
+- **`NSURL+Data`: percent-encoded data URLs with a non-UTF-8 charset decoded to nil.**
+  `decodedData`/`decodedString` percent-decoded through UTF-8 string interpretation, so
+  `data:text/plain;charset=iso-8859-1,%E9` decoded to nil instead of the 0xE9 byte / "é". Both now
+  percent-decode byte-wise to raw bytes and interpret them with the URL's declared charset (UTF-8
+  fallback when the charset is absent or fails). The percent encoder likewise now escapes the
+  payload's raw declared-charset bytes per RFC 2397 (e.g. `,Caf%E9` for iso-8859-1) instead of the
+  UTF-8 bytes of the decoded string, so framework-produced non-UTF-8 data URLs round-trip and are
+  decodable by spec-conforming consumers; UTF-8/ASCII output is byte-identical to before. Added
+  latin1 round-trip and hand-authored `%E9` regression tests.
+
+- **`NSData+URLDownload`: a failed read of the downloaded file was swallowed on the download-task
+  `allowBothCompletions` path.** It now reports an auxiliary `NSFileReadUnknownError` via
+  `errorBlock`/`downloadError:auxiliary:`, matching the symmetric data-task path. The `task`
+  property is now declared `nullable` (it is nil before a task is attached).
+
+- **`BEWebData`: closed the last unlocked reads of async-published state.** The
+  `dataTaskCompletionHandler` getter and `-description` read state that the background HTTP/HTTPS
+  completion block publishes under `@synchronized(self)`; both now read under the same lock. The
+  vacuous `testInvalidBase64Error` assertion (`XCTAssertNil(webData.bytes)` on a nil `webData`) now
+  asserts the documented contract (nil instance plus `NSFileReadCorruptFileError`), with a new
+  tolerant-decoder test covering base64 payloads containing ignorable characters.
+
 ### NSObject+DynamicMethods / DynamicMethodsHelpers
 
 - **Heap buffer overflow in `BEMethodSignatureHelper +mutateInvocation:withMeta:`** (the routine that
@@ -122,6 +144,20 @@ tracked separately in `README.md`'s Change Log.
   (`NSObject+DynamicMethodsHelpers.m` said `NSObject+DynamicMethods.m`), empty `@abstract`/`@discussion`
   file headers in both `.m`s, and a garbage `@abstract toeh` block with the wrong `@method` name above
   `_dynamicMethodsAllowNSKey`.
+
+- **Test hygiene: `testAllowNSDynamicMethods_Validation` leaked global runtime state.** The
+  test ended with `NSDynamicMethodsTestObject` enabled and NS-allowed, leaving its swizzle and
+  activation state in the shared test worker. The test now resets dynamic methods and clears
+  the NS-allow flag before exiting, matching the sibling tests' reset idiom.
+
+- **`addObjectForwardTarget:` doc corrections.** The header promised forward targets are tried
+  in registration order, but they are stored in a dictionary keyed by class name (unordered);
+  the doc now states the actual resolution and documents the one-forward-target-per-class rule.
+
+- **Added a concurrency stress test for the dispatch use-after-free fix.**
+  `testObjectMethod_ConcurrentRemoveReplaceVersusInvoke_Stress` races 2000 add/replace/remove
+  operations against 2000 dynamic-method invokes, pinning the dealloc-based IMP-trampoline
+  teardown (a reintroduced eager `imp_removeBlock` surfaces under the AddressSanitizer job).
 
 ### NSMethodSignature+BlockSignatures
 
@@ -177,6 +213,21 @@ tracked separately in `README.md`'s Change Log.
 - **Doc corrections:** the `@header`/`@file` were left as `NSObject+DynamicMethods`; the `Block_descriptor`
   doc now notes the small-descriptor variant; bare `@encode` in doc prose (which clang parsed as a doc
   command, causing a `-Wdocumentation` warning) reworded.
+
+- **The small-descriptor field arithmetic assumed the wrong layout.** The defensive
+  `BLOCK_SMALL_DESCRIPTOR` path skipped copy/dispose relative offsets before reading the
+  signature, but clang's `Block_descriptor_small` places the `int32_t` signature offset at
+  descriptor+4 immediately after the `uint32_t` size (layout at +8, copy/dispose after, when
+  present). The arithmetic now matches the clang ABI, with a zero-offset → NULL guard. The path
+  stays unreachable on current toolchains (no compiler here emits small descriptors), which is
+  documented at the definition; the x86_64 `frameLength` test comment that blamed `long double`
+  in a block with no long double argument now attributes the difference to by-value struct
+  padding. The offset arithmetic is now pinned by synthetic-block tests
+  (`testBEBlockSignatureChar_SmallDescriptor_*`) that fabricate a compact descriptor and assert
+  signature recovery from positive, negative, and zero relative offsets (zero → no signature),
+  plus the `BLOCK_HAS_SIGNATURE`-absent guard. A standalone probe confirmed the tests
+  distinguish the corrected arithmetic from the prior copy/dispose-skipping formula, so they
+  would have caught the original defect.
 
 ### NSObject+Macroable
 
@@ -248,6 +299,13 @@ defects were found; the code correctly delegates registration/dispatch to Dynami
   initial suspicion), the no-copy-flag aliasing-by-reference behavior, combined flags, deep 3-level
   nesting under `SelfMutableCollectionFlag`, and `swapped` on an empty dictionary.
 
+- **`countCharactersInSet:range:` range guard wrapped on NSUInteger overflow.** The guard
+  computed `NSMaxRange(range) > self.length`; a range like `{5, NSUIntegerMax}` wrapped to 4,
+  passed the guard, and raised NSRangeException in `enumerateSubstringsInRange:` instead of
+  returning 0 per the documented contract. The guard is now overflow-safe
+  (`range.location > length || range.length > length - location`), which also subsumes the
+  explicit NSNotFound check. Added overflow and boundary regression tests.
+
 ### NSDateFormatter+RFC2822 / NSDateFormatter+RFC3339
 
 - **`NSDateFormatter+RFC2822` doc falsely claimed RFC 2822 is "a profile of the ISO 8601 standard"
@@ -306,6 +364,14 @@ defects were found; the code correctly delegates registration/dispatch to Dynami
   clears the array" behavior (previously untested) and for `decodePropertyListAtIndex:` (a real but
   untested wrapper — verified `decodePropertyListForKey:` exists and the path works).
 
+- **Removed the unused `#import <simd/simd.h>` from `NSCoder+AtIndex.h`.** Neither the header nor
+  the implementation uses a simd type, and the header ships in the umbrella, so every client
+  transitively compiled the simd module for nothing. Clients that relied on the transitive
+  include must import `<simd/simd.h>` themselves. Also pinned the negative-index key derivation
+  in tests (`indexKey:-100` yields the documented `%llu` reinterpretation "18446744073709551516",
+  replacing a near-tautological check) and corrected `@param`/`@return` doc blocks copy-pasted
+  from float and class-restricted decoders.
+
 ### NSNumber+BExtension / NSNumber+Primes16b
 
 - **Crash: integer modulus by zero (SIGFPE).** `numberOperation`'s divide case guarded against a
@@ -340,6 +406,31 @@ defects were found; the code correctly delegates registration/dispatch to Dynami
 
 - **Verification:** 93/93 tests pass (51 BExtension + 42 Primes16b), clean build with no doc warnings,
   and both suites are green under AddressSanitizer (runtime confirmed linked; zero reports).
+
+- **Mixed-sign divide/modulus with a genuinely unsigned narrow operand returned garbage.**
+  `numberOperation` remaps an unsigned type below 64 bits to the next-larger signed result
+  type, but dispatched the arithmetic on the stale per-operand signedness flags, computing
+  e.g. -10 / 2u as (UInt64)(-10) / 2 = 9223372036854775803. After the remap both operands now
+  transfer into the signed domain (lossless; a remapped unsigned operand is at most 32 bits).
+  Unreachable through this Foundation's plain NSNumber factories (small unsigned values
+  canonicalize to a signed 'q' encoding) but reachable through encoding-preserving NSNumber
+  subclasses such as NSMutableNumber. Added regression tests via NSMockNumber, whose 'I'
+  operands the prior "unsigned" tests (built with `numberWithUnsignedLongLong:`, which also
+  yields 'q' for small values) never exercised.
+
+- **`floatToFpXX` hit undefined behavior for non-finite input without IEEE conformance.**
+  With IEEEConformance NO, infinity and NaN reached `(int64_t)floor(log2(value))` and
+  `llround`, both undefined for non-finite input, with optimization-level-dependent results
+  (0x400 at -O0, 0x7FFF at -O2 for fp16 infinity). Non-finite inputs now saturate at the
+  maximum representable magnitude, matching the documented non-conformant saturation.
+  Documented in the header and covered by regression tests.
+
+- **`numberOperation`'s typeOrder held a signed encoding in the unsigned-long slot on 32-bit
+  ABIs.** The ILP32 arm of the unsigned-long ternary inserted `@encode(long)` ("l", signed)
+  instead of `@encode(unsigned long)` ("L"), so an unsigned-long NSNumber could not resolve a
+  precedence index on a 32-bit build. Corrected; on LP64 (the only shipping ABI) both strcmp
+  guards still select the unchanged "l"/"L" placeholder literals, so behavior there is
+  identical, and the placeholders are now documented so a maintainer does not "fix" them.
 
 ### NSMutableNumber
 
@@ -380,6 +471,21 @@ host-less test target so its suite runs on My Mac without a development team.
 - **Verification:** 80/80 tests pass, green under AddressSanitizer (runtime confirmed linked, zero
   reports).
 
+- **`boolValue` truncated reals and hit undefined behavior on NaN.** It cast the stored value
+  through `long long`, so 0.5 reported NO (real NSNumber reports YES; probed empirically:
+  NSNumber's boolValue is a `!= 0.0` comparison on the real value, with NaN YES) and a stored
+  NaN evaluated `(long long)NAN`, which is undefined. Real-typed storage now compares the
+  double against 0.0 directly. The header's "any negative or any positive value" parenthetical
+  contradicted NaN and is corrected.
+
+- **Two memory over-reads in the C++ core.** `NSMNumberCTypeFromEncoded` read the encoding
+  string through a 16-bit aliased load, over-reading a 1-byte empty encoding; it now reads
+  byte-by-byte with the second byte gated on the first being non-NUL. `copyToString`'s default
+  branch used `strncpy(buff, "(null)", 6)` with no NUL terminator, so `stringValue` over-read
+  uninitialized stack; it now uses the switch's `snprintf` idiom. Proven RED→GREEN under
+  AddressSanitizer with a standalone harness on arm64 and x86_64. All four vendored files
+  remain byte-identical with the standalone upstream repo.
+
 ### BECharacterSet
 
 - **Crash: `[[BEMutableCharacterSet alloc] initWithSet:nil]` produced an immutable-backed mutable
@@ -417,6 +523,15 @@ host-less test target so its suite runs on My Mac without a development team.
   dash used elsewhere.
 
 - **Verification:** 48/48 tests pass (45 prior + 3 new), green under AddressSanitizer.
+
+- **`-hash` violated the equal-objects contract across equality-style settings.** `-hash`
+  XORed a constant into the character-set hash when the effective equality setting was
+  unequal-style, while `-isEqual:` compares two BECharacterSets by their characters alone;
+  two equal instances carrying different settings therefore hashed differently, corrupting
+  hashed collections. An instance configured to equate with NSCharacterSet must also share
+  the plain set's hash. `-hash` now returns the underlying NSCharacterSet hash
+  unconditionally. (The earlier "verified, no change" audit note above covered only the
+  BE-vs-NSCharacterSet gate, not the BE-vs-BE path.) Added a regression test.
 
 ### BERuntime / BESingleton / BE_ARC
 
@@ -471,6 +586,14 @@ Audit of the three small runtime/support components (none previously audited).
   encoded→decoded rule silently lost the flag, so it could compare and hash differently from its
   original. Both now carry the flag. Added copy and secure-coding round-trip regression tests.
 
+- **`-hash` folded the raw `_itemPriority` ivar while `-isEqual:` compares the accessor.** A
+  unique rule with an unset priority (nil ivar; "(null)" entered the hash) was `isEqual:` to a
+  rule carrying the explicit default `@0` but hashed differently, corrupting hashed
+  collections; a decoded default-priority rule hit the same divergence. `-hash` now folds
+  `self.itemPriority.stringValue` (the accessor resolves a nil ivar to the default priority).
+  Added a regression test asserting the unset-vs-explicit-default pair hashes identically and
+  behaves as one NSSet member.
+
 ### BEStackExtensions
 
 - **Added the missing test suite.** The component (stack/queue `push`/`pop`/`shift` on
@@ -523,6 +646,16 @@ Audit of the three small runtime/support components (none previously audited).
 - **Removed the dead `_dirFD` ivar.** It was only ever written, never read — the watched file
   descriptor is captured in the dispatch source's cancel handler via a local. Removing it also
   clears up a misleading comment.
+
+- Removed a commented-out `pathDidChangeWithFlags:` sample implementation (eight debug NSLog
+  statements) from the Internal Hooks section; the hook itself remains documented in the header.
+
+- **The `target`, `selector`, and `eventHandler` getters read outside `_lock`.** The mutators
+  reassign the three as a unit under `_lock`; the synthesized getters could observe a torn
+  configuration or race the release of the previous block. All three now read under `_lock`,
+  matching the `path` getter. Two test defects were also corrected: a tautological
+  path-getter-versus-itself assertion now compares against the independently held value, and a
+  copy-pasted assertion message that contradicted its assertion now states the expectation.
 
 ### NSObject+GlobalRegistry
 
@@ -599,6 +732,32 @@ Audit of the thin NSObject category that forwards to the shared `BEObjectRegistr
   registry's own class; corrected the `unregisterObject:` / `unregisterObjectByUUID:` /
   `unregisterGlobalInstance` return-value docs (said "2", actually `BEUnregisterStatus_Unregistered`
   = 3); and the `globalRegistryUUID` doc that claimed "read-only" for a read-write property.
+
+- **A `CustomRegistryUUID` object returning nil leaked its table entry.** Its generated UUID
+  was used as the `registryTable` key but never cached on the object (the storage primitive
+  `setSimpleRegistryUUID:` declined custom-UUID objects), so `clearObject:`'s re-derivation
+  found nil, `unregisterObject:` returned `BEUnregisterStatus_Decremented` instead of
+  `_Unregistered`, and the entry persisted with instance count 0. The decline policy moved
+  from the storage primitive to the boundaries that own it: `setSimpleRegistryUUID:` now
+  writes unconditionally, the public `setRegistryUUID:forObject:` declines custom-UUID
+  objects before any table mutation, and the clear path keeps their identifiers explicitly.
+  `registryUUIDForObject:` therefore assigns the generated UUID through the accessor with no
+  special case. The generated UUID is stable across calls, documented on
+  `objectRegistryUUID:`. Added register/unregister/re-register regression tests with a
+  nil-returning fixture.
+
+- **`setRegistryUUID:forObject:` could evict another object when declining a custom-UUID
+  object.** The old primitive-level decline returned the input uuid as the "prior" uuid, so
+  the public setter looked that uuid up in `registryTable`, removed the object legitimately
+  registered under it, and re-keyed the table to the declined custom object, contradicting
+  the documented "cannot have their UUIDs set through this method" contract. The boundary
+  decline above returns before any table mutation. Added a regression test.
+
+- **Doc and test polish.** Corrected the contradictory `countForObject:` scope wording and the
+  `registeredCountForObject:` reference to a nonexistent "internal objectCounter"; the
+  unregister tests now assert the exact `BEUnregisterStatus` values instead of BOOL truthiness;
+  added a same-salt stress test exercising the shared `saltLock` ordering across two registries
+  created with the same key salt.
 
 ### FxTime
 
@@ -681,6 +840,28 @@ Audit of the thin NSObject category that forwards to the shared `BEObjectRegistr
   `getBitmapFromImage:` called `CGColorSpaceCreateDeviceRGB()` inline and never released it,
   leaking one color space per pixel-inspecting test (CoreGraphics "Create" rule). The result
   is now captured and `CGColorSpaceRelease`-d.
+
+### BEImage+BExtension
+
+- **Flaky full-suite failure: Apple's PencilKit shadowed the category's UIImage-named methods
+  (breaking rename).** The category defined UIImage-parity members on `NSImage` using
+  UIImage's own selector names (`+imageWithCGImage:`, `pngData`, ...). AppKit loads PencilKit
+  lazily during window machinery setup, and PencilKit attaches a private category defining
+  `+[NSImage imageWithCGImage:]` and `-CGImage`; which duplicate method wins is undefined and
+  depends on attachment order. In parallel full-suite runs, a worker that loaded PencilKit
+  (via the window-controller suites) before the image tests resolved PencilKit's
+  implementation, which returns a non-nil empty image for `NULL` (a 25-31% full-suite failure
+  rate at `testNilInputsReturnNil`; root-caused with in-test IMP diagnostics whose `dladdr`
+  resolved the installed IMP to PencilKit.framework). The round-trip and data members are
+  renamed to representation-style names that Apple does not use — `CGImageRepresentation`,
+  `CIImageRepresentation`, `imageFromCGImage:`, `imageFromCIImage:`, `pngRepresentation`,
+  `jpegRepresentationWithCompressionQuality:` (following the `TIFFRepresentation` idiom);
+  `pixelSize` and the `resizedTo...` members keep their names. On iOS the old spellings
+  redefined UIKit's own native `pngData`/`jpegDataWithCompressionQuality:` (the same hazard
+  class); the rename resolves that too. The round-trip members are now cross-platform (iOS
+  delegates to the native UIImage API), and the factories return nil for a NULL/nil input on
+  both platforms. Added a regression test that loads PencilKit and asserts the nil-input
+  contract.
 
 ### BESecurityScopedURLManager
 
@@ -766,11 +947,18 @@ Audit of the thin NSObject category that forwards to the shared `BEObjectRegistr
   silent-failure behavior of `startAccessingAllURLs` (no delegate callback on failed
   entries, unlike `startAccessingURL:`) is documented.
 
-- **Known issue (flagged, not yet fixed):** `handleBookmarkRelocationFromPath:toPath:`
-  transfers reference counts keyed on the unresolved catalog path, which won't match a
-  `refCounts` entry stored under the symlink-resolved form — dropping active access sessions
-  on relocation. A correct fix needs the old *resolved* URL threaded in from the caller plus
-  a regression test. Tracked as an `@todo` in the method's doc block.
+- **Relocation dropped active access sessions started through `startAccessingURL:`.**
+  `handleBookmarkRelocationFromPath:toPath:` transfers reference counts by looking up the
+  symlink-resolved access form in `resolvedAccessURLByKey`, but only
+  `startAccessingURLInternal:` (the `startAccessingAllURLs` path) recorded that form. An
+  access begun through the primary `startAccessingURL:` (which
+  `ss_startAccessingSecurityScopedResource` and `startAccessingURLWithAbsolutePath:` funnel
+  through) left the map empty, so the transfer found a count of 0 and orphaned the active
+  security scope on relocation. `startAccessingURL:` now records the resolved form under the
+  catalog key on both of its success paths, and the delegate-relocation branch transfers any
+  counts held under the old key's resolved form when it re-keys the catalog, mirroring
+  `handleBookmarkRelocationFromPath:toPath:`. Added a regression test that starts access
+  through the public path (no manual map seeding) and asserts the count transfers.
 
 ### NSPriorityNotification / NSPooledPriorityNotification
 
@@ -879,6 +1067,22 @@ Audit of the thin NSObject category that forwards to the shared `BEObjectRegistr
   so dropped observers don't accumulate. Added tests for object non-retention and for the
   deallocated-filter-is-not-a-wildcard behavior.
 
+- **`postBlock` fired once extra on the default-center posting path.** `postNotification:` and
+  the `postNotificationName:` variants route through `raiseNotification:fromDefault:YES`, which
+  appends the internal `_superPostNotification` forwarding record to the delivery list; that
+  record ran the notification's `postBlock` like a real observer, so N registered observers
+  produced N+1 postBlock invocations, contradicting the documented "once per observer". The
+  internal record now suppresses the postBlock; the stale N+1 test expectations were corrected
+  and `testPostBlockCalledOncePerObserver` pins postBlock count == registered-observer count.
+
+- **`reverse` was documented as reverse-of-registration (LIFO) order.** The
+  `NSPriorityNotification` `reverse` property and `...reverse:` factory docs claimed observers
+  are processed in reverse order of registration; the center reverses the priority-sorted
+  delivery order (equal priorities in reverse registration order), as
+  `NSPriorityNotificationCenter.h` already stated. The docs now describe the actual behavior,
+  and `testPriorityOrdering` (which previously asserted nothing about order) now records each
+  observer's delivery position and asserts the priority delivery sequence.
+
 ### AppKit — BETabView
 
 - **`allTabViewItems` setter was broken (crash) and its documented contract unimplemented.**
@@ -908,6 +1112,16 @@ Audit of the thin NSObject category that forwards to the shared `BEObjectRegistr
   override reconciles `allTabViewItems` with the decoded visible tabs so the view is correctly
   set up regardless of `awakeFromNib` timing. Note: per-item hidden state lives in associated
   objects and is not archived (documented). The init reconciliation is idempotent.
+
+- **`setAllTabViewItems:` never reported count changes.** The class doc promises any add or
+  remove of a tab (visible or hidden) fires `tabViewDidChangeNumberOfTabViewItems:`, but the
+  wholesale replace rebuilt the tabs with the delegate suppressed and stayed silent. The setter
+  now sends the notification once, after the rebuild, when the all-tabs count changed (no
+  notification for a same-count replace). Also rewrote nine per-method doc blocks that claimed
+  "Thread-safe with @synchronized" against the class-level main-thread contract, completed the
+  `hideTabViewItem:` Process steps with the selection report, and added regression tests for
+  the count-change notification and for single-report selection changes on hide and on a
+  wholesale replace.
 
 ### AppKit — BEWindowController
 
@@ -1010,6 +1224,15 @@ Audit of the thin NSObject category that forwards to the shared `BEObjectRegistr
   adversarial/path-like and non-string keys (SHA-256 filenames stay flat and safe) and for
   corrupt `.cache` payload recovery.
 
+- **Overwriting a persisted entry with a non-serializable object left the old value on disk.**
+  `setObject:` wrote a non-NSSecureCoding object to the memory tier only; the key's previous
+  serializable value stayed in the disk tier, so after a memory eviction `objectForKey:`
+  returned the stale disk value, violating the "last writer wins both tiers" guarantee. The
+  non-serializable branch now purges the disk entry inside the same queue critical section.
+  The failed-write paths in `writeToDisk:` likewise purge the prior disk entry, so a failed
+  overwrite cannot resurface the older value after eviction. Added an overwrite-then-evict
+  regression test.
+
 ### BEMetalHelper
 
 - **`imageFromTexture:` memory-safety hardening.** In the grayscale (R8/R16F/R32F) paths the
@@ -1027,6 +1250,13 @@ Audit of the thin NSObject category that forwards to the shared `BEObjectRegistr
   a `Private` render-target must be blitted first; and the result is interpreted in
   `kCGColorSpaceGenericRGBLinear`, which will look wrong for sRGB/gamma-encoded `*Unorm`
   content. Also changed `<= 0` to `== 0` on `size_t` parameters (tautological-compare).
+
+- **Test suite cleanup.** Removed a dead forward declaration and a large commented-out
+  `vImageConvert_16FtoF` block; the failure-path tests that asserted nothing
+  (`testImageFromTexture_CGContextCreationFailure`, `testImageFromTexture_LargeDimensions`) now
+  assert their nil results; the mislabeled "MemoryAllocationFailure" test states the overflow
+  guard it exercises; the commented-out zero-dimension coverage is restored against the
+  `width == 0 || height == 0` guard; and a line-splicing stray backslash is removed.
 
 ### BEMutable
 
@@ -1062,6 +1292,14 @@ Audit of the thin NSObject category that forwards to the shared `BEObjectRegistr
   linear scan (`-memberOf:equalTo:`) — the fixtures contain no two mutually-equal elements,
   so exactly one member matches and the result is stable across runs. **Impact:** the four
   tests pass deterministically; not a product bug (the copy methods were always correct).
+
+- **Documented the DAG copy semantics and completed the doc caveats.** `mutableCopyRecursive`
+  now carries the shared-leaf/cycle-point caveat that `copyRecursive` already had, and the
+  `NSMutableString` instance-level `isMutable` doc states the `__NSCFString` backing-class
+  inference (it returns NO for other backings) instead of "always returns YES". Added
+  diamond/DAG regression tests pinning the path-scoped visited set: a child reachable by two
+  non-cyclic paths is copied once per path into equal, non-identical copies, never aliased to
+  the original.
 
 ### Polish pass (post-audit)
 
@@ -1105,6 +1343,28 @@ Audit of the thin NSObject category that forwards to the shared `BEObjectRegistr
   items in `## See Also` groups. Validated with `xcodebuild docbuild`: BUILD SUCCEEDED, 0 warnings,
   0 errors.
 
+- **Low-priority audit sweep (docs and examples).** Added the missing
+  `NSOpenPanel+BESecurityScopedURLManager` page and curated it from the landing page, Index,
+  AppKit, and FileSystem groups (the public category was previously unreachable in the catalog).
+  Corrected examples that did not compile or contradicted the code: BESingleton's
+  custom-initialization example (invalid assignment targeting NSObject) and its "How It Works"
+  dispatch_once claim (the implementation uses `@synchronized` double-checked locking with
+  atexit teardown); BEStackExtensions chaining; FxTime conversion (now `FxMutableTime`); the
+  fabricated `BEPriorityItem` protocol snippet; the NSOrderedSet mapping result; and the
+  NSDictionary recursive-merge example (mutable nested value plus a note on when descent
+  occurs). Removed self-curation links (BEWindowControllerManager, BEPathControl), renamed
+  duplicate "## Usage" sections to "## Examples" on the AppKit pages, and removed
+  banned-style wording (marketing adjectives, em-dash asides) across the landing page, article
+  overviews, and headers. Filled empty or wrong `@file` banners (BEMetalHelper.m,
+  CIImage+BExtension.m, BEPredicateRule.m, NSNumber+Primes16bTests.m, NSMutableNumber.swift),
+  corrected the BEColor sRGB comment for wide-gamut inputs, gave the NSString subscript and
+  insert methods their missing HeaderDoc, removed a dead `index < 0` unsigned comparison, and
+  added introducing-version notes to the new-in-1.1 public API (`FxMutableTime`, `floatToFpXX`,
+  `BESecurityScopedURLManager`/`+sharedManager`, the RFC 2822 category,
+  `BE_APPLE_TERMS_COMPLIANT`). Corrected the inverted removal-method roles in
+  `BESecurityScopedURLManager` (`removeURLFromCatalog:` is the canonical removal;
+  `removeAbsolutePathFromCatalog:` converts and delegates to it).
+
 ### Compiler warnings
 
 - **Framework target:** fixed `-Wenum-enum-conversion` in `BEMetalHelper.m` (mixing
@@ -1115,6 +1375,118 @@ Audit of the thin NSObject category that forwards to the shared `BEObjectRegistr
   initializer, a deprecated `-getBytes:`, an incompatible pointer assignment, and
   variable-length-array folding) via `__unused`, typed nil locals, or localized
   `#pragma clang diagnostic` suppression where the construct was intentional.
+
+### Final proofing pass (release)
+
+A full-project proofread of code, HeaderDoc, and tests before release. Each finding was
+independently verified against the source. Three code defects, eighteen documentation
+mismatches, and three test defects were fixed.
+
+**Code**
+
+- **`NSObject+DynamicMethods`: `isDynamicMethodsSelf` misclassified the inherited-disabled
+  state.** The macro tested `(state) & 0x2`, and `DMInheritDisabled` (-1) has bit 1 set, so
+  `-1 & 0x2` is 2 (true). `+resetDynamicMethods` uses the macro to decide whether a class has
+  an explicit setting to clear, so a subclass whose disabled state is inherited from its parent
+  returned `YES`, contradicting the documented "NO if there was no explicit state to reset"
+  contract. The macro now tests `state == DMSelfDisabled || state == DMSelfEnabled`. Added
+  `testResetDynamicMethods_InheritedDisabled_ReturnsNO`.
+
+- **`BEFileCache`: NSURL keys were silently lost on relaunch or index rebuild.** The header
+  advertises `NSURL` as a valid key type and the write path accepts it, but the on-disk
+  key-decode allow-lists (`BEFileCacheItem -initWithCoder:` and `loadIndex`) omitted `NSURL`.
+  `decodeObjectOfClasses:` enforces secure coding, so a URL key failed to decode, the entry was
+  dropped, and `reconcileWithDirectoryOnQueue` eventually deleted the untracked `.cache`/`.meta`
+  pair as orphans. Within a session the live key object in `_diskMeta` masked the loss. `NSURL`
+  is now in both decode allow-lists and `BEIndexAllowedClasses()`. Added
+  `testPersistence_NSURLKey_objectRecovered`.
+
+- **`NSData+URLDownload`: an empty-body data task handed nil to a `_Nonnull` completion.** A
+  data task that finishes with no `-didReceiveData:` callback (HTTP 204, or any response whose
+  body delivers no data) leaves `_receivedData` nil, so `_data = [_receivedData copy]` is nil,
+  and that nil reached `NSDataCompletionBlock` (`NSData * _Nonnull`) and
+  `-downloadDataComplete:` (`nonnull NSData *`). The success path now substitutes `[NSData data]`
+  when `_receivedData` is nil, matching the download-task path. Added
+  `testDataDownload_NoBodyResponse_DeliversNonNilData`.
+
+**Documentation** — corrected HeaderDoc and comment claims that contradicted the code:
+
+- `NSMethodSignature +signatureFromBlock:`: the returned signature drops the leading block
+  pointer, so self is the first parameter (index 0) and no `_cmd` is inserted (the doc claimed
+  the block pointer was first and self second).
+- `NSString -stringByInsertingString:atIndex:`: an out-of-range `location` raises
+  `NSInvalidArgumentException`, not `NSRangeException`.
+- `NSCoder -encodeConditionalObject:atIndex:`: the block documented a phantom `objv` parameter
+  and omitted the `object` parameter; the `@method` name was malformed.
+- `NSSet -mapUsingBlock:`: the parameter was documented and named `filterBlock`, copied from the
+  filter method.
+- `NSOrderedSet (BExtension)` overview: `objectsClasses`/`objectsClassNames` return a deduped
+  ordered set with no counts, not a counted set.
+- `BEPredicateRule` rule-set categories: only `BEPredicateRule` elements are evaluated; plain
+  `NSPredicate` elements are ignored (the docs claimed both participate).
+- `BEFileCache`: four sites claimed the `.meta` sidecar stores only key, cost, and date; it also
+  stores `retentionCost`.
+- `BESecurityScopedURLManager`: `endAccessingURL:` and `endAccessingURLWithAbsolutePath:` return
+  `NO`, not `YES`, when the URL is not active; and `endAccessingURLWithAbsolutePath:` resolves
+  and ends access directly rather than calling `endAccessingURL:`.
+- `BEPathControl -setRelativeURL:`: the argument passed to `rebuildRelativeItems:` is conditional
+  (nil only when the new relative root is non-nil).
+- `BEView -pinEdgesToView:insets:`: returns an empty array when `view` is nil.
+- `CIImage (BExtension)`: two class methods were documented with instance-method `-` notation,
+  and the `@result` omitted the nil-return contract.
+- `BEImage pixelSize`: the "point size times scale" formula describes only the iOS
+  implementation; macOS returns the backing `CGImage` dimensions.
+- `NSPriorityNotificationCenter -ncPriority:`: returns the default priority (`NSInteger`), not an
+  `NSString` description.
+- `NSNotification+ExtraProperties` `tag`/`identifier`: the `userInfo[@"tag"]`/`userInfo[@"identifier"]`
+  fallback was undocumented.
+- `BEWindowController.md`: the `APPITKIT_EXTERN` typo (correct macro is `APPKIT_EXTERN`).
+- `README.md`: the `NSObject+Macroable` test count (65, not 57).
+
+**Tests**
+
+- `NSPriorityNotificationCenterTests testAddObserverWithSelectorQueueUserinfo` asserted nothing;
+  added delivery and postBlock-count assertions.
+- `BEMutableTests` referenced the nonexistent `@protocol(NSHasMutable)`, a latent compile error
+  under `kCharSetDifferentiable=YES`; corrected to `BEHasMutable`.
+- `NSPooledPriorityNotificationTests` carried a stale comment describing a pointer-dereference
+  bug in `-description` that the current code does not have; removed.
+
+**Static analysis (test target)**
+
+- The Clang static analyzer reported 242 findings, all in the test target: intentional
+  `nil`-into-`nonnull` calls (tests that verify nil-handling), throwaway stores, and NSNumber
+  boolean conversions, including cases in the vendored `NSMutableNumberTests.m`. These patterns
+  are inherent to the test code, have no clean per-call analyzer suppression, and the vendored
+  file must stay byte-identical with upstream. The `nullability`, `dead-stores`, and
+  `number-object-conversion` checkers are therefore disabled on the **test target only**
+  (`CLANG_ANALYZER_NONNULL`, `CLANG_ANALYZER_DEADCODE_DEADSTORES`,
+  `CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION` = `NO`). The framework target keeps every analyzer
+  check. The test target now analyzes clean.
+
+**Static analysis (framework)**
+
+- A full audit of the framework's 40 Clang static-analyzer findings. One was a real defect: the
+  dynamic instance-protocol removal path read an uninitialized 20-byte SHA-1 `digest` on the
+  no-removal branch (`isNoProtocol && !hasTarget`), where `CC_SHA1` never runs, then XORed the
+  uninitialized bytes into the persisted `dynamicProtocolSelfHash`, corrupting it (reading
+  uninitialized stack is also undefined behavior). Fixed by zero-initializing `digest`, so the
+  XOR is a no-op when nothing is removed.
+- The rest were behavior-preserving cleanups: 26 `osx.NumberObjectConversion` existence checks
+  made explicit (`if (num)` -> `if (num != nil)`, the numeric value always read separately via
+  `-boolValue`/`-integerValue`); several dead stores removed; two pointless `NULL` assignments in
+  `-dealloc`/`-init` removed; and `+[NSURL(Data) stringEncodingFromCharset:]` re-annotated
+  `nullable` (it is called with a nil charset and tolerates it).
+- Three `nullability.NullReturnedFromNonnull` warnings remain, all in the vendored
+  `NSMutableNumber.mm` (`bitNot`/`plusOne`/`subtractOne`). The analyzer models each
+  `default`-less switch as a nil fall-through, but every real `NSNumber` `objCType` maps to a
+  covered case, so the path is unreachable. They are left unchanged because the file must stay
+  byte-identical with the upstream repo.
+
+- **Verification:** full suite green on macOS arm64, macOS x86_64, and iOS Simulator, clean
+  under AddressSanitizer, DocC builds with 0 warnings, the test target's static analyzer is
+  clean, and the framework's static analyzer is reduced to the three unreachable vendored false
+  positives.
 
 ---
 

@@ -4,7 +4,7 @@
  @date       2025-11-11
  @author     belisoful@icloud.com
  @abstract   Provides convenience methods for creating and parsing data URLs.
- @discussion This category on `NSURL` simplifies working with RFC 2897 data URLs,
+ @discussion This category on `NSURL` simplifies working with RFC 2397 data URLs,
 			 providing methods to encode binary data or text into data URLs and
 			 decode data URLs back into their original content. Supports MIME types,
 			 character sets, and base64 encoding.
@@ -16,7 +16,11 @@
 
 #import <Foundation/Foundation.h>
 
-/* A string constant for the "file" URL scheme. If you are using this to compare to a URL's scheme to see if it is a file URL, you should instead use the NSURL fileURL property -- the fileURL property is much faster. */
+/*!
+ @const      BEURLDataScheme
+ @abstract   The "data" URL scheme (RFC 2397).
+ @discussion Compare against a URL's scheme to identify data URLs, or use the `isDataURL` property.
+*/
 FOUNDATION_EXPORT NSString * _Nonnull const BEURLDataScheme;
 /*!
  @enum       NSURLBase64Type
@@ -329,15 +333,17 @@ FOUNDATION_EXPORT NSString * _Nonnull const BEURL_ISO_2022_JP;// "ISO-2022-JP"
 /*!
  @property   decodedData
  @abstract   The decoded binary data from the data URL.
- @discussion Decodes the data URL content based on its encoding (base64 or percent-encoding)
-			 and returns the original binary data. Returns `nil` if decoding fails or for non-data URLs.
+ @discussion Base64 content is base64-decoded. Percent-encoded content is decoded byte-wise,
+			 so the result carries the payload bytes in the URL's declared charset.
+			 Returns `nil` if decoding fails or for non-data URLs.
 */
 @property (nullable, readonly) NSData			*decodedData;
 
 /*!
  @property   decodedString
  @abstract   The decoded string content from the data URL.
- @discussion Decodes the data URL and interprets it as a string using the appropriate encoding.
+ @discussion Interprets `decodedData` using the URL's declared charset. When the charset is
+			 absent or its interpretation fails, the bytes are interpreted as UTF-8.
 			 Returns `nil` if decoding fails or for non-data URLs.
 */
 @property (nullable, readonly) NSString			*decodedString;
@@ -376,7 +382,7 @@ FOUNDATION_EXPORT NSString * _Nonnull const BEURL_ISO_2022_JP;// "ISO-2022-JP"
 			 Supports UTF-8, ASCII, Latin1/2, Windows code pages, Japanese encodings, etc.
  @return     The corresponding `NSStringEncoding`, or `NSASCIIStringEncoding` if unrecognized.
 */
-+ (NSStringEncoding)stringEncodingFromCharset:(nonnull NSString*)charset;
++ (NSStringEncoding)stringEncodingFromCharset:(nullable NSString*)charset;
 
 
 /*!

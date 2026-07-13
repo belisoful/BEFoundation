@@ -549,7 +549,7 @@
 	XCTAssertTrue([charSet conformsToProtocol:@protocol(BEMutable)]);
 	
 	XCTAssertFalse([NSMutableCharacterSet.class conformsToProtocol:@protocol(BEHasMutable)]);
-	XCTAssertFalse([charSet conformsToProtocol:@protocol(NSHasMutable)]);
+	XCTAssertFalse([charSet conformsToProtocol:@protocol(BEHasMutable)]);
 #else
 	XCTAssertFalse(NSMutableCharacterSet.isMutable);
 	XCTAssertFalse(charSet.class.isMutable);
@@ -3240,6 +3240,92 @@
 
 	XCTAssertEqual(result.count, 1u);
 	XCTAssertEqual([result[0] count], 1u);
+}
+
+- (void)testCopyRecursive_SelfReferentialDictionaryTerminates
+{
+	NSMutableDictionary *cyclic = [NSMutableDictionary dictionary];
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wobjc-circular-container"
+	cyclic[@"self"] = cyclic;
+#pragma clang diagnostic pop
+
+	NSDictionary *result = [cyclic copyRecursive];
+
+	XCTAssertEqual(result.count, 1u);
+	// The cycle is broken by referencing the original node rather than recursing forever.
+	XCTAssertEqual(result[@"self"], cyclic);
+}
+
+- (void)testCopyRecursive_MutuallyReferentialSetsTerminate
+{
+	NSMutableSet *a = [NSMutableSet set];
+	NSMutableSet *b = [NSMutableSet set];
+	[a addObject:b];
+	[b addObject:a];
+
+	NSSet *immutable = [a copyRecursive];
+	XCTAssertEqual(immutable.count, 1u);
+	XCTAssertEqual([immutable.anyObject count], 1u);
+
+	NSMutableSet *mutable = [a mutableCopyRecursive];
+	XCTAssertEqual(mutable.count, 1u);
+	XCTAssertEqual([mutable.anyObject count], 1u);
+}
+
+- (void)testCopyRecursive_MutuallyReferentialOrderedSetsTerminate
+{
+	// An ordered set cannot reference itself directly; a mutable set holding the ordered set
+	// back closes the cycle so the ordered-set visited guard is re-entered and exercised.
+	NSMutableOrderedSet *ordered = [NSMutableOrderedSet orderedSet];
+	NSMutableSet *child = [NSMutableSet set];
+	[ordered addObject:child];
+	[child addObject:ordered];
+
+	NSOrderedSet *immutable = [ordered copyRecursive];
+	XCTAssertEqual(immutable.count, 1u);
+	XCTAssertEqual([immutable[0] count], 1u);
+
+	NSMutableOrderedSet *mutable = [ordered mutableCopyRecursive];
+	XCTAssertEqual(mutable.count, 1u);
+	XCTAssertEqual([mutable[0] count], 1u);
+}
+
+- (void)testCopyRecursive_DiamondSharedChildCopiedPerPath
+{
+	// The visited set is path-scoped (added before recursing, removed after), so a child
+	// reachable by two non-cyclic paths is copied once per path. A regression to a
+	// persistent visited set would alias the second path to the original child.
+	NSMutableArray *child = [NSMutableArray arrayWithObject:@"leaf"];
+	NSArray *parent = @[child, child];
+
+	NSArray *result = [parent copyRecursive];
+
+	XCTAssertEqual(result.count, 2u);
+	XCTAssertEqualObjects(result[0], result[1]);
+	XCTAssertNotEqual(result[0], result[1]);
+	XCTAssertNotEqual(result[0], child);
+	XCTAssertNotEqual(result[1], child);
+}
+
+- (void)testMutableCopyRecursive_DiamondSharedChildCopiedPerPath
+{
+	NSMutableArray *child = [NSMutableArray arrayWithObject:@"leaf"];
+	NSArray *parent = @[child, child];
+
+	NSMutableArray *result = [parent mutableCopyRecursive];
+
+	XCTAssertEqual(result.count, 2u);
+	XCTAssertTrue([result[0] isKindOfClass:NSMutableArray.class]);
+	XCTAssertEqualObjects(result[0], result[1]);
+	XCTAssertNotEqual(result[0], result[1]);
+	XCTAssertNotEqual(result[0], child);
+	XCTAssertNotEqual(result[1], child);
+
+	// Each path's copy is independent of the other path's copy and of the original.
+	[result[0] addObject:@"extra"];
+	XCTAssertEqual([result[1] count], 1u);
+	XCTAssertEqual(child.count, 1u);
 }
 
 #pragma mark - Performance

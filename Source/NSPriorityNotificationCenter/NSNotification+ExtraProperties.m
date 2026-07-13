@@ -20,7 +20,7 @@
 - (NSInteger)tag
 {
 	NSNumber *tag = objc_getAssociatedObject(self, @selector(tag));
-	if (!tag) {
+	if (tag == nil) {
 		if ([self.object respondsToSelector:@selector(tag)]) {
 			return [self.object tag];
 		}

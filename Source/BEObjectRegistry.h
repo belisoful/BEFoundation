@@ -119,7 +119,7 @@ BEUniversalObjectRegistry *registry = BEUniversalObjectRegistry.new;
 /*!
  @method        objectRegistryUUID:
  @abstract      Provides a custom UUID for this object in the specified registry.
- @discussion    Called by the registry system when this object needs a UUID and doesn't already have one assigned. The implementation should return a unique string identifier for this object within the context of the given registry. The returned UUID must be unique within the registry to avoid conflicts.
+ @discussion    Called by the registry system when this object needs a UUID and doesn't already have one assigned. The implementation should return a unique string identifier for this object within the context of the given registry. The returned UUID must be unique within the registry to avoid conflicts. When this method returns nil, the registry generates a UUID and assigns it to the object.
  @param         registry The registry requesting the UUID.
  @result        A unique string identifier for this object, or nil if no UUID can be provided.
  */
@@ -267,17 +267,17 @@ extern NSExceptionName _Nonnull const NSDuplicateUUIDException;
 
 /*!
  @method        countForObject:
- @abstract      Returns the total registration count for a specific object in registries of the same salt
- @discussion    Returns the number of times the specified object has been registered in this registry. This count is maintained separately from the global registry count and is not specific to this registry instance.
+ @abstract      Returns the total registration count for a specific object across registries sharing this registry's keySalt.
+ @discussion    Returns the number of times the specified object has been registered across all registries created with the same keySalt. The count is stored on the object under objectCountKey, which is derived from the keySalt, so registries with different salts maintain independent counts.
  @param         object The object to check.
- @result        The  count for the object in all BEObjectRegistry instances, or 0 if not registered.
+ @result        The registration count for the object across all registries sharing this registry's keySalt, or 0 if not registered.
  */
 - (NSUInteger)countForObject:(nonnull id)object;
 
 /*!
  @method        registeredCountForObject:
  @abstract      Returns the active registration count for a specific object.
- @discussion    Returns the number of active registrations for the specified object. This is the count maintained by the internal objectCounter and represents how many times the object has been registered minus how many times it has been unregistered.
+ @discussion    Returns the number of active registrations for the specified object in this registry instance: how many times the object has been registered minus how many times it has been unregistered. The count is stored as an associated object on the registered object, keyed by the registry, and is released automatically when the object deallocates.
  @param         object The object to check.
  @result        The active registration count for the object, or 0 if not registered.
  */

@@ -37,6 +37,9 @@ NSInteger const NSPriorityNotificationDefaultPriority = 10;
 @property (nonatomic, readonly) NSOperationQueue *queue;
 @property (nonatomic, readonly) void (^block)(NSNotification *note);
 @property (nonatomic, readonly) NSInteger ncPriority;
+// Set on the internal super-post record: it is not a caller-registered observer, so its
+// delivery must not run the notification's once-per-observer postBlock.
+@property (nonatomic, assign) BOOL suppressesPostBlock;
 
 - (id)initWithObserver:(id)observer selector:(SEL)selector name:(NSString *)name object:(id)object queue:(NSOperationQueue *)queue block:(void (^)(NSNotification *note))block priority:(NSInteger)priority;
 @end
@@ -88,7 +91,7 @@ NSInteger const NSPriorityNotificationDefaultPriority = 10;
 
 - (void)postNotification:(NSNotification *)notif
 {
-	void (^ postBlock)(NSNotification * _Nonnull note) = notif.postBlock;
+	void (^ postBlock)(NSNotification * _Nonnull note) = self.suppressesPostBlock ? NULL : notif.postBlock;
 	if (_queue != nil && _block != NULL)
 	{
 		// Queued observers run after this post returns, by which point a pooled source
@@ -236,6 +239,7 @@ NSInteger const NSPriorityNotificationDefaultPriority = 10;
 		// super-post sits exactly at defaultPriority and tracks runtime changes to it.
 		// Passing _defaultPriority here instead would double it (offset + live == 20).
 		_superPostNotification = [[_NSPriorityNotificationObserver alloc] initWithObserver:self selector:@selector(_raiseSuperPostNotification:) name:nil object:nil queue:nil block:NULL priority:0];
+		_superPostNotification.suppressesPostBlock = YES;
 		
 		// Register self as an observer to the default notification center
 		[NSNotificationCenter.defaultCenter addObserver:self
@@ -519,10 +523,10 @@ NSInteger const NSPriorityNotificationDefaultPriority = 10;
 #pragma mark NSNotificationObjectPriorityItem
 
 /*!
- @method		-ncPriority
+ @method		-ncPriority:
  @abstract		This is the priority of the NSPriorityNotificationCenter when being called by the normal
  				NSNotification.
- @return		Returns the NSString containing the description of the current object.
+ @return		The default priority (NSInteger) forwarded to the super NSNotificationCenter record.
  */
 // Priority of the super NSNotificationCenter for @c -_raiseSuperPostNotification:
 - (NSInteger)ncPriority:(nullable NSNotificationName)aName

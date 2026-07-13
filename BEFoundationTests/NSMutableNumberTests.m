@@ -8,6 +8,11 @@
 #import "NSMutableNumber.h"
 #import "NSMockNumber.h"
 
+// Several tests deliberately pass non-canonical values (-1, +/-Inf) to BOOL parameters to
+// exercise how NSMutableNumber normalizes them. On x86_64 (BOOL is signed char) that trips
+// -Wobjc-bool-constant-conversion; the conversions are intentional.
+#pragma clang diagnostic ignored "-Wobjc-bool-constant-conversion"
+
 @interface NSMutableNumberTests : XCTestCase
 
 @end
@@ -366,7 +371,7 @@
 	// NSArchiver test only for macOS
 	#endif
 
-	#if TARGET_OS_MAC
+	#if TARGET_OS_OSX
 
 	Class NSArchiverClass = NSClassFromString(@"NSArchiver");
 	Class NSUnarchiverClass = NSClassFromString(@"NSUnarchiver");
@@ -2598,6 +2603,39 @@
 	NSMutableNumber *one = [NSMutableNumber numberWithInt:1];
 	XCTAssertEqual([one compare:bogus], NSOrderedDescending,
 				   @"Unsupported operand encoding must compare as NSOrderedDescending");
+}
+
+// boolValue on a real matches NSNumber: any nonzero value is YES, including fractions, NaN, and
+// the infinities; only 0 is NO.
+- (void)testNSMutableNumber_boolValue_RealValuesMatchNSNumber {
+	XCTAssertEqual([[NSMutableNumber numberWithDouble:0.5] boolValue], [@(0.5) boolValue]);
+	XCTAssertEqual([[NSMutableNumber numberWithDouble:0.5] boolValue], YES);
+	XCTAssertEqual([[NSMutableNumber numberWithDouble:-0.5] boolValue], [@(-0.5) boolValue]);
+	XCTAssertEqual([[NSMutableNumber numberWithDouble:-0.5] boolValue], YES);
+	XCTAssertEqual([[NSMutableNumber numberWithDouble:NAN] boolValue], [@(NAN) boolValue]);
+	XCTAssertEqual([[NSMutableNumber numberWithDouble:NAN] boolValue], YES);
+	XCTAssertEqual([[NSMutableNumber numberWithDouble:INFINITY] boolValue], [@(INFINITY) boolValue]);
+	XCTAssertEqual([[NSMutableNumber numberWithDouble:INFINITY] boolValue], YES);
+	XCTAssertEqual([[NSMutableNumber numberWithDouble:-INFINITY] boolValue], [@(-INFINITY) boolValue]);
+	XCTAssertEqual([[NSMutableNumber numberWithDouble:-INFINITY] boolValue], YES);
+	XCTAssertEqual([[NSMutableNumber numberWithDouble:0.0] boolValue], [@(0.0) boolValue]);
+	XCTAssertEqual([[NSMutableNumber numberWithDouble:0.0] boolValue], NO);
+	XCTAssertEqual([[NSMutableNumber numberWithDouble:-0.0] boolValue], [@(-0.0) boolValue]);
+	XCTAssertEqual([[NSMutableNumber numberWithDouble:-0.0] boolValue], NO);
+	XCTAssertEqual([[NSMutableNumber numberWithFloat:0.5f] boolValue], [[NSNumber numberWithFloat:0.5f] boolValue]);
+	XCTAssertEqual([[NSMutableNumber numberWithFloat:0.5f] boolValue], YES);
+}
+
+// An empty objCType encoding is one allocated byte and is unrecognized: the value bytes are not
+// read and the number keeps its zero-initialized state.
+- (void)testNSMutableNumber_initWithBytes_EmptyEncoding {
+	const int value = 42;
+	NSMutableNumber *result = [NSMutableNumber.alloc initWithBytes:&value objCType:""];
+	XCTAssertNotNil(result);
+	XCTAssertEqual(strcmp(result.objCType, ""), 0);
+	XCTAssertEqual(result.longLongValue, 0);
+	XCTAssertEqual(result.boolValue, NO);
+	XCTAssertEqualObjects(result, @0);
 }
 
 @end

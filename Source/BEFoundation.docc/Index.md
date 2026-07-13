@@ -32,6 +32,7 @@ BEFoundation provides AppKit extensions for macOS development:
 - **[BETabView](doc:BETabView)** — NSTabView with hidden tab support
 - **[BEWindowController](doc:BEWindowController)** — Window controller with parent/child relationships
 - **[BEWindowControllerManager](doc:BEWindowControllerManager)** — Window controller tracking
+- **[NSOpenPanel+BESecurityScopedURLManager](doc:NSOpenPanel_BESecurityScopedURLManager)** — Open panel selections bookmarked as security-scoped URLs
 - **[NSPasteboard+BExtension](doc:NSPasteboard_BExtension)** — Typed pasteboard read/write
 
 ### Cross-Platform UI
@@ -57,6 +58,7 @@ Categories that work on both macOS (AppKit) and iOS (UIKit):
 - **[BEPathWatcher](doc:BEPathWatcher)** — File system monitoring with GCD
 - **[BEFileCache](doc:BEFileCache)** — Persistent file-backed caching
 - **[BESecurityScopedURLManager](doc:BESecurityScopedURLManager)** — Security-scoped bookmark management
+- **[NSOpenPanel+BESecurityScopedURLManager](doc:NSOpenPanel_BESecurityScopedURLManager)** — NSOpenPanel bookmarking into a manager catalog (macOS)
 - **[Web and Networking](doc:WebAndNetworking)** — Overview of networking components
 - **[BEWebData](doc:BEWebData)** — NSData subclass for data URLs
 - **[NSData+URLDownload](doc:NSData_URLDownload)** — Asynchronous URL downloading

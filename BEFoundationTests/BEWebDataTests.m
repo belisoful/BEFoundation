@@ -589,7 +589,10 @@
 
 /*!
  @method     testInvalidBase64Error
- @abstract   Tests handling of invalid base64 data.
+ @abstract   Tests that an undecodable base64 payload yields nil and a corrupt-file error.
+ @discussion The payload's non-base64 characters are ignored, leaving a length that is not a
+			 multiple of four, so decoding fails and initialization reports
+			 NSFileReadCorruptFileError.
 */
 - (void)testInvalidBase64Error {
 	NSURL *invalidURL = [NSURL URLWithString:@"data:text/plain;base64,Invalid!!!Base64"];
@@ -597,10 +600,30 @@
 	BEWebData *webData = [[BEWebData alloc] initWithContentsOfURL:invalidURL
 														  options:0
 															error:&error];
-	
-	// May return nil or partial data depending on base64 decoder behavior
-	// At minimum, should not crash
-	XCTAssertNil(webData.bytes);
+
+	XCTAssertNil(webData, @"Should return nil for an undecodable base64 payload");
+	XCTAssertNotNil(error);
+	XCTAssertEqualObjects(error.domain, NSCocoaErrorDomain);
+	XCTAssertEqual(error.code, NSFileReadCorruptFileError);
+}
+
+/*!
+ @method     testBase64IgnoresUnknownCharacters
+ @abstract   Tests that non-base64 characters are ignored when the remaining characters
+			 decode cleanly.
+*/
+- (void)testBase64IgnoresUnknownCharacters {
+	NSURL *url = [NSURL URLWithString:@"data:text/plain;base64,SGVsbG8=!!!"];
+	NSError *error = nil;
+	BEWebData *webData = [[BEWebData alloc] initWithContentsOfURL:url
+														  options:0
+															error:&error];
+
+	XCTAssertNotNil(webData);
+	XCTAssertNil(error);
+	XCTAssertTrue(webData.isBase64);
+	NSString *decoded = [[NSString alloc] initWithData:webData encoding:NSUTF8StringEncoding];
+	XCTAssertEqualObjects(decoded, @"Hello");
 }
 
 
@@ -685,6 +708,51 @@
 	XCTAssertEqualObjects(webData.charset.lowercaseString, @"utf-8");
 	XCTAssertEqual(webData.stringEncoding, NSUTF8StringEncoding);
 	XCTAssertFalse(webData.isBase64);
+}
+
+/*!
+ @method     testDefaultSessionConfigurationGetter
+ @abstract   The class-level defaultSessionConfiguration getter round-trips the value set through
+			 the setter, including the nil default.
+*/
+- (void)testDefaultSessionConfigurationGetter {
+	NSURLSessionConfiguration *saved = BEWebData.defaultSessionConfiguration;
+
+	BEWebData.defaultSessionConfiguration = nil;
+	XCTAssertNil(BEWebData.defaultSessionConfiguration);
+
+	NSURLSessionConfiguration *config = [NSURLSessionConfiguration ephemeralSessionConfiguration];
+	BEWebData.defaultSessionConfiguration = config;
+	XCTAssertNotNil(BEWebData.defaultSessionConfiguration);
+
+	BEWebData.defaultSessionConfiguration = saved;
+}
+
+/*!
+ @method     testDataTaskCompletionHandlerGetter
+ @abstract   The dataTaskCompletionHandler getter returns the block stored by the setter.
+ @discussion A synchronous data URL is already complete, so assigning the handler fires it once and
+			 also retains it; the getter must read that retained block back.
+*/
+- (void)testDataTaskCompletionHandlerGetter {
+	BEWebData *webData = [BEWebData dataWithContentsOfURL:[NSURL URLWithString:@"data:,x"]];
+	XCTAssertTrue(webData.isComplete);
+
+	BEWebDataCompletionBlock block = ^(NSData * _Nullable data, NSURLResponse * _Nullable response, NSError * _Nullable error) {};
+	webData.dataTaskCompletionHandler = block;
+	XCTAssertNotNil(webData.dataTaskCompletionHandler);
+}
+
+/*!
+ @method     testDataTaskResponseGetter
+ @abstract   The dataTaskResponse getter exposes the response captured by a completed HTTP load.
+*/
+- (void)testDataTaskResponseGetter {
+	NSURL *webURL = [NSURL URLWithString:@"https://github.com"];
+	BEWebData *webData = [BEWebData dataWithContentsOfURL:webURL];
+
+	XCTAssertTrue(webData.isComplete);
+	XCTAssertNotNil(webData.dataTaskResponse);
 }
 
 /*!

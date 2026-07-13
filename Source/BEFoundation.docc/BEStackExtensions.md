@@ -81,14 +81,11 @@ id first = [queue shift];  // Returns @1, queue is now @{@2, @3}
 
 ### Method Chaining
 
-All methods return the collection instance for chaining:
+The push methods return the collection instance, so calls nest for chaining:
 
 ```objc
-NSMutableArray *result = [[NSMutableArray array]
-    push:@1
-    push:@2
-    push:@3
-    pushArray:@[@4, @5]];
+NSMutableArray *result = [[[[[NSMutableArray array] push:@1] push:@2] push:@3] pushArray:@[@4, @5]];
+// result is @[@1, @2, @3, @4, @5]
 ```
 
 ## Stack vs Queue

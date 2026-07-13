@@ -64,6 +64,17 @@
 	XCTAssertEqual(self.manager.windowControllers.count, 0);
 }
 
+- (void)testWindowDidLoadDoesNotAddSameControllerTwice {
+	NSWindow *window = [[NSWindow alloc] init];
+	TestManagerdWindowController *controller = [[TestManagerdWindowController alloc] initWithWindow:window];
+	window.windowController = controller;
+
+	[[NSNotificationCenter defaultCenter] postNotificationName:BEWindowDidLoadNotification object:window];
+	[[NSNotificationCenter defaultCenter] postNotificationName:BEWindowDidLoadNotification object:window];
+
+	XCTAssertEqual(self.manager.windowControllers.count, 1, @"An already-tracked controller must not be added twice.");
+}
+
 - (void)testWindowWillCloseRemovesController {
 	
 	NSWindow *window = [[NSWindow alloc] init];

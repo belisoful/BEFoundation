@@ -17,16 +17,16 @@ static inline CGFloat BEClampQuality(CGFloat q) {
 
 #pragma mark - macOS (NSImage)
 
-- (CGImageRef)CGImage {
+- (CGImageRef)CGImageRepresentation {
 	return [self CGImageForProposedRect:NULL context:nil hints:nil];
 }
 
-- (CIImage *)CIImage {
-	CGImageRef cg = self.CGImage;
+- (CIImage *)CIImageRepresentation {
+	CGImageRef cg = self.CGImageRepresentation;
 	return cg ? [CIImage imageWithCGImage:cg] : nil;
 }
 
-+ (BEImage *)imageWithCGImage:(nullable CGImageRef)cgImage {
++ (BEImage *)imageFromCGImage:(nullable CGImageRef)cgImage {
 	if (cgImage == NULL) {
 		return nil;
 	}
@@ -34,7 +34,7 @@ static inline CGFloat BEClampQuality(CGFloat q) {
 	return [[NSImage alloc] initWithCGImage:cgImage size:size];
 }
 
-+ (BEImage *)imageWithCIImage:(nullable CIImage *)ciImage {
++ (BEImage *)imageFromCIImage:(nullable CIImage *)ciImage {
 	if (ciImage == nil) {
 		return nil;
 	}
@@ -45,21 +45,21 @@ static inline CGFloat BEClampQuality(CGFloat q) {
 }
 
 - (nullable NSBitmapImageRep *)be_bitmapRep {
-	CGImageRef cg = self.CGImage;
+	CGImageRef cg = self.CGImageRepresentation;
 	return cg ? [[NSBitmapImageRep alloc] initWithCGImage:cg] : nil;
 }
 
-- (NSData *)pngData {
+- (NSData *)pngRepresentation {
 	return [[self be_bitmapRep] representationUsingType:NSBitmapImageFileTypePNG properties:@{}];
 }
 
-- (NSData *)jpegDataWithCompressionQuality:(CGFloat)quality {
+- (NSData *)jpegRepresentationWithCompressionQuality:(CGFloat)quality {
 	return [[self be_bitmapRep] representationUsingType:NSBitmapImageFileTypeJPEG
 											 properties:@{NSImageCompressionFactor: @(BEClampQuality(quality))}];
 }
 
 - (CGSize)pixelSize {
-	CGImageRef cg = self.CGImage;
+	CGImageRef cg = self.CGImageRepresentation;
 	return cg ? CGSizeMake(CGImageGetWidth(cg), CGImageGetHeight(cg)) : self.size;
 }
 
@@ -69,7 +69,7 @@ static inline CGFloat BEClampQuality(CGFloat q) {
 	}
 	NSImage *source = self;
 	return [NSImage imageWithSize:NSMakeSize(size.width, size.height) flipped:NO
-				  drawingHandler:^BOOL(NSRect dstRect) {
+				   drawingHandler:^BOOL(NSRect dstRect) {
 		[source drawInRect:dstRect fromRect:NSZeroRect operation:NSCompositingOperationCopy fraction:1.0];
 		return YES;
 	}];
@@ -79,11 +79,38 @@ static inline CGFloat BEClampQuality(CGFloat q) {
 
 #pragma mark - iOS (UIImage)
 
-- (NSData *)pngData {
+- (CGImageRef)CGImageRepresentation {
+	return self.CGImage;
+}
+
+- (CIImage *)CIImageRepresentation {
+	CIImage *ci = self.CIImage;
+	if (ci) {
+		return ci;
+	}
+	CGImageRef cg = self.CGImage;
+	return cg ? [CIImage imageWithCGImage:cg] : nil;
+}
+
++ (BEImage *)imageFromCGImage:(nullable CGImageRef)cgImage {
+	if (cgImage == NULL) {
+		return nil;
+	}
+	return [UIImage imageWithCGImage:cgImage];
+}
+
++ (BEImage *)imageFromCIImage:(nullable CIImage *)ciImage {
+	if (ciImage == nil) {
+		return nil;
+	}
+	return [UIImage imageWithCIImage:ciImage];
+}
+
+- (NSData *)pngRepresentation {
 	return UIImagePNGRepresentation(self);
 }
 
-- (NSData *)jpegDataWithCompressionQuality:(CGFloat)quality {
+- (NSData *)jpegRepresentationWithCompressionQuality:(CGFloat)quality {
 	return UIImageJPEGRepresentation(self, BEClampQuality(quality));
 }
 

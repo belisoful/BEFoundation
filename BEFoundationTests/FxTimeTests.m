@@ -138,6 +138,13 @@
 	XCTAssertFalse(time.isRounded);
 }
 
+- (void)testMutableTimeWholeStructSetter {
+	FxMutableTime *time = [FxMutableTime time:kCMTimeZero];
+	time.time = CMTimeMake(500, 100);
+	XCTAssertEqual(CMTimeCompare(time.time, CMTimeMake(500, 100)), 0);
+	XCTAssertEqualWithAccuracy(time.seconds, 5.0, 0.0001);
+}
+
 - (void)testShow {
 	// Test NSCoding
 	FxTime *time = [FxTime time:CMTimeMake(100, 10)];

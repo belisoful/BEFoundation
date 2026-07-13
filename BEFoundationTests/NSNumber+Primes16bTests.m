@@ -1,9 +1,9 @@
-//
-//  NSSet+BExtension.m
-//  BFoundationExtensionTests
-//
-//  Created by ~ ~ on 12/26/24.
-//
+/*!
+ @file			NSNumber+Primes16bTests.m
+ @copyright		-© 2025 Delicense - @belisoful. All rights released.
+ @date			2024-12-26
+ @abstract		Unit tests for the NSNumber+Primes16b category.
+*/
 
 #import <XCTest/XCTest.h>
 #import <BEFoundation/NSNumber+Primes16b.h>

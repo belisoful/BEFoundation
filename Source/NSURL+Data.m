@@ -35,6 +35,91 @@ NSString * _Nonnull const BEURL_Shift_JIS = @"Shift_JIS";
 NSString * _Nonnull const BEURL_ISO_2022_JP = @"ISO-2022-JP";
 
 /*!
+ @function   BEHexDigitValue
+ @abstract   Returns the value of an ASCII hexadecimal digit, or -1 for a non-hex byte.
+*/
+static int BEHexDigitValue(uint8_t character)
+{
+	if (character >= '0' && character <= '9') {
+		return character - '0';
+	}
+	if (character >= 'A' && character <= 'F') {
+		return character - 'A' + 10;
+	}
+	if (character >= 'a' && character <= 'f') {
+		return character - 'a' + 10;
+	}
+	return -1;
+}
+
+/*!
+ @function   BEPercentEncodedString
+ @abstract   Percent-encodes raw bytes for the data portion of a data URL.
+ @discussion Encodes byte-wise so the URL's percent escapes carry the payload bytes in the
+			 declared charset, per RFC 2397. Unreserved characters (ASCII alphanumerics and
+			 "-._~") pass through unescaped. String-based percent encoding is unsuitable here:
+			 -stringByAddingPercentEncodingWithAllowedCharacters: escapes the string's UTF-8
+			 bytes, which misrepresents a payload declared with a non-UTF-8 charset.
+*/
+static NSString *BEPercentEncodedString(NSData *data)
+{
+	static const char hexDigits[] = "0123456789ABCDEF";
+	const uint8_t *bytes = data.bytes;
+	NSUInteger length = data.length;
+	NSMutableData *encoded = [NSMutableData dataWithCapacity:length * 3];
+	for (NSUInteger index = 0; index < length; index++) {
+		uint8_t byte = bytes[index];
+		BOOL unreserved = (byte >= 'A' && byte <= 'Z') || (byte >= 'a' && byte <= 'z')
+			|| (byte >= '0' && byte <= '9')
+			|| byte == '-' || byte == '.' || byte == '_' || byte == '~';
+		if (unreserved) {
+			[encoded appendBytes:&byte length:1];
+		} else {
+			uint8_t escape[3] = {'%', (uint8_t)hexDigits[byte >> 4], (uint8_t)hexDigits[byte & 0x0F]};
+			[encoded appendBytes:escape length:3];
+		}
+	}
+	return [NSString.alloc initWithData:encoded encoding:NSASCIIStringEncoding];
+}
+
+/*!
+ @function   BEPercentDecodedData
+ @abstract   Decodes the percent escapes of a data URL payload to raw bytes.
+ @discussion Decodes byte-wise so the result carries the payload bytes in the URL's declared
+			 charset. -stringByRemovingPercentEncoding is unsuitable here: it interprets the
+			 decoded bytes as UTF-8 and returns nil for valid non-UTF-8 payloads such as
+			 iso-8859-1.
+ @return     The decoded bytes, or nil when a percent escape is malformed.
+*/
+static NSData *BEPercentDecodedData(NSString *string)
+{
+	NSData *stringData = [string dataUsingEncoding:NSUTF8StringEncoding];
+	if (!stringData) {
+		return nil;
+	}
+	const uint8_t *bytes = stringData.bytes;
+	NSUInteger length = stringData.length;
+	NSMutableData *decoded = [NSMutableData dataWithCapacity:length];
+	for (NSUInteger index = 0; index < length; index++) {
+		uint8_t byte = bytes[index];
+		if (byte == '%') {
+			if (index + 2 >= length) {
+				return nil;
+			}
+			int highNibble = BEHexDigitValue(bytes[index + 1]);
+			int lowNibble = BEHexDigitValue(bytes[index + 2]);
+			if (highNibble < 0 || lowNibble < 0) {
+				return nil;
+			}
+			byte = (uint8_t)((highNibble << 4) | lowNibble);
+			index += 2;
+		}
+		[decoded appendBytes:&byte length:1];
+	}
+	return decoded;
+}
+
+/*!
  @category      NSURL (DataConstructors)
  @abstract   This category provides multiple convenience methods for creating data URLs.
  @discussion Offers both class methods (dataURLWithData:...) and instance methods
@@ -160,9 +245,7 @@ NSString * _Nonnull const BEURL_ISO_2022_JP = @"ISO-2022-JP";
 	
 	NSString *dataString = nil;
 	
-	NSUInteger encodedLength = (base64Type == NSURLBase64Type_Yes)
-		? ((4 * ((data.length + 2) / 3))) + 8
-		: ((NSUInteger)(data.length * 5.0 / 3.0)); // URL percent-encoding expansion estimate for natural language
+	NSUInteger encodedLength = 0;
 		
 	if (base64Type == NSURLBase64Type_Yes) {
 		dataString = [data base64EncodedStringWithOptions:0];
@@ -183,7 +266,6 @@ NSString * _Nonnull const BEURL_ISO_2022_JP = @"ISO-2022-JP";
 			}
 			*/
 			if (!dataString && !triedUTF8) {
-				triedUTF8 = YES;
 				encoding = NSUTF8StringEncoding;
 				dataString = [NSString.alloc initWithData:data encoding:encoding];
 				if (dataString) {
@@ -216,12 +298,8 @@ NSString * _Nonnull const BEURL_ISO_2022_JP = @"ISO-2022-JP";
 		[urlString appendString:@";base64,"];
 		[urlString appendString:dataString];
 	} else {
-		//NSString *dataString = nil;
-		NSMutableCharacterSet *urlCharacters = [[NSCharacterSet alphanumericCharacterSet] mutableCopy];
-		[urlCharacters addCharactersInString:@"-._~"];
-		
 		[urlString appendString:@","];
-		[urlString appendString:[dataString stringByAddingPercentEncodingWithAllowedCharacters:urlCharacters]];
+		[urlString appendString:BEPercentEncodedString(data)];
 	}
 	
 	return [self initWithString:urlString];
@@ -413,7 +491,7 @@ NSString * _Nonnull const BEURL_ISO_2022_JP = @"ISO-2022-JP";
 	NSNumber *isDataUrlNumber = objc_getAssociatedObject(self, @selector(isDataURL));
 	BOOL isDataURL;
 	
-	if (!isDataUrlNumber) {
+	if (isDataUrlNumber == nil) {
 		isDataURL = [self.scheme.lowercaseString isEqualToString:BEURLDataScheme];
 		objc_setAssociatedObject(self, @selector(isDataURL), @(isDataURL), OBJC_ASSOCIATION_RETAIN);
 	} else {
@@ -505,7 +583,7 @@ NSString * _Nonnull const BEURL_ISO_2022_JP = @"ISO-2022-JP";
 	NSNumber *stringEncoding = objc_getAssociatedObject(self, @selector(stringEncoding));
 	
 	NSStringEncoding encoding = 0;
-	if (!stringEncoding) {
+	if (stringEncoding == nil) {
 		[self parseDataUrlWithMimeType:nil charset:nil encoding:&encoding isBase64:nil];
 	} else {
 		encoding = stringEncoding.integerValue;
@@ -530,7 +608,7 @@ NSString * _Nonnull const BEURL_ISO_2022_JP = @"ISO-2022-JP";
 	NSNumber	*isBase64Number = objc_getAssociatedObject(self, @selector(isBase64));
 
 	BOOL	isBase64 = NO;
-	if (!isBase64Number) {
+	if (isBase64Number == nil) {
 		[self parseDataUrlWithMimeType:nil charset:nil encoding:nil isBase64:&isBase64];
 	} else {
 		isBase64 = isBase64Number.boolValue;
@@ -570,7 +648,8 @@ NSString * _Nonnull const BEURL_ISO_2022_JP = @"ISO-2022-JP";
  @abstract   Returns the decoded binary data from the data URL.
  @discussion Decodes the data URL content based on its encoding:
 			 - For base64: Uses base64 decoding
-			 - For percent-encoding: Removes percent encoding and converts to NSString by self.stringEncoding
+			 - For percent-encoding: Decodes the percent escapes byte-wise, yielding the
+			   payload bytes in the URL's declared charset
  @return     The decoded NSData, or nil if decoding fails or for non-data URLs.
 */
 - (NSData *)decodedData
@@ -579,45 +658,33 @@ NSString * _Nonnull const BEURL_ISO_2022_JP = @"ISO-2022-JP";
 	if (!dataString) {
 		return nil;
 	}
-	
-	NSData *decodedData = nil;
+
 	if (self.isBase64) {
-		decodedData = [[NSData alloc] initWithBase64EncodedString:dataString options:0];
-	} else {
-		NSString *decodedString = [dataString stringByRemovingPercentEncoding];
-		// stringEncoding is 0 for a charset-less, non-text data URL (e.g. application/octet-stream).
-		// dataUsingEncoding:0 falls back to a deprecated ASCII mapping that drops non-ASCII bytes (and
-		// Foundation warns it is going away), so use UTF-8 to recover the percent-decoded content.
-		NSStringEncoding encoding = self.stringEncoding ?: NSUTF8StringEncoding;
-		decodedData = [decodedString dataUsingEncoding:encoding];
+		return [[NSData alloc] initWithBase64EncodedString:dataString options:0];
 	}
-	return decodedData;
+	return BEPercentDecodedData(dataString);
 }
 
 
 /*!
  @method     decodedString
  @abstract   Returns the decoded string content from the data URL.
- @discussion Decodes the data URL and interprets the result as a string:
-			 - For base64: Decodes base64, then converts to self.stringEncoding string
-			 - For percent-encoding: Removes percent encoding directly
+ @discussion Decodes the payload to bytes, then interprets the bytes with the URL's
+			 declared charset. When the charset is absent (stringEncoding 0) or its
+			 interpretation fails, the bytes are interpreted as UTF-8.
  @return     The decoded string, or nil if decoding fails or for non-data URLs.
 */
 - (NSString *)decodedString
 {
-	NSString *dataString = [self dataString];
-	if (!dataString) {
+	NSData *decodedData = self.decodedData;
+	if (!decodedData) {
 		return nil;
 	}
-	
-	NSString *decodedString = nil;
-	if (self.isBase64) {
-		NSData *decodedData = [[NSData alloc] initWithBase64EncodedString:dataString options:0];
-		// Same charset-less fallback as -decodedData: encoding 0 would make initWithData: return nil.
-		NSStringEncoding encoding = self.stringEncoding ?: NSUTF8StringEncoding;
-		decodedString = [NSString.alloc initWithData:decodedData encoding:encoding];
-	} else {
-		decodedString = [dataString stringByRemovingPercentEncoding];
+
+	NSStringEncoding encoding = self.stringEncoding ?: NSUTF8StringEncoding;
+	NSString *decodedString = [NSString.alloc initWithData:decodedData encoding:encoding];
+	if (!decodedString && encoding != NSUTF8StringEncoding) {
+		decodedString = [NSString.alloc initWithData:decodedData encoding:NSUTF8StringEncoding];
 	}
 	return decodedString;
 }

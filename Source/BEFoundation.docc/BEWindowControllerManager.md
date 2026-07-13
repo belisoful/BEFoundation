@@ -12,13 +12,7 @@ The manager supports fast enumeration (`for...in`) and subscripting for convenie
 
 ![The shared manager tracking a tree of window controllers: a primary parent with Inspector and Settings children and a grandchild sheet, registered on windowDidLoad and cascade-closed with the parent.](window-controllers)
 
-## Usage
-
-### Main Class
-
-- [BEWindowControllerManager](doc:BEWindowControllerManager)
-
-## Usage
+## Examples
 
 ### Creating a Manager
 

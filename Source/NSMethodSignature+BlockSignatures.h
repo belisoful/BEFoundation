@@ -71,6 +71,8 @@
 				for block-signature extraction. That path resolves every block descriptor layout
 				(including small descriptors) directly via the runtime; the hand-rolled reader remains
 				as a fallback. Do NOT ship a binary built with @c BE_APPLE_TERMS_COMPLIANT=0 to the App Store.
+
+ @since			1.1
  */
 #ifndef BE_APPLE_TERMS_COMPLIANT
 #define BE_APPLE_TERMS_COMPLIANT 1
@@ -186,14 +188,14 @@ typedef struct Block_literal {
  @discussion	Resolves the signature for both descriptor layouts:
 				- Regular descriptor: the signature is an absolute pointer located after the
 				  reserved/size header and (if present) the copy/dispose helpers.
-				- Small descriptor (@c BLOCK_SMALL_DESCRIPTOR): the descriptor uses a 32-bit @c size
-				  followed by 32-bit @em relative offsets; the signature is recovered as
-				  @c fieldAddress + @c relativeOffset.
+				- Small descriptor (@c BLOCK_SMALL_DESCRIPTOR): the descriptor stores 32-bit @em relative
+				  offsets; the signature offset immediately follows the 32-bit @c size, and the signature
+				  is recovered as @c fieldAddress + @c relativeOffset.
 				Returns NULL when @c BLOCK_HAS_SIGNATURE is not set.
 
 				The regular-descriptor path matches this platform's runtime @c _Block_signature exactly.
-				The small-descriptor path is defensive and unverified on current Apple toolchains —
-				see the implementation note before relying on it.
+				The small-descriptor path is defensive; its offset arithmetic is covered by synthetic-block
+				tests, but no current Apple toolchain emits small descriptors. See the implementation note.
  */
 static inline const char * _Nullable BEBlockSignatureChar(const void * _Nonnull block)
 {
@@ -209,21 +211,25 @@ static inline const char * _Nullable BEBlockSignatureChar(const void * _Nonnull 
 	}
 #endif
 	if (literal->flags & BLOCK_SMALL_DESCRIPTOR) {
-		// Compact descriptor: 32-bit size, then 32-bit relative offsets for (optional) copy/dispose
-		// and then the signature. A relative field stores (target - &field), so the target is
-		// recovered by adding the offset back to the field's own address.
-		// NOTE: unverified on current Apple toolchains — clang here does not emit BLOCK_SMALL_DESCRIPTOR
-		// for Objective-C blocks, and this platform's libsystem_blocks _Block_signature has no
-		// small-descriptor branch (it reads an absolute pointer at descriptor +16/+32). This path is
-		// therefore defensive: exercise and validate the field order before relying on it on any
-		// toolchain that begins emitting small descriptors.
+		// Compact descriptor (libclosure Block_descriptor_small): {uint32_t size; int32_t signature;
+		// int32_t layout;}, with the optional copy/dispose helper offsets appended after layout when
+		// BLOCK_HAS_COPY_DISPOSE is set. A relative field stores (target - &field), so the target is
+		// recovered by adding the offset back to the field's own address; the runtime treats a zero
+		// offset as no signature.
+		// NOTE: defensive. No current Apple toolchain emits BLOCK_SMALL_DESCRIPTOR for Objective-C
+		// blocks, and this platform's libsystem_blocks _Block_signature has no small-descriptor branch
+		// (it reads an absolute pointer at descriptor +16/+32), so this branch is unreachable through a
+		// compiler-produced block here. The field arithmetic (positive, negative, and zero relative
+		// offsets) is pinned by synthetic-block tests in NSMethodSignature+BlockSignaturesTests.m; the
+		// layout itself stays unvalidated against a real toolchain-emitted small descriptor until one
+		// exists. Re-validate before relying on it on any toolchain that begins emitting them.
 		const uint8_t *cursor = (const uint8_t *)literal->descriptor;
-		cursor += sizeof(uint32_t); // skip the 32-bit size
-		if (literal->flags & BLOCK_HAS_COPY_DISPOSE) {
-			cursor += 2 * sizeof(int32_t); // skip relative copy + dispose
-		}
+		cursor += sizeof(uint32_t); // the signature's relative offset immediately follows the 32-bit size
 		int32_t relativeOffset;
 		memcpy(&relativeOffset, cursor, sizeof(relativeOffset));
+		if (relativeOffset == 0) {
+			return NULL;
+		}
 		return (const char *)(cursor + relativeOffset);
 	}
 	// Regular descriptor: absolute pointer, after the helpers when present.
@@ -277,9 +283,9 @@ typedef NS_ENUM(NSInteger, BEMethodSignatureParseFlags) {
  @abstract		Creates a method signature directly from a block's signature.
  @param			block	The block to extract the signature from.
  @return		An NSMethodSignature object, or nil if the block has no signature.
- @discussion	This method creates a method signature that matches the block's signature exactly.
-				The resulting signature includes the block pointer as the first parameter and
-				self as the second parameter, as they appear in the block's raw signature.
+ @discussion	This method creates a method signature from the block's signature.
+				The leading block pointer argument is dropped, so self is the first parameter (index 0),
+				followed by the block's remaining parameters. No SEL `_cmd` is inserted.
  */
 + (nullable NSMethodSignature *)signatureFromBlock:(nonnull id)block;
 

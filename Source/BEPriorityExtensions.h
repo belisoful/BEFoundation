@@ -15,7 +15,7 @@ The framework supports three main use cases:
 - Full priority property support combining both read and write capabilities through BEPriorityProperty
 
 Collection extensions are provided for NSArray, NSMutableArray, NSOrderedSet, and NSMutableOrderedSet
-to enable seamless priority-based sorting operations.
+to enable priority-based sorting operations.
 */
 
 #ifndef NSPriorityExtensions_h

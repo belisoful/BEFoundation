@@ -12,10 +12,23 @@
 // VLAs with const-sized dimensions are intentional; the folding warning is harmless.
 #pragma clang diagnostic ignored "-Wgnu-folding-constant"
 
-// Forward declaration of the custom function for testing
-vImage_Error vImageConvert_16FtoF(const vImage_Buffer *src,
-								  const vImage_Buffer *dest,
-								  vImage_Flags flags);
+// Minimal MTLTexture stand-in for the zero-dimension guard in imageFromTexture:, which reads
+// only pixelFormat/width/height before returning nil. Metal validation rejects creating a real
+// texture with a zero dimension, and the unimplemented protocol methods are never called.
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wprotocol"
+// MTLTexture/MTLResource declare ~30 readonly properties this minimal stand-in does not provide;
+// none are read by the code under test, so the auto-synthesis notices are suppressed here.
+#pragma clang diagnostic ignored "-Wobjc-protocol-property-synthesis"
+@interface BEZeroDimensionTexture : NSObject <MTLTexture>
+@property (nonatomic) MTLPixelFormat pixelFormat;
+@property (nonatomic) NSUInteger width;
+@property (nonatomic) NSUInteger height;
+@end
+
+@implementation BEZeroDimensionTexture
+@end
+#pragma clang diagnostic pop
 
 @interface BEMetalHelperTests : XCTestCase
 @property (nonatomic, strong) id<MTLDevice> device;
@@ -37,145 +50,6 @@ vImage_Error vImageConvert_16FtoF(const vImage_Buffer *src,
 	self.commandQueue = nil;
 	[super tearDown];
 }
-
-// #pragma mark - vImageConvert_16FtoF Tests
-/*
-- (void)testVImageConvert_16FtoF_NullSourceBuffer {
-	vImage_Buffer dest = {0};
-	vImage_Error result = vImageConvert_16FtoF(NULL, &dest, kvImageNoFlags);
-	XCTAssertEqual(result, kvImageInvalidParameter, @"Should return invalid parameter for null source");
-}
-
-- (void)testVImageConvert_16FtoF_NullDestBuffer {
-	vImage_Buffer src = {0};
-	vImage_Error result = vImageConvert_16FtoF(&src, NULL, kvImageNoFlags);
-	XCTAssertEqual(result, kvImageInvalidParameter, @"Should return invalid parameter for null dest");
-}
-
-- (void)testVImageConvert_16FtoF_NullSourceData {
-	vImage_Buffer src = {.data = NULL, .width = 10, .height = 10, .rowBytes = 20};
-	vImage_Buffer dest = {0};
-	vImage_Error result = vImageConvert_16FtoF(&src, &dest, kvImageNoFlags);
-	XCTAssertEqual(result, kvImageInvalidParameter, @"Should return invalid parameter for null source data");
-}
-
-- (void)testVImageConvert_16FtoF_NullDestData {
-	uint16_t srcData[100];
-	vImage_Buffer src = {.data = srcData, .width = 10, .height = 10, .rowBytes = 20};
-	vImage_Buffer dest = {.data = NULL, .width = 10, .height = 10, .rowBytes = 40};
-	vImage_Error result = vImageConvert_16FtoF(&src, &dest, kvImageNoFlags);
-	XCTAssertEqual(result, kvImageInvalidParameter, @"Should return invalid parameter for null dest data");
-}
-
-- (void)testVImageConvert_16FtoF_DimensionMismatch {
-	uint16_t srcData[100];
-	float destData[100];
-	vImage_Buffer src = {.data = srcData, .width = 10, .height = 10, .rowBytes = 20};
-	vImage_Buffer dest = {.data = destData, .width = 5, .height = 10, .rowBytes = 20};
-	vImage_Error result = vImageConvert_16FtoF(&src, &dest, kvImageNoFlags);
-	XCTAssertEqual(result, kvImageInvalidParameter, @"Should return invalid parameter for dimension mismatch");
-}
-
-- (void)testVImageConvert_16FtoF_MisalignedSourceData {
-	// Create misaligned data (odd address)
-	uint8_t buffer[201];
-	uint16_t *srcData = (uint16_t *)(buffer); // Misaligned
-	float destData[100];
-	if((uintptr_t)(buffer + 1) % 2)
-		srcData = (uint16_t *)(buffer + 1);
-	
-	vImage_Buffer src = {.data = srcData, .width = 10, .height = 10, .rowBytes = 20};
-	vImage_Buffer dest = {.data = destData, .width = 10, .height = 10, .rowBytes = 40};
-	vImage_Error result = vImageConvert_16FtoF(&src, &dest, kvImageNoFlags);
-	XCTAssertEqual(result, kvImageInvalidParameter, @"Should return invalid parameter for misaligned source");
-}
-
-- (void)testVImageConvert_16FtoF_MisalignedDestData {
-	uint16_t srcData[100];
-	// Create misaligned data (not 4-byte aligned)
-	uint8_t buffer[401];
-	float *destData = (float *)(buffer); // Misaligned
-	if((uintptr_t)(buffer + 2) % 4)
-		destData = (float *)(buffer + 2);
-	vImage_Buffer src = {.data = srcData, .width = 10, .height = 10, .rowBytes = 20};
-	vImage_Buffer dest = {.data = destData, .width = 10, .height = 10, .rowBytes = 40};
-	vImage_Error result = vImageConvert_16FtoF(&src, &dest, kvImageNoFlags);
-	XCTAssertEqual(result, kvImageInvalidParameter, @"Should return invalid parameter for misaligned dest");
-}
-
-- (void)testVImageConvert_16FtoF_ValidConversion {
-	const size_t width = 8;
-	const size_t height = 4;
-	
-	// Create test data with known half-precision values
-	uint16_t srcData[width * height];
-	float destData[width * height];
-	
-	// Fill with test pattern (using raw bit patterns for half-precision floats)
-	for (size_t i = 0; i < width * height; i++) {
-		// Use simple bit patterns that represent valid half-precision floats
-		srcData[i] = 0x3C00 + (i % 16); // Around 1.0 with small variations
-	}
-	
-	vImage_Buffer src = {
-		.data = srcData,
-		.width = width,
-		.height = height,
-		.rowBytes = width * sizeof(uint16_t)
-	};
-	
-	vImage_Buffer dest = {
-		.data = destData,
-		.width = width,
-		.height = height,
-		.rowBytes = width * sizeof(float)
-	};
-	
-	vImage_Error result = vImageConvert_16FtoF(&src, &dest, kvImageNoFlags);
-	XCTAssertEqual(result, kvImageNoError, @"Valid conversion should succeed");
-	
-	// Verify that data was actually converted (values should be different from zero)
-	BOOL hasNonZeroValues = NO;
-	for (size_t i = 0; i < width * height; i++) {
-		if (destData[i] != 0.0f) {
-			hasNonZeroValues = YES;
-			break;
-		}
-	}
-	XCTAssertTrue(hasNonZeroValues, @"Converted data should contain non-zero values");
-}
-
-- (void)testVImageConvert_16FtoF_NonAlignedWidth {
-	// Test with width that's not a multiple of vector width
-	const size_t width = 7; // Not divisible by 4
-	const size_t height = 3;
-	
-	uint16_t srcData[width * height];
-	float destData[width * height];
-	
-	// Fill with test pattern
-	for (size_t i = 0; i < width * height; i++) {
-		srcData[i] = 0x3C00; // 1.0 in half precision
-	}
-	
-	vImage_Buffer src = {
-		.data = srcData,
-		.width = width,
-		.height = height,
-		.rowBytes = width * sizeof(uint16_t)
-	};
-	
-	vImage_Buffer dest = {
-		.data = destData,
-		.width = width,
-		.height = height,
-		.rowBytes = width * sizeof(float)
-	};
-	
-	vImage_Error result = vImageConvert_16FtoF(&src, &dest, kvImageNoFlags);
-	XCTAssertEqual(result, kvImageNoError, @"Non-aligned width conversion should succeed");
-}
- */
 
 #pragma mark - convertGray8toRGB888WithVImage Tests
 
@@ -307,14 +181,15 @@ vImage_Error vImageConvert_16FtoF(const vImage_Buffer *src,
 	XCTAssertFalse(result, @"Should fail with null gray data");
 }
 
-- (void)testConvertGray16FtoRGBAFFFF_MemoryAllocationFailure {
-	// Test with extremely large dimensions that should cause malloc to fail
+- (void)testConvertGray16FtoRGBAFFFF_DimensionOverflow {
+	// SIZE_MAX/1000 dimensions trip the height * rowBytes overflow guard before malloc is
+	// reached; the malloc-failure branch itself is untestable without allocator injection.
 	const size_t width = SIZE_MAX / 1000;
 	const size_t height = SIZE_MAX / 1000;
-	
+
 	uint16_t grayData[16]; // Small actual data
 	float rgbData[48];
-	
+
 	BOOL result = [BEMetalHelper convertGray16FtoRGBXFFFFWithVImage:grayData
 															width:width
 														   height:height
@@ -322,9 +197,29 @@ vImage_Error vImageConvert_16FtoF(const vImage_Buffer *src,
 															  alpha:1.0
 														  intoRGBA:rgbData
 													  rgbaRowBytes:width * 16];
-	
-	XCTAssertFalse(result, @"Should fail when memory allocation fails");
-}\
+
+	XCTAssertFalse(result, @"Should fail when the intermediate buffer size overflows");
+}
+
+- (void)testConvertGray16FtoRGBAFFFF_WidthTimesFloatOverflow {
+	// width * sizeof(float) overflows SIZE_MAX, tripping the first (rowBytes) overflow guard
+	// before the later height * rowBytes guard is ever reached.
+	const size_t width = SIZE_MAX / 2;
+	const size_t height = 1;
+
+	uint16_t grayData[16];
+	float rgbData[48];
+
+	BOOL result = [BEMetalHelper convertGray16FtoRGBXFFFFWithVImage:grayData
+															width:width
+														   height:height
+														 rowBytes:16
+															  alpha:1.0
+														  intoRGBA:rgbData
+													  rgbaRowBytes:16];
+
+	XCTAssertFalse(result, @"Should fail when width * sizeof(float) overflows");
+}
 
 #pragma mark - convertGray32FtoRGBFFFWithVImage Tests
 
@@ -568,58 +463,48 @@ vImage_Error vImageConvert_16FtoF(const vImage_Buffer *src,
 }
 #endif // TARGET_OS_OSX
 
-- (void)testImageFromTexture_CGContextCreationFailure {
-	// This is difficult to test directly as CGBitmapContextCreate failure
-	// depends on internal CoreGraphics validation. The method handles this
-	// case by returning nil and cleaning up memory.
-	
-	// We can at least verify that the method doesn't crash with edge cases
+#pragma mark - Edge Cases
+
+- (void)testImageFromTexture_MinimumDimensions {
 	MTLTextureDescriptor *descriptor = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatRGBA8Unorm
 																						  width:1
 																						 height:1
 																					  mipmapped:NO];
 	descriptor.usage = MTLTextureUsageRenderTarget | MTLTextureUsageShaderRead;
 	id<MTLTexture> texture = [self.device newTextureWithDescriptor:descriptor];
-	
-	__unused BEImage *result = [BEMetalHelper imageFromTexture:texture];
-	// Should either succeed or fail gracefully
-	// XCTAssertNotNil or XCTAssertNil would both be valid outcomes
+	XCTAssertNotNil(texture, @"Texture should be created");
+
+	BEImage *result = [BEMetalHelper imageFromTexture:texture];
+	XCTAssertNotNil(result, @"Should create image from a 1x1 texture");
+	XCTAssertEqual(result.size.width, 1, @"Image width should match texture width");
+	XCTAssertEqual(result.size.height, 1, @"Image height should match texture height");
 }
 
-#pragma mark - Edge Cases
+- (void)testImageFromTexture_ZeroDimensions {
+	BEZeroDimensionTexture *texture = [[BEZeroDimensionTexture alloc] init];
+	texture.pixelFormat = MTLPixelFormatRGBA8Unorm;
+	texture.width = 0;
+	texture.height = 4;
+	XCTAssertNil([BEMetalHelper imageFromTexture:texture], @"Should return nil for a zero-width texture");
 
-/*
- - (void)testImageFromTexture_ZeroDimensions {
-	// Test behavior with zero dimensions - this should fail at texture creation
-	MTLTextureDescriptor *descriptor = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatRGBA8Unorm
-																						  width:0
-																						 height:0
-																					  mipmapped:NO];
-	id<MTLTexture> texture = [self.device newTextureWithDescriptor:descriptor];
-	
-	if (texture) {
-		BEImage *result = [BEMetalHelper imageFromTexture:texture];
-		// If texture creation succeeded, the method should handle it gracefully
-	}
+	texture.width = 4;
+	texture.height = 0;
+	XCTAssertNil([BEMetalHelper imageFromTexture:texture], @"Should return nil for a zero-height texture");
 }
- */
 
 - (void)testImageFromTexture_LargeDimensions {
-	// Test with reasonably large dimensions
 	MTLTextureDescriptor *descriptor = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatRGBA8Unorm
 																						  width:1024
 																						 height:1024
 																					  mipmapped:NO];
 	descriptor.usage = MTLTextureUsageRenderTarget | MTLTextureUsageShaderRead;
 	id<MTLTexture> texture = [self.device newTextureWithDescriptor:descriptor];
-	
-	if (texture) {
-		BEImage *result = [BEMetalHelper imageFromTexture:texture];
-		if (result) {
-			XCTAssertEqual(result.size.width, 1024, @"Image width should match texture width");
-			XCTAssertEqual(result.size.height, 1024, @"Image height should match texture height");
-		}
-	}
+	XCTAssertNotNil(texture, @"Texture should be created");
+
+	BEImage *result = [BEMetalHelper imageFromTexture:texture];
+	XCTAssertNotNil(result, @"Should create image from a 1024x1024 texture");
+	XCTAssertEqual(result.size.width, 1024, @"Image width should match texture width");
+	XCTAssertEqual(result.size.height, 1024, @"Image height should match texture height");
 }
 
 @end

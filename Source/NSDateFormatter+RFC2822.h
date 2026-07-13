@@ -6,8 +6,8 @@
  @abstract		Category extension for NSDateFormatter providing RFC 2822 date formatting support.
  @discussion	This header provides a category extension for NSDateFormatter that adds convenience
 				methods for working with RFC 2822 formatted dates. RFC 2822 (Internet Message Format)
-				defines the date format used in email headers — and, near-identically, in HTTP and
-				RSS — derived from RFC 822. It is unrelated to ISO 8601; for ISO 8601 / Internet
+				defines the date format used in email headers, derived from RFC 822. HTTP and RSS
+				use a near-identical format. It is unrelated to ISO 8601; for ISO 8601 / Internet
 				timestamps use the RFC 3339 category instead.
 
 				The RFC 2822 format (EEE, dd MMM yyyy HH:mm:ss Z) is commonly used in email, HTTP
@@ -59,6 +59,8 @@ NS_ASSUME_NONNULL_BEGIN
 	NSString *s = [fmt stringFromDate:NSDate.date];   // "Mon, 23 Jun 2025 14:45:30 +0000"
 	NSDate *d = [fmt dateFromString:@"Mon, 23 Jun 2025 14:45:30 -0800"]; // offset honored -> 22:45:30 UTC
  @endcode
+
+ @since 1.1
  */
 @interface NSDateFormatter (RFC2822)
 
@@ -73,10 +75,6 @@ NS_ASSUME_NONNULL_BEGIN
 				- Date format: "EEE, dd MMM yyyy HH:mm:ss Z"
 				- Locale: en_US_POSIX (prevents localization issues)
 				- Timezone: UTC (GMT+0)
-				
-				This method creates a one-time formatter for RFC 2822 dates
-				and don't want to manually configure the formatter settings. The returned formatter
-				can be used immediately for date parsing and formatting operations.
 
 				Performance: each call allocates and configures a fresh NSDateFormatter, which is
 				relatively expensive. If you format or parse many dates, keep one formatter and reuse

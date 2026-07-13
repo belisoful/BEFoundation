@@ -26,7 +26,7 @@ NS_ASSUME_NONNULL_BEGIN
  @abstract		A notification class that extends NSNotification with priority-based processing capabilities.
  @discussion	NSPriorityNotification adds functionality to the standard notification system:
  
-				- Reverse Processing: Observers can be processed in reverse order using the `reverse` property
+				- Reverse Processing: Observers can be processed in reverse priority order using the `reverse` property
 				- Post-Processing Blocks: Each notification can have a block that executes after each observer
 				- Priority Support: Designed to work with NSPriorityNotificationCenter for priority-based observer management
 				- Secure Coding: Full support for NSSecureCoding protocol
@@ -62,9 +62,10 @@ NS_ASSUME_NONNULL_BEGIN
 /*!
  @property		reverse
  @abstract		Determines whether observers should be processed in reverse order.
- @discussion	When set to YES, the notification center will process observers in reverse order
-				of their registration. This is useful for scenarios where later-registered observers
-				need to handle the notification before earlier ones.
+ @discussion	When set to YES, the notification center delivers the notification in reverse
+				priority order (lowest priority first): observers with higher numeric priority
+				values are notified before observers with lower values. Observers of equal
+				priority are notified in reverse registration order.
  @note			This property is read-only and must be set during initialization.
  */
 @property (nonatomic, readonly, assign) BOOL reverse;
@@ -148,8 +149,8 @@ NS_ASSUME_NONNULL_BEGIN
  @param			anObject	The object associated with the notification. May be nil.
  @param			reverse		Whether to process observers in reverse order.
  @return		A new NSPriorityNotification instance.
- @discussion	When reverse is YES, observers are processed in the reverse order of their registration.
-				This is useful for implementing last-in-first-out notification processing.
+ @discussion	When reverse is YES, observers are notified in reverse priority order
+				(lowest priority first).
  */
 + (instancetype)notificationWithName:(NSNotificationName)aName
 							  object:(nullable id)anObject
@@ -164,7 +165,7 @@ NS_ASSUME_NONNULL_BEGIN
  @param			reverse		Whether to process observers in reverse order.
  @return		A new NSPriorityNotification instance.
  @discussion	This method combines user information with reverse processing capabilities.
-				Observers will be processed in reverse order if reverse is YES.
+				Observers are notified in reverse priority order if reverse is YES.
  */
 + (instancetype)notificationWithName:(NSNotificationName)aName
 							  object:(nullable id)anObject

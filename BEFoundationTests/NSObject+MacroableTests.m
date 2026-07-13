@@ -277,6 +277,14 @@ static id invokeClassMacroOneArg(id target, SEL sel, id arg)
 	XCTAssertTrue([MacroableTestObject hasMacro:sel2]);
 }
 
+- (void)testMacro_NonBlockMacroBlock_RollsBackAndReturnsNO
+{
+	SEL sel = NSSelectorFromString(@"testMacroNonBlockRollback");
+	BOOL ok = [MacroableTestObject macro:sel macroBlock:(id)@"not-a-block"];
+	XCTAssertFalse(ok);
+	XCTAssertFalse([MacroableTestObject hasMacro:sel], @"a rejected non-block macro must leave no meta entry");
+}
+
 // ===========================================================================
 #pragma mark - hasMacro:
 // ===========================================================================
@@ -505,6 +513,15 @@ static id invokeClassMacroOneArg(id target, SEL sel, id arg)
 	SEL sel = NSSelectorFromString(@"testObjMacroNilBlockNone");
 	BOOL result = [obj objectMacro:sel macroBlock:nil];
 	XCTAssertTrue(result);
+}
+
+- (void)testObjectMacro_NonBlockMacroBlock_RollsBackAndReturnsNO
+{
+	MacroableTestObject *obj = MacroableTestObject.new;
+	SEL sel = NSSelectorFromString(@"testObjMacroNonBlockRollback");
+	BOOL ok = [obj objectMacro:sel macroBlock:(id)@"not-a-block"];
+	XCTAssertFalse(ok);
+	XCTAssertFalse([obj hasObjectMacro:sel], @"a rejected non-block object macro must leave no meta entry");
 }
 
 // ===========================================================================

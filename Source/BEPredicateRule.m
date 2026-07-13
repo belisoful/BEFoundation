@@ -3,8 +3,11 @@
  @copyright		-© 2025 Delicense - @belisoful. All rights released.
  @date			2025-01-01
  @author		belisoful@icloud.com
- @abstract
- @discussion
+ @abstract		Implements BEPredicateRule and the BEPredicateRuleSupport collection categories.
+ @discussion	BEPredicateRule wraps an NSPredicate with an outcome, a sortable priority, and
+				NSSecureCoding/NSCopying support. The NSArray, NSSet, and NSOrderedSet categories
+				evaluate rules in ascending priority order via ruleOutcomeWithObject: and return
+				the outcome of the first matching non-N/A rule.
 */
 
 #import <CommonCrypto/CommonDigest.h>
@@ -32,20 +35,20 @@ NSInteger	const  BEPredicateRuleDefaultPriority = 0;
 
 - (NSNumber *)itemPriority
 {
-	return _itemPriority ? _itemPriority : self.defaultItemPriority;
+	return _itemPriority != nil ? _itemPriority : self.defaultItemPriority;
 }
 
 
 - (void)setItemPriority:(NSNumber *)priority
 {
-	if (!priority || [priority isKindOfClass:NSNumber.class])
+	if (priority == nil || [priority isKindOfClass:NSNumber.class])
 		_itemPriority = priority;
 }
 
 
 - (NSInteger)itemPriorityInteger
 {
-	return _itemPriority ? _itemPriority.integerValue : BEPredicateRuleDefaultPriority;
+	return _itemPriority != nil ? _itemPriority.integerValue : BEPredicateRuleDefaultPriority;
 }
 
 
@@ -57,7 +60,7 @@ NSInteger	const  BEPredicateRuleDefaultPriority = 0;
 
 - (double)itemPriorityDouble
 {
-	return _itemPriority ? _itemPriority.doubleValue : (double)BEPredicateRuleDefaultPriority;
+	return _itemPriority != nil ? _itemPriority.doubleValue : (double)BEPredicateRuleDefaultPriority;
 }
 
 
@@ -404,8 +407,8 @@ NSInteger	const  BEPredicateRuleDefaultPriority = 0;
 	[coder encodeObject:_predicate forKey:@"predicate"];
 	[coder encodeInteger:_outcome forKey:@"outcome"];
 	[coder encodeBool:_isUniqueItemPriority forKey:@"isUniqueItemPriority"];
-	[coder encodeBool:!_itemPriority forKey:@"defaultItemPriority"];
-	if (_itemPriority) {
+	[coder encodeBool:(_itemPriority == nil) forKey:@"defaultItemPriority"];
+	if (_itemPriority != nil) {
 		[coder encodeObject:_itemPriority forKey:@"priority"];
 	}
 }
@@ -441,8 +444,10 @@ NSInteger	const  BEPredicateRuleDefaultPriority = 0;
 	// Priority is folded in only for isUniqueItemPriority rules. This stays consistent with
 	// -isEqual: because -isEqual: requires the isUniqueItemPriority flag itself to match, so two
 	// equal rules always agree on whether priority participates in both equality and the hash.
+	// Fold the accessor's value, never the raw ivar: -isEqual: compares self.itemPriority (a nil
+	// ivar resolves to the default priority), so an unset priority must hash like the default.
 	if (_isUniqueItemPriority) {
-		valueString = [NSString stringWithFormat:@"%@", _itemPriority];
+		valueString = self.itemPriority.stringValue;
 		 const char *cStr2 = [valueString UTF8String];
 
 		 // Compute SHA1 hash

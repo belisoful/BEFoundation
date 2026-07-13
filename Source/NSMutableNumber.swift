@@ -2,8 +2,11 @@
  @header		NSMutableNumber.swift
  @copyright		-© 2025 Delicense - @belisoful. All rights released.
  @date			2025-01-01
- @abstract
- @discussion
+ @abstract		Experimental Swift operator overloads for NSMutableNumber.
+ @discussion	The file is not a member of any build target and its body is
+				commented out. It is reference material for a future Swift
+				arithmetic module that forwards to the Objective-C
+				implementation.
 */
 /*
  import Foundation

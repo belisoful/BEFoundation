@@ -27,25 +27,25 @@ NSInteger	const  BEDefaultSortedItemPriority = 0;
 		if (aPriorityItem) {
 			a = [obj1 itemPriority];
 		}
-		if (!a && [obj1 conformsToProtocol:@protocol(BEPriorityCapture)]) {
+		if (a == nil && [obj1 conformsToProtocol:@protocol(BEPriorityCapture)]) {
 			[obj1 setItemPriority:defaultPriority];
 			if (aPriorityItem) {
 				a = [obj1 itemPriority];
 			}
 		}
-		if (!a) {
+		if (a == nil) {
 			a = defaultPriority;
 		}
 		if (bPriorityItem) {
 			b = [obj2 itemPriority];
 		}
-		if (!b && [obj2 conformsToProtocol:@protocol(BEPriorityCapture)]) {
+		if (b == nil && [obj2 conformsToProtocol:@protocol(BEPriorityCapture)]) {
 			[obj2 setItemPriority:defaultPriority];
 			if (bPriorityItem) {
 				b = [obj2 itemPriority];
 			}
 		}
-		if (!b) {
+		if (b == nil) {
 			b = defaultPriority;
 		}
 		

@@ -353,9 +353,36 @@
 	
 	reference.outcome = BEPredicateRuleAccept;
 	XCTAssertEqual([reference2 hash], [reference hash]);
-	
-	
-	
+
+
+
+}
+
+/*!
+ @testcase testBEPredicateRule_hash_unsetPriorityHashesLikeDefault
+ @abstract A unique rule with an unset priority is isEqual: to a unique rule whose priority is
+		   explicitly the default (0), so the two must also hash identically.
+ @discussion Before the fix -hash folded the raw nil ivar ("(null)") while -isEqual: compared
+			 the accessor (nil resolves to @0), so equal rules hashed differently. A decoded
+			 default-priority rule (nil ivar) hit the same divergence.
+ */
+- (void)testBEPredicateRule_hash_unsetPriorityHashesLikeDefault
+{
+	BEPredicateRule *unsetPriority = [BEPredicateRule ruleWithFormat:@"age >= %d", 30];
+	BEPredicateRule *explicitDefault = [BEPredicateRule ruleWithFormat:@"age >= %d", 30];
+	unsetPriority.isUniqueItemPriority = YES;
+	explicitDefault.isUniqueItemPriority = YES;
+	explicitDefault.itemPriorityInteger = 0;
+
+	XCTAssertTrue([unsetPriority isEqual:explicitDefault]);
+	XCTAssertEqual([unsetPriority hash], [explicitDefault hash],
+				   @"Equal rules must hash identically (unset priority vs explicit default)");
+
+	// The pair must behave as one member in hashed collections.
+	NSMutableSet *set = [NSMutableSet setWithObject:unsetPriority];
+	XCTAssertTrue([set containsObject:explicitDefault]);
+	[set addObject:explicitDefault];
+	XCTAssertEqual(set.count, 1u);
 }
 
 
@@ -1015,6 +1042,16 @@
 	XCTAssertEqual([rules ruleOutcomeWithObject:person substitutionVariables:bindings2], BEPredicateRuleReject);
 }
 
+- (void)testNSArray_ruleOutcomeWithObject_matchingNAOutcomeIsSkipped
+{
+	// A lower-priority rule that matches but carries the neutral NA outcome must
+	// not terminate the search; the higher-priority Accept rule wins.
+	BEPredicateRule *na  = [BEPredicateRule ruleWithPriorityInteger:0 format:@"age >= %d", 0];
+	BEPredicateRule *acc = [BEPredicateRule ruleWithOutcome:BEPredicateRuleAccept priorityInteger:10 format:@"age >= %d", 0];
+	NSArray *rules = @[na, acc];
+	XCTAssertEqual([rules ruleOutcomeWithObject:@{@"age": @25}], BEPredicateRuleAccept);
+}
+
 
 #pragma mark - NSSet predicateOutcomeWithObject
 
@@ -1063,6 +1100,14 @@
 	XCTAssertEqual([rules ruleOutcomeWithObject:person substitutionVariables:bindings2], BEPredicateRuleReject);
 }
 
+- (void)testNSSet_ruleOutcomeWithObject_matchingNAOutcomeIsSkipped
+{
+	BEPredicateRule *na  = [BEPredicateRule ruleWithPriorityInteger:0 format:@"age >= %d", 0];
+	BEPredicateRule *acc = [BEPredicateRule ruleWithOutcome:BEPredicateRuleAccept priorityInteger:10 format:@"age >= %d", 0];
+	NSSet *rules = [NSSet setWithArray:@[na, acc]];
+	XCTAssertEqual([rules ruleOutcomeWithObject:@{@"age": @25}], BEPredicateRuleAccept);
+}
+
 
 #pragma mark - NSOrderedSet ruleOutcomeWithObject
 
@@ -1109,6 +1154,14 @@
 	XCTAssertEqual([rules ruleOutcomeWithObject:person substitutionVariables:bindings], BEPredicateRuleReject);
 	equalRule.itemPriority = nil;
 	XCTAssertEqual([rules ruleOutcomeWithObject:person substitutionVariables:bindings2], BEPredicateRuleReject);
+}
+
+- (void)testNSOrderedSet_ruleOutcomeWithObject_matchingNAOutcomeIsSkipped
+{
+	BEPredicateRule *na  = [BEPredicateRule ruleWithPriorityInteger:0 format:@"age >= %d", 0];
+	BEPredicateRule *acc = [BEPredicateRule ruleWithOutcome:BEPredicateRuleAccept priorityInteger:10 format:@"age >= %d", 0];
+	NSOrderedSet *rules = [NSOrderedSet orderedSetWithArray:@[na, acc]];
+	XCTAssertEqual([rules ruleOutcomeWithObject:@{@"age": @25}], BEPredicateRuleAccept);
 }
 
 @end

@@ -223,7 +223,7 @@
 - (BOOL)isIndexedSubscriptNumeric {
 	NSNumber *value = objc_getAssociatedObject(self, @selector(isIndexedSubscriptNumeric));
 	__block BOOL useNumeric = NO;
-	if (value) {
+	if (value != nil) {
 		useNumeric = value.boolValue;
 	} else {
 		__block BOOL useString = NO;

@@ -49,7 +49,7 @@ NS_ASSUME_NONNULL_BEGIN
  @abstract   Pins the receiver's four edges to another view's edges with the given insets.
  @param      view   The view to pin to (typically an ancestor or sibling in the same hierarchy).
  @param      insets Distances from @c view's edges (@c left → leading, @c right → trailing).
- @return     The four activated constraints.
+ @return     The four activated constraints, or an empty array if @c view is nil.
  */
 - (NSArray<NSLayoutConstraint *> *)pinEdgesToView:(BEView *)view insets:(BEEdgeInsets)insets;
 

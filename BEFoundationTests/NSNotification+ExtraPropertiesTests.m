@@ -75,9 +75,17 @@
 	NSDictionary *userInfo = @{@"tag": @(userTag), @"identifier" : userIdentifier};
 	
 	NSNotification *notification = [NSNotification.alloc initWithName:@"NonspecificName" object:nil userInfo:userInfo];
-	
+
 	XCTAssertEqual(notification.tag, userTag);
 	XCTAssertEqual(notification.identifier, userIdentifier);
+}
+
+- (void)testTag_UserInfoNonNumberTag_FallsBackToZero
+{
+	NSDictionary *userInfo = @{@"tag": @"not-a-number"};
+	NSNotification *notification = [NSNotification.alloc initWithName:@"NonspecificName" object:nil userInfo:userInfo];
+
+	XCTAssertEqual(notification.tag, 0);
 }
 
 

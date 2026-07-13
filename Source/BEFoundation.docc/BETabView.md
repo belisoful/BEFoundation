@@ -16,10 +16,6 @@ This is useful for conditional UI where certain tabs should only be visible unde
 
 ## Usage
 
-### Main Class
-
-- [BETabView](doc:BETabView)
-
 ### Tab Item Categories
 
 - [NSTabViewItem (TabViewItemHidden)](doc:NSTabViewItem-TabViewItemHidden)
@@ -29,7 +25,7 @@ This is useful for conditional UI where certain tabs should only be visible unde
 
 - [BETabViewDelegate](doc:BETabViewDelegate)
 
-## Usage
+## Examples
 
 ### Basic Tab Hiding and Showing
 

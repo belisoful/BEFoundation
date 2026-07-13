@@ -669,6 +669,43 @@
 	XCTAssertEqual(aUInt % bUInt, INT64_MAX, @"modulus number is 'negative' thus huge as unsigned.");
 }
 
+/*!
+ @testcase testDivideNumber_MixedSignGenuinelyUnsignedOperand
+ @abstract Divide with a genuinely unsigned-encoded narrow operand ('I') and a signed operand
+		   computes in the signed domain of the promoted result type.
+ @discussion This Foundation canonicalizes small unsigned values to signed encodings
+			 (numberWithUnsignedInt:2 reports 'q'), so the mixed cases above never exercise a
+			 true unsigned encoding; NSMockNumber preserves it, matching encoding-preserving
+			 NSNumber subclasses such as NSMutableNumber. Before the fix the result type was
+			 remapped to signed while the arithmetic still ran unsigned, producing e.g.
+			 9223372036854775803 for -10 / 2u.
+ */
+- (void)testDivideNumber_MixedSignGenuinelyUnsignedOperand {
+	NSNumber *negTen = [NSNumber numberWithInt:-10];
+	NSMockNumber *twoUnsigned = [NSMockNumber numberWithUnsignedInt:2];
+	XCTAssertEqual(strcmp(twoUnsigned.objCType, @encode(unsigned int)), 0,
+				   @"Pre-condition: operand must carry a genuinely unsigned encoding");
+
+	XCTAssertEqualObjects([negTen divideNumber:twoUnsigned], @(-5));
+	XCTAssertEqualObjects([[NSMockNumber numberWithUnsignedInt:20] divideNumber:[NSNumber numberWithInt:-10]], @(-2));
+	XCTAssertEqualObjects([[NSMockNumber numberWithUnsignedInt:20] divideNumber:twoUnsigned], @(10));
+}
+
+/*!
+ @testcase testModulusNumber_MixedSignGenuinelyUnsignedOperand
+ @abstract Modulus with a genuinely unsigned-encoded narrow operand ('I') and a signed operand
+		   follows C truncation semantics in the signed domain.
+ */
+- (void)testModulusNumber_MixedSignGenuinelyUnsignedOperand {
+	NSNumber *negTen = [NSNumber numberWithInt:-10];
+	NSMockNumber *threeUnsigned = [NSMockNumber numberWithUnsignedInt:3];
+	XCTAssertEqual(strcmp(threeUnsigned.objCType, @encode(unsigned int)), 0,
+				   @"Pre-condition: operand must carry a genuinely unsigned encoding");
+
+	XCTAssertEqualObjects([negTen modulusNumber:threeUnsigned], @(-1));
+	XCTAssertEqualObjects([[NSMockNumber numberWithUnsignedInt:20] modulusNumber:[NSNumber numberWithInt:-3]], @(2));
+}
+
 - (void)testModulusInt {
 	NSNumber *a = @111;
 	SInt64 b = -9;
@@ -1608,6 +1645,16 @@
 	// Invalid configurations return 0.
 	XCTAssertEqual(floatToFpXX(1, -3, 10, INT_MIN, YES), 0);
 	XCTAssertEqual(floatToFpXX(1, 40, 30, INT_MIN, YES), 0);  // exceeds 64 bits
+	// Explicit out-of-range exponentBias returns 0 (fp16 bias range is 0..31).
+	XCTAssertEqual(floatToFpXX(1.0, 5, 10, -1,  YES), 0);   // negative explicit bias
+	XCTAssertEqual(floatToFpXX(1.0, 5, 10, 100, YES), 0);   // bias > exponentMaxValue (31)
+
+	// Non-finite inputs saturate at the maximum representable magnitude (the format has no
+	// inf/NaN encodings); before the guard these hit (int64_t)log2(inf) undefined behavior
+	// whose result changed with optimization level.
+	XCTAssertEqual(floatToFpXX(INFINITY,  5, 10, INT_MIN, NO), 0x7FFF);
+	XCTAssertEqual(floatToFpXX(-INFINITY, 5, 10, INT_MIN, NO), 0xFFFF);
+	XCTAssertEqual(floatToFpXX(NAN,       5, 10, INT_MIN, NO), 0x7FFF);
 }
 
 @end

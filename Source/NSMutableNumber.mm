@@ -583,6 +583,10 @@
 }
 
 - (BOOL) boolValue {
+	// Reals compare as double: fractional values, NaN, and the infinities are nonzero, matching NSNumber.
+	if (_number.isReal()) {
+		return (_number.get<double>() != 0.0) ? YES : NO;
+	}
 	return (_number.get<long long>() == 0) ? NO : YES;
 }
 

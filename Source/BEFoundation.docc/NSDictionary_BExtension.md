@@ -107,7 +107,7 @@ dict[1] = @"second";
 
 ```objc
 NSMutableDictionary *dict1 = [NSMutableDictionary dictionaryWithDictionary:@{
-    @"a": @{@"x": @1, @"y": @2},
+    @"a": [@{@"x": @1, @"y": @2} mutableCopy],
     @"b": @3
 }];
 NSDictionary *dict2 = @{
@@ -123,6 +123,8 @@ NSDictionary *dict2 = @{
 [dict1 addEntriesFromDictionaryRecursive:dict2];
 // dict1 is now: {@"a": @{@"x": @1, @"y": @20, @"z": @30}, @"b": @3, @"c": @4}
 ```
+
+Recursive descent requires the receiver's existing nested value to be an `NSMutableDictionary` (hence the `mutableCopy` above). The `flags:` variants accept `BEDictionarySelfMutableCollectionFlag` to convert an immutable nested dictionary to mutable first. Without either, merge keeps an immutable nested dictionary unchanged and add replaces it by reference.
 
 ### Combine Flags
 

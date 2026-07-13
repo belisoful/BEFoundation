@@ -40,7 +40,7 @@
 + (BECharacterSetEquality)isClassEqualToNSCharacterSet
 {
 	NSNumber *isNSCharacterSetEqual = objc_getAssociatedObject(self, @selector(isClassEqualToNSCharacterSet));
-	if (isNSCharacterSetEqual) {
+	if (isNSCharacterSetEqual != nil) {
 		return isNSCharacterSetEqual.intValue;
 	}
 	return NSCharacterSetUnequal;
@@ -187,20 +187,16 @@
 
 /*!
  @method		hash
- @abstract		This returns the hash of the characterSet NSCharacterSet, possibly xor-ed.
- @discussion	If and when the instance or class is set to not equate to NSCharacterSet,
-				then this will xor the NSCharacterSet hash with a static number.
-				The static number does not change over time and provides BECharacterSet
-				hash to be equal if the character sets are the same.
+ @abstract		This returns the hash of the characterSet NSCharacterSet.
+ @discussion	The hash is independent of the equality-style setting. Two BECharacterSet
+				instances with equal characters compare equal regardless of either instance's
+				isEqualToNSCharacterSet setting, and a BECharacterSet configured to equate with
+				NSCharacterSet compares equal to the plain set, so the hash must match the plain
+				NSCharacterSet hash in every case.
  */
 - (NSUInteger)hash
 {
-	BECharacterSetEquality type = _isEqualToNSCharacterSet ? _isEqualToNSCharacterSet : self.class.isClassEqualToNSCharacterSet;
-	NSUInteger hash = [self.characterSet hash];
-	if (type <= 0) {
-		hash ^= 0x8af00839efdd24bf;
-	}
-	return hash;
+	return [self.characterSet hash];
 }
 
 /*!

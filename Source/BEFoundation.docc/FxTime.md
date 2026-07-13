@@ -110,7 +110,8 @@ FxTime *limit = [[FxTime alloc] initWithSeconds:3.0 preferredTimescale:600];
 ### Time Conversion
 
 ```objc
-FxTime *time = [[FxTime alloc] initWithSeconds:3.5 preferredTimescale:600];
+// convertTimeScale:roundingMethod: mutates the receiver, so use FxMutableTime.
+FxMutableTime *time = [[FxMutableTime alloc] initWithSeconds:3.5 preferredTimescale:600];
 
 // Convert to different timescale
 [time convertTimeScale:30 roundingMethod:kCMTimeRoundingMethod_Default];

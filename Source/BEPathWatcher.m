@@ -82,7 +82,7 @@ unsigned long const BEPathWatcherDefaultEventMask =
 	@synchronized (_lock) {
 		// Compare under the lock; reading _path unguarded could race setPath: on another thread.
 		// isEqualToString: is symmetric and nil-tolerant, so one direction suffices.
-		if ((!_path && !value) || _path == value || [_path isEqualToString:value]) {
+		if ((!_path && !value) || _path == value || (value && [_path isEqualToString:value])) {
 			return;
 		}
 
@@ -96,6 +96,26 @@ unsigned long const BEPathWatcherDefaultEventMask =
 		if (isActive) {
 			[self startMonitoring];
 		}
+	}
+}
+
+// Synchronized like the path getter: the mutators below reassign target, selector, and
+// eventHandler as a unit under _lock, so an unguarded read could race the swap.
+- (id)target {
+	@synchronized (_lock) {
+		return _target;
+	}
+}
+
+- (SEL)selector {
+	@synchronized (_lock) {
+		return _selector;
+	}
+}
+
+- (void (^)(BEPathWatcher *, unsigned long))eventHandler {
+	@synchronized (_lock) {
+		return _block;
 	}
 }
 
@@ -459,37 +479,5 @@ unsigned long const BEPathWatcherDefaultEventMask =
 }
 
 #pragma mark - Internal Hooks
-/*
- - (void)pathDidChangeWithFlags:(unsigned long)flags {
-	// This is an internal method called whenever the path changes.
-	// Subclasses can override this method to add custom behavior without
-	// interfering with the public callbacks.
-
-	NSLog(@"Internal hook: Path at '%@' changed.", self.path);
-
-	// You can now inspect the 'flags' to determine the specific change
-	if (flags & DISPATCH_VNODE_WRITE) {
-		NSLog(@"  - Content written or directory contents changed (creation/deletion/rename of children).");
-	}
-	if (flags & DISPATCH_VNODE_DELETE) {
-		NSLog(@"  - Path was deleted. BEPathWatcher will automatically stopMonitoring.");
-	}
-	if (flags & DISPATCH_VNODE_ATTRIB) {
-		NSLog(@"  - Attributes (permissions, modification date, etc.) changed.");
-	}
-	if (flags & DISPATCH_VNODE_EXTEND) {
-		NSLog(@"  - File size extended.");
-	}
-	if (flags & DISPATCH_VNODE_LINK) {
-		NSLog(@"  - Link count changed.");
-	}
-	if (flags & DISPATCH_VNODE_RENAME) {
-		NSLog(@"  - Path was renamed. BEPathWatcher will automatically stopMonitoring.");
-	}
-	if (flags & DISPATCH_VNODE_REVOKE) {
-		NSLog(@"  - Access to the file descriptor was revoked. BEPathWatcher will automatically stopMonitoring.");
-	}
-}
-*/
 
 @end

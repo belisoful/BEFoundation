@@ -273,7 +273,7 @@
 
 /**
  @brief Thread safe getter and setter for the value casted to BOOL type.
- @detailed @b NO means 0 value of any type and YES - all other(any negative or any positive value).
+ @detailed @b NO means a 0 value of any type; @b YES means any other value, including NaN.
  */
 @property (atomic, assign, readwrite) BOOL boolValue;
 

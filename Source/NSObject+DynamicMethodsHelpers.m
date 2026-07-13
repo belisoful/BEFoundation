@@ -144,7 +144,7 @@ NSOrderedSet<Protocol *> *recursiveProtocolsFromProtocol(Protocol *protocol)
 + (BEDynamicMethodsSwizzleState)statusClassSwizzled:(Class _Nonnull)cls
 {
 	NSNumber *isSwizzled = objc_getAssociatedObject(cls, [self swizzleKey]);
-	if (!isSwizzled) {
+	if (isSwizzled == nil) {
 		return DMSwizzleNone;
 	}
 	return isSwizzled.boolValue ? DMSwizzleOn : DMSwizzleOff;

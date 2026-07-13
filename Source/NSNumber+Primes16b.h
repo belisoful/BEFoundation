@@ -110,7 +110,7 @@ extern uint16_t const NSPrimeNumbers16Bit[1 + NSPrimeNumbers16BitCount + 1];
  @return The index in NSPrimeNumbers16Bit of the nearest prime, or NSNotFound if no valid prime exists.
  @discussion This method uses standard rounding behavior (round up if exactly halfway).
  Returns NSNotFound if value is less than 1 or at-or-greater-than the midpoint between
- UInt16LargestPrime and UInt17NextLargestPrime (65529) — the exact midpoint is excluded because
+ UInt16LargestPrime and UInt17NextLargestPrime (65529). The exact midpoint is excluded because
  rounding it up would escape the 16-bit prime range.
  */
 + (NSInteger)roundPrimeIndex16:(NSUInteger)value;

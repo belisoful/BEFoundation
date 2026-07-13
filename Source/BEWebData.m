@@ -31,6 +31,7 @@ NSDataReadingOptions const BEDataReadingSynchronous = (0);
 @synthesize dataTask = _dataTask;
 @synthesize dataTaskResponse = _dataTaskResponse;
 @synthesize dataTaskError = _dataTaskError;
+@synthesize dataTaskCompletionHandler = _dataTaskCompletionHandler;
 
 static NSURLSessionConfiguration *s_defaultSessionConfiguration = nil;
 
@@ -138,6 +139,10 @@ static NSURLSessionConfiguration *s_defaultSessionConfiguration = nil;
 	if (callNow && handler) {
 		handler(self, response, taskError);
 	}
+}
+
+- (nullable BEWebDataCompletionBlock)dataTaskCompletionHandler {
+	@synchronized (self) { return _dataTaskCompletionHandler; }
 }
 
 - (BOOL)isComplete {
@@ -627,17 +632,21 @@ static NSURLSessionConfiguration *s_defaultSessionConfiguration = nil;
 - (NSString *)description {
 	NSMutableString *desc = [NSMutableString stringWithFormat:@"<BEWebData %p; length = %lu",
 							 self, (unsigned long)self.length];
-	
-	if (_MIMEType) {
-		[desc appendFormat:@"; MIMEType = %@", _MIMEType];
+
+	// Read through the locked getters; an in-flight asynchronous load writes the metadata
+	// ivars on a background thread.
+	NSString *MIMEType = self.MIMEType;
+	if (MIMEType) {
+		[desc appendFormat:@"; MIMEType = %@", MIMEType];
 	}
-	if (_charset) {
-		[desc appendFormat:@"; charset = %@", _charset];
+	NSString *charset = self.charset;
+	if (charset) {
+		[desc appendFormat:@"; charset = %@", charset];
 	}
-	if (_base64) {
+	if (self.isBase64) {
 		[desc appendString:@"; base64 = YES"];
 	}
-	
+
 	[desc appendString:@">"];
 	return desc;
 }

@@ -4,19 +4,27 @@
  @author     belisoful@icloud.com
  @abstract   CGImage/CIImage/data round-trips and resizing for @c BEImage
              (@c NSImage on macOS, @c UIImage on iOS).
- @discussion @c UIImage already exposes @c CGImage, @c CIImage, @c +imageWithCGImage: and
-             @c +imageWithCIImage:; @c NSImage does not, and getting bytes out of an @c NSImage
-             (via @c TIFFRepresentation and @c NSBitmapImageRep) and resizing it are both
-             awkward. This category brings @c NSImage up to that parity (those four members are
-             macOS-only here) and adds @c pngData / @c jpegData / pixel size / resizing to both
-             platforms, so the same call sites compile and behave on each.
+ @discussion @c UIImage exposes @c CGImage, @c CIImage, @c +imageWithCGImage:,
+             @c +imageWithCIImage:, @c pngData, and JPEG encoding; @c NSImage does not, and
+             getting bytes out of an @c NSImage (via @c TIFFRepresentation and
+             @c NSBitmapImageRep) and resizing it are both awkward. This category provides one
+             API for those operations, plus pixel size and resizing, on both platforms, so the
+             same call sites compile and behave on each.
+
+             The round-trip and data members use representation-style names
+             (@c imageFromCGImage:, @c pngRepresentation, following the @c TIFFRepresentation
+             idiom) rather than UIImage's spellings, renamed in 1.1 from the 1.0 UIImage-parity
+             names. Apple frameworks attach private same-named category methods to these
+             classes at runtime (PencilKit, when loaded, adds @c +[NSImage imageWithCGImage:]
+             and @c -CGImage), and which duplicate method wins is undefined, so a category on a
+             framework class must not reuse Apple's method names. The factories return @c nil
+             for a @c NULL / @c nil input on both platforms.
 
              @code
-             // CGImage/CIImage parity is macOS-only; pngData and resizing are cross-platform.
-             CIImage *ci = source.CIImage;
-             BEImage *rebuilt = [BEImage imageWithCIImage:ci];
+             CIImage *ci = source.CIImageRepresentation;
+             BEImage *rebuilt = [BEImage imageFromCIImage:ci];
              BEImage *thumb = [rebuilt resizedToFitSize:CGSizeMake(128, 128)];
-             NSData *png = thumb.pngData;
+             NSData *png = thumb.pngRepresentation;
              @endcode
  */
 
@@ -31,39 +39,42 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface BEImage (BExtension)
 
-#if TARGET_OS_OSX
-#pragma mark - CGImage / CIImage parity (UIImage already provides these)
+#pragma mark - CGImage / CIImage round-trips
 
-/*! @property CGImage The image rendered as a @c CGImage, or @c NULL if it cannot be represented. */
-@property (nonatomic, readonly, nullable) CGImageRef CGImage;
+/*! @property CGImageRepresentation The image rendered as a @c CGImage, or @c NULL if it
+    cannot be represented. On iOS this is the underlying @c CGImage; a @c CIImage -backed
+    @c UIImage returns @c NULL. */
+@property (nonatomic, readonly, nullable) CGImageRef CGImageRepresentation;
 
-/*! @property CIImage The image as a @c CIImage, or @c nil if it cannot be represented. */
-@property (nonatomic, readonly, nullable) CIImage *CIImage;
+/*! @property CIImageRepresentation The image as a @c CIImage, or @c nil if it cannot be
+    represented. On iOS a bitmap-backed image is wrapped via its @c CGImage. */
+@property (nonatomic, readonly, nullable) CIImage *CIImageRepresentation;
 
-/*! @method imageWithCGImage: Creates an image from a @c CGImage at its pixel dimensions.  Returns @c nil for a @c NULL image. */
-+ (nullable BEImage *)imageWithCGImage:(nullable CGImageRef)cgImage;
+/*! @method imageFromCGImage: Creates an image from a @c CGImage at its pixel dimensions.
+    Returns @c nil for a @c NULL image, on both platforms. */
++ (nullable BEImage *)imageFromCGImage:(nullable CGImageRef)cgImage;
 
-/*! @method imageWithCIImage: Creates an image backed by a @c CIImage.  Returns @c nil for a @c nil image. */
-+ (nullable BEImage *)imageWithCIImage:(nullable CIImage *)ciImage;
-#endif
+/*! @method imageFromCIImage: Creates an image backed by a @c CIImage.
+    Returns @c nil for a @c nil image, on both platforms. */
++ (nullable BEImage *)imageFromCIImage:(nullable CIImage *)ciImage;
 
 #pragma mark - Data
 
-/*! @property pngData PNG-encoded data for the image, or @c nil on failure. */
-@property (nonatomic, readonly, nullable) NSData *pngData;
+/*! @property pngRepresentation PNG-encoded data for the image, or @c nil on failure. */
+@property (nonatomic, readonly, nullable) NSData *pngRepresentation;
 
 /*!
- @method     jpegDataWithCompressionQuality:
+ @method     jpegRepresentationWithCompressionQuality:
  @abstract   JPEG-encoded data for the image.
  @param      quality 0.0 (smallest) to 1.0 (best). Values outside the range are clamped.
  @return     JPEG data, or @c nil on failure.
  */
-- (nullable NSData *)jpegDataWithCompressionQuality:(CGFloat)quality;
+- (nullable NSData *)jpegRepresentationWithCompressionQuality:(CGFloat)quality;
 
 #pragma mark - Size & resizing
 
-/*! @property pixelSize The image's size in pixels (point size × scale), as opposed to its logical
-    point @c size. */
+/*! @property pixelSize The image's size in pixels (the backing @c CGImage dimensions on macOS, or point size times scale on iOS), as opposed to its
+    logical point @c size. */
 @property (nonatomic, readonly) CGSize pixelSize;
 
 /*!

@@ -1,6 +1,6 @@
 # ``BEFoundation``
 
-**BEFoundation** is a powerful Objective-C framework that enhances Apple's Foundation framework with advanced, reusable components. It provides a comprehensive set of utilities for notification management, runtime manipulation, number and data handling, image processing, data structures, and more—all designed for robustness, clarity, and testability.
+**BEFoundation** is an Objective-C framework that extends Apple's Foundation framework with reusable components. It provides utilities for notification management, runtime manipulation, number and data handling, image processing, and data structures.
 
 ## Overview
 
@@ -32,7 +32,7 @@ BEFoundation extends the utility of Foundation classes to assist in project deve
 - **Web Data** — [BEWebData](doc:BEWebData) for data URLs, [NSData+URLDownload](doc:NSData_URLDownload) for async downloads
 - **URL Extensions** — [NSURL+Data](doc:NSURL_Data) for data URL creation and parsing
 - **File Caching** — [BEFileCache](doc:BEFileCache) for persistent file-backed caching
-- **Security Scoped URLs** — [BESecurityScopedURLManager](doc:BESecurityScopedURLManager) for bookmark lifecycle management
+- **Security Scoped URLs** — [BESecurityScopedURLManager](doc:BESecurityScopedURLManager) for bookmark lifecycle management, with [NSOpenPanel integration](doc:NSOpenPanel_BESecurityScopedURLManager) on macOS
 - **RFC Date Formats** — [NSDateFormatterRFC3339](doc:NSDateFormatterRFC3339) and [NSDateFormatterRFC2822](doc:NSDateFormatterRFC2822) for standardized date formatting
 - **Block Signatures** — [NSMethodSignature+BlockSignatures](doc:NSMethodSignature_BlockSignatures) for working with block type encodings
 
@@ -136,6 +136,7 @@ BEFoundation extends the utility of Foundation classes to assist in project deve
 - <doc:BETabView>
 - <doc:BEWindowController>
 - <doc:BEWindowControllerManager>
+- <doc:NSOpenPanel_BESecurityScopedURLManager>
 - <doc:NSPasteboard_BExtension>
 
 ### Documentation Index
