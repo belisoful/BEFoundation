@@ -5,17 +5,17 @@
 
 # BEFoundation
 
-**BEFoundation** is a powerful Objective-C framework that enhances Apple's Foundation framework with advanced, reusable components. It provides a comprehensive set of utilities for notification management, runtime manipulation, number and data handling, image processing, data structures, and more — all designed for robustness, clarity, and testability.
+**BEFoundation** is an Objective-C framework that extends Apple's Foundation with utilities for notifications, runtime manipulation, number and data handling, image processing, data structures, file and path monitoring, security-scoped bookmarks, caching, and more. It is cross-platform (macOS and iOS) and ships as a Universal binary (arm64 + x86_64).
 
 ---
 
 ## 📖 Documentation
 
-For comprehensive documentation, see the [BEFoundation Documentation](Source/BEFoundation.docc/BEFoundation.md) or the [Documentation Index](Source/BEFoundation.docc/Index.md).
+For full documentation, see the [BEFoundation Documentation](Source/BEFoundation.docc/BEFoundation.md) or the [Documentation Index](Source/BEFoundation.docc/Index.md).
 
 ---
 
-##  Framework Library Downloads
+## 📥 Framework Library Downloads
 
  - [BEFoundation.framework.zip v1.1.0 (Universal: arm64 x86_64)](https://github.com/belisoful/BEFoundation/blob/main/Framework%20Release%20v1.1.0/BEFoundation%20Universal%20(arm64%2C%20x86_64)/BEFoundation.framework.zip)
  - [BEFoundation.framework.zip v1.1.0 (arm64)](https://github.com/belisoful/BEFoundation/blob/main/Framework%20Release%20v1.1.0/BEFoundation%20(arm64)/BEFoundation.framework.zip)
@@ -59,6 +59,13 @@ For comprehensive documentation, see the [BEFoundation Documentation](Source/BEF
 ### 📡 File & Path Monitoring
 - [`BEPathWatcher`](Source/BEFoundation.docc/BEPathWatcher.md): Path watcher class to observe file system changes
 
+### 💾 Networking, Data & Storage
+- [`NSURL+Data`](Source/BEFoundation.docc/NSURL_Data.md): create and read `data:`-scheme URLs
+- [`BEWebData`](Source/BEFoundation.docc/BEWebData.md): read a resource through one interface, whether it is a `data:` URL, an `http(s)` download, or a local file
+- [`NSData+URLDownload`](Source/BEFoundation.docc/NSData_URLDownload.md): download remote data in memory or to a temporary file
+- [`BEFileCache`](Source/BEFoundation.docc/BEFileCache.md): a two-tier cache — an `NSCache` memory tier over a durable on-disk tier indexed for O(1) cold start — with count/cost limits, `NSDiscardableContent` awareness, crash-safe reconciliation at launch, and a score-driven eviction policy (last-access recency, `retentionCost`, and an `evictionBalance` dial between age and value density)
+- [`BESecurityScopedURLManager`](Source/BEFoundation.docc/BESecurityScopedURLManager.md): create, resolve, and manage the access lifecycle of security-scoped bookmarks
+
 ### 🧮 Encoding, Numbers, and Dates
 - [`NSCoder+AtIndex`](Source/BEFoundation.docc/NSCoder_AtIndex.md): Indexed encoding/decoding with key control (string or numeric)
 - [`NSCoder+HalfFloat`](Source/BEFoundation.docc/NSCoder_HalfFloat.md): 16-bit float encoding/decoding
@@ -72,24 +79,24 @@ For comprehensive documentation, see the [BEFoundation Documentation](Source/BEF
 
 ### 🧩 Foundation Extensions
 - [`NSObject+DynamicMethods`](Source/BEFoundation.docc/NSObject_DynamicMethods.md): Dynamic protocol conformance implemented by objects and classes
-- `NSObject` Block-based selectors for instances and classes
+- `NSObject`: Block-based selectors for instances and classes
 - Extensions for:
   - [`NSDictionary+BExtension`](Source/BEFoundation.docc/NSDictionary_BExtension.md): numeric subscripts, object conversion, mapping, swapping, adding, and merging
-  - `NSMutableDictionary` numeric subscripts, filtering, swap, and recursive and nonrecursive adding and merging 
+  - `NSMutableDictionary`: numeric subscripts, filtering, swap, and recursive and nonrecursive adding and merging
   - [`NSArray+BExtension`](Source/BEFoundation.docc/NSArray_BExtension.md): mapping, and conversion
-  - `NSMutableArray` removeFirstObject, insert objects at index, and filtering
+  - `NSMutableArray`: removeFirstObject, insert objects at index, and filtering
   - [`NSSet+BExtension`](Source/BEFoundation.docc/NSSet_BExtension.md): conversion, and mapping
-  - `NSMutableSet` filtering
+  - `NSMutableSet`: filtering
   - [`NSOrderedSet+BExtension`](Source/BEFoundation.docc/NSOrderedSet_BExtension.md): conversion, and mapping
-  - `NSMutableOrderedSet` conversion, removing first and last, and filtering
+  - `NSMutableOrderedSet`: conversion, removing first and last, and filtering
   - [`NSString+BExtension`](Source/BEFoundation.docc/NSString_BExtension.md): stringValue (to align with NSNumber and other plist data types), is itself
-  - `NSMutableString` deleteAtIndex
+  - `NSMutableString`: deleteAtIndex
 
 ---
 
 ## 🧪 Unit Testing
 
-BEFoundation includes **comprehensive unit tests** for all major components, using `XCTest`. Tests cover behavior, edge cases, runtime behaviors, and error conditions. In v1.1, unit test coverage was extended to `NSObject+Macroable` (65 tests covering `BEMacroMeta`, class macros, object macros, invocation, isolation, and subclass inheritance).
+BEFoundation ships unit tests for all major components, using `XCTest`, covering behavior, edge cases, runtime behaviors, and error conditions. The suite runs parallelized across test workers. Continuous integration runs it on macOS (arm64), the macOS x86_64 slice, and the iOS Simulator, plus an AddressSanitizer pass and a DocC catalog build. In v1.1, coverage was extended to `NSObject+Macroable` (65 tests covering `BEMacroMeta`, class macros, object macros, invocation, isolation, and subclass inheritance).
 
 ---
 
@@ -144,7 +151,7 @@ BEFoundation was initially conceived and engineered by belisoful@icloud.com to r
  - [`NSURL+Data`](Source/BEFoundation.docc/NSURL_Data.md): categories for creating and reading "data" scheme NSURL.
  - [`BEWebData`](Source/BEFoundation.docc/BEWebData.md): for decoding a "data" scheme within NSURL, download "http/s" files, or read file system files.
  - [`NSData+URLDownload`](Source/BEFoundation.docc/NSData_URLDownload.md): for easy download of internet data via in-memory or temporary file.
- - [`BEFileCache`](Source/BEFoundation.docc/BEFileCache.md): persistent file-backed caching.
+ - [`BEFileCache`](Source/BEFoundation.docc/BEFileCache.md): persistent two-tier (memory + disk) caching with count/cost limits, crash-safe reconciliation at launch, and a configurable score-driven eviction policy (`retentionCost` + `evictionBalance`).
  - [`BESecurityScopedURLManager`](Source/BEFoundation.docc/BESecurityScopedURLManager.md): security-scoped bookmark lifecycle management.
  - [`NSDateFormatterRFC2822`](Source/BEFoundation.docc/NSDateFormatterRFC2822.md): fixed-format RFC 2822 (Internet Message Format) date formatter for email-style dates.
  - `NSObject+Macroable`: Macro system for attaching block-based methods to a class (available on all instances) or to a specific object instance at runtime, built on `NSObject+DynamicMethods`.
