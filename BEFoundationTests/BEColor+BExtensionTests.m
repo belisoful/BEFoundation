@@ -6,6 +6,7 @@
 
 #import <XCTest/XCTest.h>
 #import <BEFoundation/BEColor+BExtension.h>
+#import <BEFoundation/BEColor+BEWebColor.h>
 
 @interface BEColorBExtensionTests : XCTestCase
 @end
@@ -154,5 +155,73 @@
 }
 
 #endif
+
+
+#pragma mark - Web Colors
+
+- (void)testWebColors_tableIsComplete
+{
+	XCTAssertEqual(BEColor.webColorNames.count, 141u, @"the CSS/SVG extended keyword set");
+	XCTAssertEqual(BEColor.webColors.count, 141u);
+	for (NSString *name in BEColor.webColorNames) {
+		XCTAssertNotNil([BEColor webColorNamed:name], @"%@ must resolve", name);
+		XCTAssertNotNil(BEColor.webColors[name], @"%@ must be in webColors", name);
+	}
+}
+
+- (void)testWebColors_constantsMatchProperties
+{
+	XCTAssertEqualObjects(BEWebColorNameDeepSkyBlue, @"DeepSkyBlue");
+	XCTAssertEqualObjects(BEWebColorNameBlueViolet, @"BlueViolet");
+	XCTAssertEqualObjects(BEWebColorNameRebeccaPurple, @"RebeccaPurple");
+	XCTAssertEqualObjects(BEColor.webDeepSkyBlue, [BEColor webColorNamed:BEWebColorNameDeepSkyBlue]);
+	XCTAssertEqualObjects(BEColor.webRebeccaPurple.hexString.uppercaseString, @"#663399");
+	XCTAssertEqualObjects(BEColor.webDeepSkyBlue.hexString.uppercaseString, @"#00BFFF");
+	XCTAssertEqualObjects(BEColor.webWhite.hexString.uppercaseString, @"#FFFFFF");
+	XCTAssertEqualObjects(BEColor.webBlack.hexString.uppercaseString, @"#000000");
+}
+
+- (void)testWebColorNamed_isCaseAndWhitespaceInsensitive
+{
+	BEColor *reference = BEColor.webTomato;
+	XCTAssertEqualObjects([BEColor webColorNamed:@"tomato"], reference);
+	XCTAssertEqualObjects([BEColor webColorNamed:@"TOMATO"], reference);
+	XCTAssertEqualObjects([BEColor webColorNamed:@"tOmAtO"], reference);
+	XCTAssertEqualObjects([BEColor webColorNamed:@"  Tomato \n"], reference);
+}
+
+- (void)testWebColorNamed_rejectsBadInput
+{
+	XCTAssertNil([BEColor webColorNamed:@"NotAColor"]);
+	XCTAssertNil([BEColor webColorNamed:@""]);
+	XCTAssertNil([BEColor webColorNamed:@"   "]);
+	XCTAssertNil([BEColor webColorNamed:@"deep sky blue"], @"inner spaces are not a keyword");
+	NSString *notAString = (NSString *)@[];
+	XCTAssertNil([BEColor webColorNamed:notAString]);
+}
+
+- (void)testWebColorNameForColor_isExactAndStable
+{
+	XCTAssertEqualObjects([BEColor webColorNameForColor:BEColor.webRebeccaPurple], @"RebeccaPurple");
+	XCTAssertNil([BEColor webColorNameForColor:[BEColor colorWithHexString:@"#010203"]],
+				 @"an unnamed color has no keyword; the match is exact, not nearest");
+	// Aqua/Cyan and Fuchsia/Magenta share a value; the earlier keyword must win consistently.
+	XCTAssertEqualObjects([BEColor webColorNameForColor:BEColor.webCyan],
+						  [BEColor webColorNameForColor:BEColor.webAqua]);
+	XCTAssertEqualObjects([BEColor webColorNameForColor:BEColor.webMagenta],
+						  [BEColor webColorNameForColor:BEColor.webFuchsia]);
+	XCTAssertNil([BEColor webColorNameForColor:nil]);
+}
+
+- (void)testWebColors_roundTripThroughName
+{
+	for (NSString *name in BEColor.webColorNames) {
+		BEColor *color = [BEColor webColorNamed:name];
+		NSString *found = [BEColor webColorNameForColor:color];
+		XCTAssertNotNil(found, @"%@ must map back to some keyword", name);
+		// Aliases resolve to the same color, so compare colors rather than spellings.
+		XCTAssertEqualObjects([BEColor webColorNamed:found], color, @"%@ round-trip", name);
+	}
+}
 
 @end

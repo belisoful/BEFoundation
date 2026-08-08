@@ -9,6 +9,7 @@
 */
 
 #import <XCTest/XCTest.h>
+#import <objc/runtime.h>
 #import <BEFoundation/BEWebData.h>
 #import <BEFoundation/NSURL+Data.h>
 
@@ -55,6 +56,14 @@
 - (void)stopLoading {
 }
 
+@end
+
+
+/*! A genuine subclass used to verify that BEWebData does not poison subclass type checks. */
+@interface BEWebDataSubclassProbe : BEWebData
+@end
+
+@implementation BEWebDataSubclassProbe
 @end
 
 
@@ -1026,6 +1035,26 @@
 }
 
 /*!
+ @method     testSubclassTypeChecksAreNotPoisoned
+ @abstract   A genuine BEWebData subclass must answer type checks about itself correctly.
+ @discussion NSObject routes -isKindOfClass: and -isMemberOfClass: through -class. A
+             hardcoded -class override on BEWebData made every subclass report the wrong
+             identity, so isKindOfClass: for the subclass returned NO. This pins the fix.
+*/
+- (void)testSubclassTypeChecksAreNotPoisoned {
+	NSURL *dataURL = [NSURL URLWithString:@"data:text/plain,test"];
+	BEWebDataSubclassProbe *sub = [[BEWebDataSubclassProbe alloc] initWithContentsOfURL:dataURL];
+
+	XCTAssertEqual([sub class], [BEWebDataSubclassProbe class]);
+	XCTAssertEqual(object_getClass(sub), [BEWebDataSubclassProbe class]);
+	XCTAssertTrue([sub isMemberOfClass:[BEWebDataSubclassProbe class]]);
+	XCTAssertTrue([sub isKindOfClass:[BEWebDataSubclassProbe class]]);
+	XCTAssertTrue([sub isKindOfClass:[BEWebData class]]);
+	XCTAssertTrue([sub isKindOfClass:[NSData class]]);
+	XCTAssertFalse([sub isMemberOfClass:[BEWebData class]]);
+}
+
+/*!
  @method     testNSDataCompatibility
  @abstract   Tests that BEWebData works with NSData APIs.
 */
@@ -1094,6 +1123,38 @@
 			(void)mime; (void)charset; (void)encoding; (void)base64;
 		}
 	}];
+}
+
+#pragma mark - Regression: data-URL decoding and file-URL failure
+
+/*! A UTF-8 payload with no charset must load; decoding is byte-wise, not via NSString. */
+- (void)testDataURL_utf8PayloadWithoutCharsetDecodesByteWise {
+	NSURL *url = [NSURL URLWithString:@"data:text/plain,caf%C3%A9"];
+	BEWebData *d = [BEWebData dataWithContentsOfURL:url];
+	XCTAssertNotNil(d, @"A UTF-8 data URL without an explicit charset must load.");
+	XCTAssertEqualObjects([NSData dataWithData:d], url.decodedData,
+						  @"BEWebData and NSURL.decodedData must agree on the same URL.");
+	XCTAssertEqualObjects([[NSString alloc] initWithData:d encoding:NSUTF8StringEncoding],
+						  @"caf\u00e9");
+}
+
+/*! A non-UTF-8 charset must keep its raw bytes rather than being re-encoded. */
+- (void)testDataURL_latin1PayloadKeepsRawBytes {
+	NSURL *url = [NSURL URLWithString:@"data:text/plain;charset=iso-8859-1,%C3%A9"];
+	BEWebData *d = [BEWebData dataWithContentsOfURL:url];
+	XCTAssertNotNil(d);
+	const uint8_t expected[2] = {0xC3, 0xA9};
+	XCTAssertEqualObjects([NSData dataWithData:d], [NSData dataWithBytes:expected length:2],
+						  @"The declared charset's bytes must survive undisturbed.");
+}
+
+/*! A missing file URL must return nil with an error, like every other failing branch. */
+- (void)testFileURL_missingFileReturnsNilWithError {
+	NSError *error = nil;
+	NSURL *missing = [NSURL fileURLWithPath:@"/definitely/not/here/be-missing.bin"];
+	BEWebData *d = [BEWebData dataWithContentsOfURL:missing options:0 error:&error];
+	XCTAssertNil(d, @"A failed file load must return nil, not an empty object.");
+	XCTAssertNotNil(error);
 }
 
 @end

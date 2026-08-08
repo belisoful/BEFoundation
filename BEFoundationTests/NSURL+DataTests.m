@@ -734,6 +734,30 @@
 }
 
 /*!
+ @method     testMalformedDataURL_isDataURLReportsSchemeAfterFailedParse
+ @abstract   A failed parse must not change isDataURL, which reports the scheme.
+ @discussion isDataURL is memoized in an associated object.  A parse of a
+             comma-less URL must leave that memo alone: overwriting it made the
+             property flip YES→NO purely because the payload was requested, and
+             disagree with +isDataURL: for the same object.  All assertions here
+             use one URL instance so the memo is exercised.
+*/
+- (void)testMalformedDataURL_isDataURLReportsSchemeAfterFailedParse {
+	NSURL *malformedURL = [NSURL URLWithString:@"data:text/plain;NoComma"];
+
+	XCTAssertTrue(malformedURL.isDataURL, @"Scheme is data before any parse.");
+
+	XCTAssertNil(malformedURL.dataString, @"Malformed URL yields no payload.");
+	XCTAssertNil(malformedURL.decodedData);
+	XCTAssertNil(malformedURL.dataMIMEType);
+
+	XCTAssertTrue(malformedURL.isDataURL,
+				  @"A failed parse must not clear isDataURL; the scheme is unchanged.");
+	XCTAssertTrue([NSURL isDataURL:malformedURL],
+				  @"The class method and the property must agree.");
+}
+
+/*!
  @method     testNonDataURL
  @abstract   Tests that non-data URLs are correctly identified.
 */

@@ -337,85 +337,84 @@
 
 #pragma mark - NSMutableArray
 
-- (void)testNSMutableArray_removeFirstObject
+- (void)testNSMutableArray_removeFirstElement
 {
 	NSMutableArray *array = @[@0, @1, @2].mutableCopy;
 	
-	[array removeFirstObject];
+	[array removeFirstElement];
 	NSArray *reference = @[@1, @2];
 	XCTAssertEqualObjects(array, reference);
 	
-	[array removeFirstObject];
+	[array removeFirstElement];
 	reference = @[@2];
 	XCTAssertEqualObjects(array, reference);
 	
-	[array removeFirstObject];
+	[array removeFirstElement];
 	reference = @[];
 	XCTAssertEqualObjects(array, reference);
 }
 
-- (void)testNSMutableArray_removeFirstObject_NoObjects
+- (void)testNSMutableArray_removeFirstElement_NoObjects
 {
 	NSMutableArray *array = @[].mutableCopy;
 	
 	[array removeLastObject];
-	[array removeFirstObject];
+	[array removeFirstElement];
 }
 
 
 
-- (void)testNSMutableArray_insertObjects_Correctness
+- (void)testNSMutableArray_insertElementsOfArray_Correctness
 {
 	NSArray *original = @[@0, @1, @2];
 	NSArray *otherArray = @[@"a", @"b", @"c"];
 	
 	NSMutableArray *array = original.mutableCopy;
-	[array insertObjects:otherArray atIndex:0];
+	[array insertElementsOfArray:otherArray atIndex:0];
 	NSArray *reference = @[@"a", @"b", @"c", @0, @1, @2];
 	XCTAssertEqualObjects(array, reference);
 	
 	
 	array = original.mutableCopy;
-	[array insertObjects:otherArray atIndex:1];
+	[array insertElementsOfArray:otherArray atIndex:1];
 	reference = @[@0, @"a", @"b", @"c", @1, @2];
 	XCTAssertEqualObjects(array, reference);
 	
 	
 	array = original.mutableCopy;
-	[array insertObjects:otherArray atIndex:2];
+	[array insertElementsOfArray:otherArray atIndex:2];
 	reference = @[@0, @1, @"a", @"b", @"c", @2];
 	XCTAssertEqualObjects(array, reference);
 	
 	
 	array = original.mutableCopy;
-	[array insertObjects:otherArray atIndex:3];
+	[array insertElementsOfArray:otherArray atIndex:3];
 	reference = @[@0, @1, @2, @"a", @"b", @"c"];
 	XCTAssertEqualObjects(array, reference);
 	
 	array = original.mutableCopy;
 	otherArray = @[];
-	[array insertObjects:otherArray atIndex:1];
+	[array insertElementsOfArray:otherArray atIndex:1];
 	reference = @[@0, @1, @2];
 	XCTAssertEqualObjects(array, reference);
 }
 
-- (void)testNSMutableArray_insertObjects_BadArguments
+- (void)testNSMutableArray_insertElementsOfArray_BadArguments
 {
 	NSMutableArray *array = @[@1, @2, @3].mutableCopy;
 	NSArray *otherArray = @[@"a", @"b", @"c"];
 	NSArray *nilArray = nil;
-	
-	
-	XCTAssertThrowsSpecificNamed([array insertObjects:nilArray atIndex:1], NSException,
+
+	XCTAssertThrowsSpecificNamed([array insertElementsOfArray:nilArray atIndex:1], NSException,
 								 NSInvalidArgumentException);
-	
-	XCTAssertThrowsSpecificNamed([array insertObjects:(NSArray*)NSObject.new atIndex:1], NSException,
+
+	XCTAssertThrowsSpecificNamed([array insertElementsOfArray:(NSArray*)NSObject.new atIndex:1], NSException,
 								 NSInvalidArgumentException);
-	
-	XCTAssertThrowsSpecificNamed([array insertObjects:otherArray atIndex:-1], NSException,
+
+	XCTAssertThrowsSpecificNamed([array insertElementsOfArray:otherArray atIndex:-1], NSException,
 								 NSInvalidArgumentException);
-	
-	XCTAssertThrowsSpecificNamed([array insertObjects:otherArray atIndex:4], NSException,
+
+	XCTAssertThrowsSpecificNamed([array insertElementsOfArray:otherArray atIndex:4], NSException,
 								 NSInvalidArgumentException);
 }
 

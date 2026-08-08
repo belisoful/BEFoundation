@@ -322,6 +322,54 @@ typedef struct { uint8_t b[320]; } DMBig320;
 
 
 
+// ---------------------------------------------------------------------------
+// Regression fixtures: object-added registrations must survive a class sync
+// ---------------------------------------------------------------------------
+@protocol BESyncObjProto <NSObject>
+@optional
+- (NSString *)objProvidedMethod;
+@end
+@interface BESyncObjHandler : NSObject <BESyncObjProto>
+@end
+@implementation BESyncObjHandler
+- (NSString *)objProvidedMethod { return @"obj"; }
+@end
+
+@protocol BESyncClassProto <NSObject>
+@optional
+- (NSString *)classProvidedMethod;
+@end
+@interface BESyncClassHandler : NSObject <BESyncClassProto>
+@end
+@implementation BESyncClassHandler
+- (NSString *)classProvidedMethod { return @"cls"; }
+@end
+
+// A distinct host class per test so a class-level registration in one does not leak to the other.
+@interface BESyncHostProto : NSObject @end
+@implementation BESyncHostProto
++ (void)load { [self enableDynamicMethods]; }
+@end
+@interface BESyncHostFwd : NSObject @end
+@implementation BESyncHostFwd
++ (void)load { [self enableDynamicMethods]; }
+@end
+
+@protocol BELUTProtoP <NSObject>
+@optional
+- (NSString *)pImplMethod;
+@end
+@interface BELUTImplC : NSObject <BELUTProtoP>
+@end
+@implementation BELUTImplC
+- (NSString *)pImplMethod { return @"c"; }
+@end
+@interface BESyncHostLUT : NSObject @end
+@implementation BESyncHostLUT
++ (void)load { [self enableDynamicMethods]; }
+@end
+
+
 @interface NSDynamicMethodsTests : XCTestCase
 
 @end
@@ -3357,6 +3405,91 @@ typedef union myUnion {
 }
  */
 
+
+#pragma mark - Regression: class-chain walk must terminate at the root
+
+/*!
+ * The class walks ended with `while (cls != NSObject.class)`. Starting the walk AT
+ * NSObject made cls nil on the first step, and `nil != NSObject.class` stayed true
+ * forever, so these public methods spun at 100% CPU. Each must simply return NO.
+ */
+- (void)testClassChainWalk_terminatesWhenReceiverIsNSObject {
+	XCTAssertFalse([NSObject isDynamicClassMethod:NSSelectorFromString(@"beNoSuchClassMethod")]);
+	XCTAssertFalse([NSObject isDynamicObjectMethod:NSSelectorFromString(@"beNoSuchObjectMethod")]);
+	XCTAssertFalse([[NSObject new] isDynamicMethod:NSSelectorFromString(@"beNoSuchMethod")]);
+}
+
+#pragma mark - Regression: synchronizeWithClassProtocols must not delete object-added registrations
+
+/*!
+ * An object-added protocol target must survive a later sync driven by a class-level protocol
+ * change. Before the fix the removal pass swept out every object protocol not present on the
+ * class, deleting the caller's own registration on the next dispatch.
+ */
+- (void)testSync_objectAddedProtocolSurvivesClassSync {
+	BESyncHostProto *obj = [BESyncHostProto new];
+	SEL objSel = @selector(objProvidedMethod);
+	SEL clsSel = @selector(classProvidedMethod);
+
+	XCTAssertTrue([obj addObjectProtocol:@protocol(BESyncObjProto) withTarget:[BESyncObjHandler new]]);
+	XCTAssertTrue([obj dynamicRespondsToSelector:objSel], @"Object protocol registered.");
+
+	// Change the class's protocol set so the object's hash differs and a sync will run.
+	XCTAssertTrue([BESyncHostProto addInstanceProtocol:@protocol(BESyncClassProto) withClass:[BESyncClassHandler class]]);
+
+	// This dispatch triggers synchronizeWithClassProtocols.
+	XCTAssertTrue([obj dynamicRespondsToSelector:clsSel], @"Class protocol synced onto the object.");
+	XCTAssertTrue([obj dynamicRespondsToSelector:objSel],
+				  @"The object-added protocol must survive the class sync.");
+
+	[BESyncHostProto removeInstanceProtocol:@protocol(BESyncClassProto) withClass:[BESyncClassHandler class]];
+}
+
+/*!
+ * An object-added no-protocol forward target must likewise survive a class-driven sync. This is
+ * the case that needed the new class-synced origin set: a bare forward target carries no origin,
+ * so without it the removal pass could not tell a caller's target from a class-synced one.
+ */
+- (void)testSync_objectAddedForwardTargetSurvivesClassSync {
+	BESyncHostFwd *obj = [BESyncHostFwd new];
+	SEL objSel = @selector(objProvidedMethod);
+	SEL clsSel = @selector(classProvidedMethod);
+
+	XCTAssertTrue([obj addObjectForwardTarget:[BESyncObjHandler new]]);
+	XCTAssertTrue([obj dynamicRespondsToSelector:objSel], @"Object forward target registered.");
+
+	XCTAssertTrue([BESyncHostFwd addInstanceForwardClass:[BESyncClassHandler class]]);
+
+	XCTAssertTrue([obj dynamicRespondsToSelector:clsSel], @"Class forward target synced onto the object.");
+	XCTAssertTrue([obj dynamicRespondsToSelector:objSel],
+				  @"The object-added forward target must survive the class sync.");
+
+	[BESyncHostFwd removeInstanceForwardClass:[BESyncClassHandler class]];
+}
+
+/*!
+ * Removing an instance protocol by protocol only must also drop its reverse-LUT entry. Before
+ * the fix that entry survived, so a later addInstanceForwardClass: for the same class could not
+ * be removed by removeInstanceForwardClass:: the stale LUT resolved it back to the gone protocol.
+ */
+- (void)testRemoveInstanceProtocol_thenReaddAsForwardTargetIsRemovable {
+	SEL sel = @selector(pImplMethod);
+
+	XCTAssertTrue([BESyncHostLUT addInstanceProtocol:@protocol(BELUTProtoP) withClass:[BELUTImplC class]]);
+	XCTAssertTrue([BESyncHostLUT removeInstanceProtocol:@protocol(BELUTProtoP)]);
+
+	// Re-register the SAME class as a plain forward target (no protocol).
+	XCTAssertTrue([BESyncHostLUT addInstanceForwardClass:[BELUTImplC class]]);
+	BESyncHostLUT *obj = [BESyncHostLUT new];
+	XCTAssertTrue([obj dynamicRespondsToSelector:sel], @"Forward target is active.");
+
+	// This is the operation the stale LUT entry used to block.
+	XCTAssertTrue([BESyncHostLUT removeInstanceForwardClass:[BELUTImplC class]],
+				  @"The forward target must be removable.");
+	BESyncHostLUT *obj2 = [BESyncHostLUT new];
+	XCTAssertFalse([obj2 dynamicRespondsToSelector:sel],
+				   @"After removal the forward target must no longer respond.");
+}
 
 @end
 

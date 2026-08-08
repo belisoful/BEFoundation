@@ -88,6 +88,7 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 @property (nonatomic, strong, nullable) NSURL *relocationURL;
 @property (nonatomic) NSInteger accessFailedCallCount;
 @property (nonatomic) NSInteger didRelocateCallCount;
+@property (nonatomic) BOOL didRelocateWasOnMainThread;
 @property (nonatomic) NSInteger willResolveContainedCallCount;
 @end
 
@@ -104,12 +105,44 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 - (void)securityScopedURLManager:(BESecurityScopedURLManager *)manager
 				  didRelocateURL:(NSURL *)oldURL toURL:(NSURL *)newURL {
 	self.didRelocateCallCount++;
+	self.didRelocateWasOnMainThread = NSThread.isMainThread;
 }
 
 - (void)securityScopedURLManager:(BESecurityScopedURLManager *)manager
 		 willResolveContainedURL:(NSURL *)containedURL
 			   withinDirectoryURL:(NSURL *)directoryURL {
 	self.willResolveContainedCallCount++;
+}
+@end
+
+/// A delegate that stores the access-failed completion handler and calls it LATER, from
+/// -answerNow, instead of synchronously — the case that startAccessingURL: previously dropped
+/// on the main thread.
+@interface BEURLManagerDeferredDelegate : NSObject <BESecurityScopedURLManagerDelegate>
+@property (nonatomic, strong, nullable) NSURL *relocationURL;
+@property (nonatomic, copy, nullable) void (^storedHandler)(NSURL * _Nullable);
+@property (nonatomic) NSInteger didRelocateCallCount;
+@property (nonatomic) BOOL didRelocateWasOnMainThread;
+- (void)answerNow;
+@end
+
+@implementation BEURLManagerDeferredDelegate
+- (void)securityScopedURLManager:(BESecurityScopedURLManager *)manager
+			  accessFailedForURL:(NSURL *)url
+						   entry:(nullable BESecurityScopedURLBookmarkEntry *)entry
+			   completionHandler:(void (^)(NSURL * _Nullable))completionHandler {
+	self.storedHandler = completionHandler;   // do NOT call it here
+}
+- (void)securityScopedURLManager:(BESecurityScopedURLManager *)manager
+				  didRelocateURL:(NSURL *)oldURL toURL:(NSURL *)newURL {
+	self.didRelocateCallCount++;
+	self.didRelocateWasOnMainThread = NSThread.isMainThread;
+}
+- (void)answerNow {
+	if (self.storedHandler) {
+		self.storedHandler(self.relocationURL);
+		self.storedHandler = nil;
+	}
 }
 @end
 
@@ -2299,10 +2332,52 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 	NSURL *result = [self.manager startAccessingURL:differentURL];
 
 	XCTAssertNotNil(result, @"Delegate-provided URL should be returned");
+
+	// Delivery is async on the main queue; drain it before asserting.
+	XCTestExpectation *drain = [self expectationWithDescription:@"main queue drained"];
+	dispatch_async(dispatch_get_main_queue(), ^{ [drain fulfill]; });
+	[self waitForExpectations:@[drain] timeout:2.0];
+
 	XCTAssertEqual(delegate.didRelocateCallCount, 1,
 				   @"didRelocateURL must be called when delegate provides a different URL");
+	XCTAssertTrue(delegate.didRelocateWasOnMainThread,
+				  @"didRelocateURL must be delivered on the main thread (header contract)");
 
 	if (result) { [self.manager endAccessingURL:result]; }
+}
+
+/*!
+ @testcase testStartAccessingURLFromBackgroundThreadDeliversRelocationOnMain
+ @abstract didRelocateURL:toURL: must arrive on the main thread even when
+		   startAccessingURL: runs on a background thread (the semaphore branch —
+		   the path the header recommends for delegates that show UI).
+*/
+- (void)testStartAccessingURLFromBackgroundThreadDeliversRelocationOnMain {
+	BEURLManagerTestDelegate *delegate = [BEURLManagerTestDelegate new];
+	delegate.relocationURL = self.tempDirURL;
+	self.manager.delegate = delegate;
+
+	NSURL *differentURL = [NSURL fileURLWithPath:@"/be_test_bg_relocation_source"];
+	XCTestExpectation *done = [self expectationWithDescription:@"background access returned"];
+	__block NSURL *result = nil;
+	dispatch_async(dispatch_get_global_queue(QOS_CLASS_DEFAULT, 0), ^{
+		result = [self.manager startAccessingURL:differentURL];
+		[done fulfill];
+	});
+	[self waitForExpectations:@[done] timeout:5.0];
+
+	// Drain the main queue so the async delegate dispatch lands.
+	XCTestExpectation *drain = [self expectationWithDescription:@"main queue drained"];
+	dispatch_async(dispatch_get_main_queue(), ^{ [drain fulfill]; });
+	[self waitForExpectations:@[drain] timeout:2.0];
+
+	XCTAssertNotNil(result);
+	XCTAssertEqual(delegate.didRelocateCallCount, 1);
+	XCTAssertTrue(delegate.didRelocateWasOnMainThread,
+				  @"Background-thread access must still deliver didRelocateURL on main");
+
+	if (result) { [self.manager endAccessingURL:result]; }
+	self.manager.delegate = nil;
 }
 
 /*!
@@ -3053,6 +3128,49 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 	self.manager.storageOptions = BESecurityScopedURLStorageCacheDirectory;
 	XCTAssertEqual(self.manager.storageOptions, BESecurityScopedURLStorageCacheDirectory,
 				   @"storageOptions must round-trip after concurrent writes.");
+}
+
+/*!
+ @testcase testStartAccessingURL_asyncMainThreadRelocationIsApplied
+ @abstract A delegate on the main thread that answers the access-failed handler AFTER
+		   startAccessingURL: returns must still have its relocation applied — access granted,
+		   catalog re-keyed, didRelocate fired — so a subsequent access succeeds.
+ @discussion Before the refactor the main-thread path read the handler's result only inline,
+			 so a late answer (the normal case after presenting an NSOpenPanel sheet) was
+			 silently discarded. XCTest runs on the main thread, exercising exactly that path.
+ */
+- (void)testStartAccessingURL_asyncMainThreadRelocationIsApplied {
+	[self.manager addURLToCatalog:self.tempDirURL
+						  lifetime:BESecurityScopedURLBookmarkLifetimeLongLived];
+	NSString *oldKey = self.manager.catalog.allKeys.firstObject;
+	XCTAssertNotNil(oldKey);
+
+	NSURL *newURL = [NSURL fileURLWithPath:@"/be_test_async_reloc_target" isDirectory:NO];
+	BEURLManagerDeferredDelegate *delegate = [BEURLManagerDeferredDelegate new];
+	delegate.relocationURL = newURL;
+	self.manager.delegate = delegate;
+
+	NSURL *unknown = [NSURL fileURLWithPath:@"/be_test_async_reloc_unknown"];
+	NSURL *inlineResult = [self.manager startAccessingURL:unknown];
+	XCTAssertNil(inlineResult, @"The delegate has not answered yet, so this call grants nothing.");
+	XCTAssertNotNil(delegate.storedHandler, @"The handler must have been captured for a later call.");
+	XCTAssertEqual(delegate.didRelocateCallCount, 0);
+
+	// The user finishes the panel: the delegate answers now.
+	[delegate answerNow];
+
+	// Delivery is async on the main queue; drain it before asserting.
+	XCTestExpectation *drain = [self expectationWithDescription:@"main queue drained"];
+	dispatch_async(dispatch_get_main_queue(), ^{ [drain fulfill]; });
+	[self waitForExpectations:@[drain] timeout:2.0];
+
+	XCTAssertEqual(delegate.didRelocateCallCount, 1,
+				   @"The late answer must still fire didRelocate.");
+	XCTAssertTrue(delegate.didRelocateWasOnMainThread,
+				  @"didRelocateURL must be delivered on the main thread (header contract)");
+	XCTAssertEqual([self.manager.refCounts countForObject:newURL], 1UL,
+				   @"The late answer must still grant access to the relocated URL.");
+	self.manager.delegate = nil;
 }
 
 @end

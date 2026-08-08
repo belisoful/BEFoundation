@@ -144,3 +144,52 @@ jobs:
                      -enableAddressSanitizer YES \
                      CODE_SIGNING_ALLOWED=NO \
                      test
+
+  swiftpm-build:
+    name: SwiftPM build
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Show Swift version
+        run: swift --version
+
+      # Guards the package manifest and the include/BEFoundation layout that
+      # `#import <BEFoundation/…>` depends on. The XCTest suite runs through
+      # xcodebuild in the other jobs; SwiftPM builds the library only.
+      - name: Build the SwiftPM package
+        run: |
+          set -o pipefail
+          swift build
+
+  category-collisions:
+    name: Category selector collisions
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # A category method whose selector already exists on the Apple class resolves in
+      # undefined load order. It presents as a flaky test rather than a build failure, so
+      # nothing else in this workflow would catch it. See CATEGORY_NAMING.md.
+      - name: Build framework (Release)
+        run: |
+          set -o pipefail
+          xcodebuild -project BEFoundation.xcodeproj \
+                     -scheme BEFoundation \
+                     -configuration Release \
+                     -destination 'platform=macOS' \
+                     ARCHS=arm64 \
+                     ONLY_ACTIVE_ARCH=NO \
+                     CLANG_USE_OPTIMIZATION_PROFILE=NO \
+                     CONFIGURATION_BUILD_DIR="$RUNNER_TEMP/collision-check" \
+                     CODE_SIGNING_ALLOWED=NO \
+                     build
+
+      - name: Check for collisions with Apple selectors
+        run: |
+          set -o pipefail
+          Scripts/check-category-collisions.sh "$RUNNER_TEMP/collision-check/BEFoundation.framework"

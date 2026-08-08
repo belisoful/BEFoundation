@@ -311,6 +311,46 @@
 	XCTAssertEqual(self.observer1.receivedCount, 1);
 }
 
+/*!
+ @testcase testQueuedObserverCanRetainDeliveredNotification
+ @abstract A queued observer may legally retain the delivered notification past the handler.
+ @discussion Delivery previously handed queued observers a pooled object that was recycled
+			 (contents nil'd, instance reused for unrelated posts) the moment the handler
+			 returned. A retained notification must keep its name, object, and userInfo
+			 unchanged across later posts.
+*/
+- (void)testQueuedObserverCanRetainDeliveredNotification {
+	NSOperationQueue *queue = [[NSOperationQueue alloc] init];
+	queue.maxConcurrentOperationCount = 1;
+
+	NSMutableArray<NSNotification *> *retained = [NSMutableArray array];
+	id observer = [self.notificationCenter addObserverForName:@"RetainTest"
+													   object:nil
+														queue:queue
+												   usingBlock:^(NSNotification *notification) {
+		[retained addObject:notification];   // keep it past the handler
+	}];
+
+	NSObject *objectA = [NSObject new];
+	[self.notificationCenter postNotificationName:@"RetainTest" object:objectA userInfo:@{@"seq": @1}];
+	[queue waitUntilAllOperationsAreFinished];
+
+	// A second post must not disturb the retained first delivery.
+	[self.notificationCenter postNotificationName:@"RetainTest" object:nil userInfo:@{@"seq": @2}];
+	[queue waitUntilAllOperationsAreFinished];
+
+	XCTAssertEqual(retained.count, 2u);
+	NSNotification *first = retained.firstObject;
+	XCTAssertEqualObjects(first.name, @"RetainTest");
+	XCTAssertEqual(first.object, objectA);
+	XCTAssertEqualObjects(first.userInfo, @{@"seq": @1});
+	NSNotification *second = retained.lastObject;
+	XCTAssertEqualObjects(second.userInfo, @{@"seq": @2});
+	XCTAssertNotEqual(first, second, @"each delivery owns a distinct notification instance");
+
+	[self.notificationCenter removeObserver:observer];
+}
+
 - (void)testAddObserverWithPriorityReverse {
 	// Add observers with different priorities
 	[self.notificationCenter addObserver:self.observer1

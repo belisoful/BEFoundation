@@ -7,6 +7,7 @@
 
 @import XCTest;
 #import "BEWindowController.h"
+#import "BEWindowControllerManager.h"
 
 #pragma mark - Helper / Mock Classes
 
@@ -391,6 +392,41 @@
 																   error:&derr];
 	XCTAssertNotNil(back, @"Secure decode must succeed: %@", derr);
 	XCTAssertTrue(back.isPrimaryWindowController, @"isPrimaryWindowController must survive the round-trip.");
+}
+
+/*!
+ * A controller whose window is closed (untracked by the manager) and then re-shown must be
+ * re-tracked. -windowDidLoad only fires on first nib load, so -showWindow: re-announces the
+ * already-loaded window; the manager re-registers it. First show does not double-post because
+ * -windowDidLoad has not run for a freshly loaded window.
+ */
+- (void)testShowWindow_reannouncesAlreadyLoadedWindowForRetracking {
+	NSWindow *window = [[NSWindow alloc] init];
+	BEWindowController *wc = [[BEWindowController alloc] initWithWindow:window];  // windowLoaded == YES
+
+	__block NSInteger posts = 0;
+	id token = [[NSNotificationCenter defaultCenter] addObserverForName:BEWindowDidLoadNotification
+																 object:window
+																  queue:nil
+															 usingBlock:^(NSNotification * _Nonnull note) { posts++; }];
+
+	[wc showWindow:nil];
+	XCTAssertEqual(posts, 1, @"Re-showing an already-loaded window re-announces it once.");
+
+	// The manager tracks off this notification, so a re-show re-registers the controller.
+	BEWindowControllerManager *manager = [[BEWindowControllerManager alloc] init];
+	[[NSNotificationCenter defaultCenter] postNotification:
+		[NSNotification notificationWithName:BEWindowDidLoadNotification object:window]];
+	XCTAssertTrue([manager.windowControllers containsObject:wc], @"Manager tracks the controller.");
+	// Simulate a close (untrack), then a re-show, and confirm re-tracking.
+	[[NSNotificationCenter defaultCenter] postNotification:
+		[NSNotification notificationWithName:NSWindowWillCloseNotification object:window]];
+	XCTAssertFalse([manager.windowControllers containsObject:wc], @"Close untracks the controller.");
+	[wc showWindow:nil];
+	XCTAssertTrue([manager.windowControllers containsObject:wc],
+				  @"A re-show must re-register the controller with the manager.");
+
+	[[NSNotificationCenter defaultCenter] removeObserver:token];
 }
 
 @end

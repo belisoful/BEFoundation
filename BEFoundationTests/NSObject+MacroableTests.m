@@ -792,4 +792,23 @@ static id invokeClassMacroOneArg(id target, SEL sel, id arg)
 				   @"Macro registered on the subclass must not appear on the parent");
 }
 
+#pragma mark - Regression: a rejected re-registration must not drop the live macro
+
+/*!
+ * addClassMethod: rejects a non-block, but the previously installed dynamic method stays
+ * callable. The record must be restored so -hasMacro: matches what the runtime will do.
+ */
+- (void)testMacro_failedReregistrationKeepsPreviousRecord {
+	SEL sel = NSSelectorFromString(@"regressionGreetMacro");
+	XCTAssertTrue([MacroableTestObject macro:sel macroBlock:^NSString *(id s) { return @"hi"; }]);
+	XCTAssertTrue([MacroableTestObject hasMacro:sel]);
+
+	XCTAssertFalse([MacroableTestObject macro:sel macroBlock:(id)@"not-a-block"],
+				   @"A non-block must be rejected.");
+	XCTAssertTrue([MacroableTestObject hasMacro:sel],
+				  @"The prior macro record must survive a rejected re-registration.");
+
+	[MacroableTestObject macro:sel macroBlock:nil];
+}
+
 @end

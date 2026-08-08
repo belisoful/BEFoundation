@@ -13,11 +13,78 @@
 // -Wobjc-bool-constant-conversion; the conversions are intentional.
 #pragma clang diagnostic ignored "-Wobjc-bool-constant-conversion"
 
+/*! A genuine subclass used to verify factories, copies, and archiving preserve subclass identity. */
+@interface NSMutableNumberSubclassProbe : NSMutableNumber
+@end
+
+@implementation NSMutableNumberSubclassProbe
+// NSKeyedUnarchiver rejects an archived subclass of a plist type whose coder-class
+// methods are inherited ("possibly-altered archive"), so archivable subclasses
+// declare both of their own.
+- (Class)classForCoder { return [self class]; }
+- (Class)classForKeyedArchiver { return [self class]; }
+@end
+
+
 @interface NSMutableNumberTests : XCTestCase
 
 @end
 
 @implementation NSMutableNumberTests
+
+#pragma mark - Genuine NSNumber Subclass Behavior
+
+- (void)testBEMutableNumber_IsGenuineNSNumber
+{
+	NSMutableNumber *m = [NSMutableNumber numberWithDouble:5.0];
+
+	XCTAssertTrue([m isKindOfClass:[NSNumber class]]);
+	XCTAssertTrue([m isKindOfClass:[NSValue class]]);
+	XCTAssertTrue([NSMutableNumber isSubclassOfClass:[NSNumber class]],
+				  @"kinship is real, not an isKindOfClass: override");
+
+	// Symmetric equality and hashed-collection interop, which an NSObject-based
+	// masquerade cannot provide (CFNumber rejects non-NSNumber on the reverse path).
+	XCTAssertTrue([m isEqual:@5]);
+	XCTAssertTrue([@5 isEqual:m]);
+	XCTAssertTrue([[NSSet setWithObject:@5.0] containsObject:m]);
+	XCTAssertTrue([[NSSet setWithObject:m] containsObject:@5.0]);
+
+	// Inherited NSNumber API derived from the primitives.
+	NSDecimal dec = m.decimalValue;
+	XCTAssertEqualObjects(NSDecimalString(&dec, nil), @"5");
+
+	double cf = 0;
+	XCTAssertTrue(CFNumberGetValue((__bridge CFNumberRef)m, kCFNumberDoubleType, &cf));
+	XCTAssertEqual(cf, 5.0);
+
+	NSError *error = nil;
+	NSData *json = [NSJSONSerialization dataWithJSONObject:@[m] options:0 error:&error];
+	XCTAssertNotNil(json);
+	XCTAssertNil(error);
+}
+
+- (void)testBEMutableNumber_SubclassFactoriesCopyAndArchivePreserveSubclass
+{
+	NSMutableNumberSubclassProbe *sub = (NSMutableNumberSubclassProbe *)[NSMutableNumberSubclassProbe numberWithInt:3];
+	XCTAssertTrue([sub isMemberOfClass:[NSMutableNumberSubclassProbe class]],
+				  @"factory on a subclass must return the subclass");
+
+	XCTAssertTrue([[sub copy] isMemberOfClass:[NSMutableNumberSubclassProbe class]]);
+	XCTAssertTrue([[sub mutableCopy] isMemberOfClass:[NSMutableNumberSubclassProbe class]]);
+
+	NSError *error = nil;
+	NSData *archived = [NSKeyedArchiver archivedDataWithRootObject:sub requiringSecureCoding:YES error:&error];
+	XCTAssertNil(error);
+	NSMutableNumberSubclassProbe *decoded =
+		[NSKeyedUnarchiver unarchivedObjectOfClass:[NSMutableNumberSubclassProbe class]
+										  fromData:archived
+											 error:&error];
+	XCTAssertNil(error);
+	XCTAssertTrue([decoded isMemberOfClass:[NSMutableNumberSubclassProbe class]],
+				  @"classForCoder/classForKeyedArchiver must keep subclass identity");
+	XCTAssertTrue([decoded isEqual:@3]);
+}
 
 - (void)setUp {
 	[super setUp];

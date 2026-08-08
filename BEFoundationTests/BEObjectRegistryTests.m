@@ -1158,4 +1158,27 @@
 	XCTAssertEqual(self.registry.registeredObjectsCount, 1);
 }
 
+#pragma mark - Regression: clearing a UUID must not orphan the table entry
+
+/*!
+ * setRegistryUUID:nil clears the object's association; the registryTable entry keyed by
+ * the old UUID has to go with it, or the object stays resolvable (and retained, under a
+ * strong-value registry) under a UUID it no longer carries.
+ */
+- (void)testSetRegistryUUIDNil_removesTheTableEntry {
+	BEObjectRegistry *reg = [[BEObjectRegistry alloc] init];
+	TestObjectRegistryObject *obj = [[TestObjectRegistryObject alloc] init];
+
+	NSString *uuid = [reg registerObject:obj];
+	XCTAssertNotNil(uuid);
+	XCTAssertEqualObjects([reg registeredObjectForUUID:uuid], obj);
+
+	[reg setRegistryUUID:nil forObject:obj];
+
+	XCTAssertNil([reg registeredObjectForUUID:uuid],
+				 @"The entry keyed by the cleared UUID must not survive.");
+	XCTAssertNil([reg simpleRegistryUUIDForObject:obj],
+				 @"The object must no longer carry the UUID.");
+}
+
 @end

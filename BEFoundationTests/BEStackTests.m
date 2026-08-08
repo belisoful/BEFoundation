@@ -30,18 +30,18 @@
 	NSMutableArray *array = [NSMutableArray array];
 	XCTAssertEqual(array.count, 0, @"Array should be empty initially.");
 
-	[array push:@"Object1"];
+	[array pushObject:@"Object1"];
 	XCTAssertEqual(array.count, 1, @"Array count should be 1 after push.");
 	XCTAssertEqualObjects([array lastObject], @"Object1", @"Pushed object should be the last object.");
 
-	[array push:@"Object2"];
+	[array pushObject:@"Object2"];
 	XCTAssertEqual(array.count, 2, @"Array count should be 2 after second push.");
 	XCTAssertEqualObjects([array lastObject], @"Object2", @"Second pushed object should be the new last object.");
 }
 
 - (void)testNSMutableArray_PushNil {
 	NSMutableArray *array = [NSMutableArray array];
-	[array push:nil];
+	[array pushObject:nil];
 	XCTAssertEqual(array.count, 0, @"Pushing nil should not add an object to the array.");
 }
 
@@ -75,23 +75,23 @@
 	NSMutableArray *array = [NSMutableArray arrayWithArray:@[@"Object1", @"Object2", @"Object3"]];
 	XCTAssertEqual(array.count, 3, @"Array should have 3 objects initially.");
 
-	id poppedObject = [array pop];
+	id poppedObject = [array popObject];
 	XCTAssertEqualObjects(poppedObject, @"Object3", @"Pop should return the last object.");
 	XCTAssertEqual(array.count, 2, @"Array count should be 2 after pop.");
 	XCTAssertEqualObjects([array lastObject], @"Object2", @"New last object should be Object2.");
 
-	poppedObject = [array pop];
+	poppedObject = [array popObject];
 	XCTAssertEqualObjects(poppedObject, @"Object2", @"Pop should return the new last object.");
 	XCTAssertEqual(array.count, 1, @"Array count should be 1 after second pop.");
 
-	poppedObject = [array pop];
+	poppedObject = [array popObject];
 	XCTAssertEqualObjects(poppedObject, @"Object1", @"Pop should return the only remaining object.");
 	XCTAssertEqual(array.count, 0, @"Array should be empty after all objects are popped.");
 }
 
 - (void)testNSMutableArray_PopEmpty {
 	NSMutableArray *array = [NSMutableArray array];
-	id poppedObject = [array pop];
+	id poppedObject = [array popObject];
 	XCTAssertNil(poppedObject, @"Pop on an empty array should return nil.");
 	XCTAssertEqual(array.count, 0, @"Array should remain empty.");
 }
@@ -125,19 +125,19 @@
 	NSMutableArray *array = [NSMutableArray array];
 
 	// Push elements
-	[[array push:@"A"] push:@"B"]; // A, B
+	[[array pushObject:@"A"] pushObject:@"B"]; // A, B
 	XCTAssertEqualObjects([array lastObject], @"B");
 	XCTAssertEqualObjects([array firstObject], @"A");
 	XCTAssertEqual(array.count, 2);
 
 	// Pop one
-	id popped = [array pop]; // A
+	id popped = [array popObject]; // A
 	XCTAssertEqualObjects(popped, @"B");
 	XCTAssertEqual(array.count, 1);
 	XCTAssertEqualObjects([array lastObject], @"A");
 
 	// Push another
-	[array push:@"C"]; // A, C
+	[array pushObject:@"C"]; // A, C
 	XCTAssertEqualObjects([array lastObject], @"C");
 	XCTAssertEqual(array.count, 2);
 
@@ -148,11 +148,11 @@
 	XCTAssertEqualObjects([array lastObject], @"C");
 
 	// Pop the last one
-	popped = [array pop]; //
+	popped = [array popObject]; //
 	XCTAssertEqualObjects(popped, @"C");
 	XCTAssertEqual(array.count, 0);
 
-	XCTAssertNil([array pop]);
+	XCTAssertNil([array popObject]);
 	XCTAssertNil([array shift]);
 }
 
@@ -176,18 +176,18 @@
 	NSMutableOrderedSet *orderedSet = [NSMutableOrderedSet orderedSet];
 	orderedSet.isPushOnTop = YES; // Default behavior, but explicit for clarity
 
-	[orderedSet push:@"Object1"];
+	[orderedSet pushObject:@"Object1"];
 	XCTAssertEqual(orderedSet.count, 1, @"Ordered set count should be 1 after push.");
 	XCTAssertEqualObjects([orderedSet lastObject], @"Object1", @"Pushed object should be the last object.");
 	XCTAssertEqualObjects([orderedSet objectAtIndex:0], @"Object1", @"Pushed object should be at index 0.");
 
-	[orderedSet push:@"Object2"];
+	[orderedSet pushObject:@"Object2"];
 	XCTAssertEqual(orderedSet.count, 2, @"Ordered set count should be 2 after second push.");
 	XCTAssertEqualObjects([orderedSet lastObject], @"Object2", @"Second pushed object should be the new last object.");
 	XCTAssertEqualObjects([orderedSet objectAtIndex:0], @"Object1", @"First object should remain at index 0.");
 
 	// Push a duplicate when isPushOnTop is YES: should move to end
-	[orderedSet push:@"Object1"];
+	[orderedSet pushObject:@"Object1"];
 	XCTAssertEqual(orderedSet.count, 2, @"Ordered set count should remain 2 after pushing a duplicate.");
 	XCTAssertEqualObjects([orderedSet lastObject], @"Object1", @"Duplicate object should be moved to the end.");
 	XCTAssertEqualObjects([orderedSet objectAtIndex:0], @"Object2", @"Original last object should now be first.");
@@ -200,16 +200,16 @@
 	NSMutableOrderedSet *orderedSet = [NSMutableOrderedSet orderedSet];
 	orderedSet.isPushOnTop = NO;
 
-	[orderedSet push:@"Object1"];
+	[orderedSet pushObject:@"Object1"];
 	XCTAssertEqual(orderedSet.count, 1, @"Ordered set count should be 1 after push.");
 	XCTAssertEqualObjects([orderedSet lastObject], @"Object1", @"Pushed object should be the last object.");
 
-	[orderedSet push:@"Object2"];
+	[orderedSet pushObject:@"Object2"];
 	XCTAssertEqual(orderedSet.count, 2, @"Ordered set count should be 2 after second push.");
 	XCTAssertEqualObjects([orderedSet lastObject], @"Object2", @"Second pushed object should be the new last object.");
 
 	// Push a duplicate when isPushOnTop is NO: should NOT move to end
-	[orderedSet push:@"Object1"];
+	[orderedSet pushObject:@"Object1"];
 	XCTAssertEqual(orderedSet.count, 2, @"Ordered set count should remain 2 after pushing a duplicate.");
 	XCTAssertEqualObjects([orderedSet lastObject], @"Object2", @"Duplicate object should NOT be moved to the end when isPushOnTop is NO.");
 	XCTAssertEqualObjects([orderedSet firstObject], @"Object1", @"Duplicate object should remain at its original position.");
@@ -220,7 +220,7 @@
 
 - (void)testNSMutableOrderedSet_PushNil {
 	NSMutableOrderedSet *orderedSet = [NSMutableOrderedSet orderedSet];
-	[orderedSet push:nil];
+	[orderedSet pushObject:nil];
 	XCTAssertEqual(orderedSet.count, 0, @"Pushing nil should not add an object to the ordered set.");
 }
 
@@ -292,23 +292,23 @@
 	NSMutableOrderedSet *orderedSet = [NSMutableOrderedSet orderedSetWithArray:@[@"Object1", @"Object2", @"Object3"]];
 	XCTAssertEqual(orderedSet.count, 3, @"Ordered set should have 3 objects initially.");
 
-	id poppedObject = [orderedSet pop];
+	id poppedObject = [orderedSet popObject];
 	XCTAssertEqualObjects(poppedObject, @"Object3", @"Pop should return the last object.");
 	XCTAssertEqual(orderedSet.count, 2, @"Ordered set count should be 2 after pop.");
 	XCTAssertEqualObjects([orderedSet lastObject], @"Object2", @"New last object should be Object2.");
 
-	poppedObject = [orderedSet pop];
+	poppedObject = [orderedSet popObject];
 	XCTAssertEqualObjects(poppedObject, @"Object2", @"Pop should return the new last object.");
 	XCTAssertEqual(orderedSet.count, 1, @"Ordered set count should be 1 after second pop.");
 
-	poppedObject = [orderedSet pop];
+	poppedObject = [orderedSet popObject];
 	XCTAssertEqualObjects(poppedObject, @"Object1", @"Pop should return the only remaining object.");
 	XCTAssertEqual(orderedSet.count, 0, @"Ordered set should be empty after all objects are popped.");
 }
 
 - (void)testNSMutableOrderedSet_PopEmpty {
 	NSMutableOrderedSet *orderedSet = [NSMutableOrderedSet orderedSet];
-	id poppedObject = [orderedSet pop];
+	id poppedObject = [orderedSet popObject];
 	XCTAssertNil(poppedObject, @"Pop on an empty ordered set should return nil.");
 	XCTAssertEqual(orderedSet.count, 0, @"Ordered set should remain empty.");
 }
@@ -343,24 +343,24 @@
 	orderedSet.isPushOnTop = YES; // Default behavior
 
 	// Push elements
-	[[orderedSet push:@"A"] push:@"B"]; // A, B
+	[[orderedSet pushObject:@"A"] pushObject:@"B"]; // A, B
 	XCTAssertEqualObjects([orderedSet lastObject], @"B");
 	XCTAssertEqualObjects([orderedSet firstObject], @"A");
 	XCTAssertEqual(orderedSet.count, 2);
 
 	// Pop one
-	id popped = [orderedSet pop]; // A
+	id popped = [orderedSet popObject]; // A
 	XCTAssertEqualObjects(popped, @"B");
 	XCTAssertEqual(orderedSet.count, 1);
 	XCTAssertEqualObjects([orderedSet lastObject], @"A");
 
 	// Push another (duplicate, moves to top)
-	[orderedSet push:@"A"]; // A
+	[orderedSet pushObject:@"A"]; // A
 	XCTAssertEqualObjects([orderedSet lastObject], @"A");
 	XCTAssertEqual(orderedSet.count, 1); // Still 1 because A was moved
 
 	// Push a new one
-	[orderedSet push:@"C"]; // A, C
+	[orderedSet pushObject:@"C"]; // A, C
 	XCTAssertEqualObjects([orderedSet lastObject], @"C");
 	XCTAssertEqual(orderedSet.count, 2);
 	XCTAssertEqualObjects([orderedSet firstObject], @"A");
@@ -372,11 +372,11 @@
 	XCTAssertEqualObjects([orderedSet lastObject], @"C");
 
 	// Pop the last one
-	popped = [orderedSet pop]; //
+	popped = [orderedSet popObject]; //
 	XCTAssertEqualObjects(popped, @"C");
 	XCTAssertEqual(orderedSet.count, 0);
 
-	XCTAssertNil([orderedSet pop]);
+	XCTAssertNil([orderedSet popObject]);
 	XCTAssertNil([orderedSet shift]);
 }
 

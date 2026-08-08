@@ -17,15 +17,15 @@
 
 - (void)testArrayPushAddsAndChains {
 	NSMutableArray *stack = [NSMutableArray array];
-	NSMutableArray *returned = [stack push:@"a"];
-	XCTAssertEqual(returned, stack, @"push: returns self for chaining");
-	[[stack push:@"b"] push:@"c"];
+	NSMutableArray *returned = [stack pushObject:@"a"];
+	XCTAssertEqual(returned, stack, @"pushObject: returns self for chaining");
+	[[stack pushObject:@"b"] pushObject:@"c"];
 	XCTAssertEqualObjects(stack, (@[@"a", @"b", @"c"]));
 }
 
 - (void)testArrayPushNilIsIgnored {
 	NSMutableArray *stack = [NSMutableArray arrayWithObject:@"a"];
-	[stack push:nil];
+	[stack pushObject:nil];
 	XCTAssertEqualObjects(stack, (@[@"a"]));
 }
 
@@ -51,10 +51,10 @@
 
 - (void)testArrayPopIsLIFO {
 	NSMutableArray *stack = [NSMutableArray arrayWithArray:@[@"a", @"b", @"c"]];
-	XCTAssertEqualObjects([stack pop], @"c");
-	XCTAssertEqualObjects([stack pop], @"b");
-	XCTAssertEqualObjects([stack pop], @"a");
-	XCTAssertNil([stack pop], @"pop on empty returns nil");
+	XCTAssertEqualObjects([stack popObject], @"c");
+	XCTAssertEqualObjects([stack popObject], @"b");
+	XCTAssertEqualObjects([stack popObject], @"a");
+	XCTAssertNil([stack popObject], @"popObject on empty returns nil");
 	XCTAssertEqual(stack.count, 0);
 }
 
@@ -76,24 +76,24 @@
 - (void)testOrderedSetPushOnTopMovesExistingToEnd {
 	NSMutableOrderedSet *set = [NSMutableOrderedSet orderedSetWithArray:@[@"a", @"b", @"c"]];
 	XCTAssertTrue(set.isPushOnTop);
-	[set push:@"a"];   // already present -> moved to the end
+	[set pushObject:@"a"];   // already present -> moved to the end
 	XCTAssertEqualObjects(set.array, (@[@"b", @"c", @"a"]));
 }
 
 - (void)testOrderedSetPushNotOnTopLeavesExistingInPlace {
 	NSMutableOrderedSet *set = [NSMutableOrderedSet orderedSetWithArray:@[@"a", @"b", @"c"]];
 	set.isPushOnTop = NO;
-	[set push:@"a"];   // already present -> position unchanged
+	[set pushObject:@"a"];   // already present -> position unchanged
 	XCTAssertEqualObjects(set.array, (@[@"a", @"b", @"c"]));
-	[set push:@"d"];   // new -> appended
+	[set pushObject:@"d"];   // new -> appended
 	XCTAssertEqualObjects(set.array, (@[@"a", @"b", @"c", @"d"]));
 }
 
 - (void)testOrderedSetPushNilIgnoredAndChains {
 	NSMutableOrderedSet *set = [NSMutableOrderedSet orderedSet];
-	NSMutableOrderedSet *returned = [set push:@"a"];
+	NSMutableOrderedSet *returned = [set pushObject:@"a"];
 	XCTAssertEqual(returned, set);
-	[set push:nil];
+	[set pushObject:nil];
 	XCTAssertEqualObjects(set.array, (@[@"a"]));
 }
 
@@ -132,11 +132,11 @@
 
 - (void)testOrderedSetPopAndShift {
 	NSMutableOrderedSet *set = [NSMutableOrderedSet orderedSetWithArray:@[@"a", @"b", @"c"]];
-	XCTAssertEqualObjects([set pop], @"c");
+	XCTAssertEqualObjects([set popObject], @"c");
 	XCTAssertEqualObjects([set shift], @"a");
 	XCTAssertEqualObjects(set.array, (@[@"b"]));
-	XCTAssertEqualObjects([set pop], @"b");
-	XCTAssertNil([set pop]);
+	XCTAssertEqualObjects([set popObject], @"b");
+	XCTAssertNil([set popObject]);
 	XCTAssertNil([set shift]);
 }
 

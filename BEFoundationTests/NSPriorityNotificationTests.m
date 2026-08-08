@@ -593,6 +593,27 @@
 	XCTAssertEqualObjects(decoded.userInfo, nested);
 }
 
+- (void)testNSSecureCoding_IdentifierAndTagRoundTripSecurely {
+	// Pins that every decoded key uses class-validated decoding: identifier and tag
+	// previously decoded via plain decodeObjectForKey:, which strict secure-coding
+	// enforcement (deployment-target macOS 11) rejects.
+	NSPriorityNotification *original = [NSPriorityNotification notificationWithName:@"N" object:nil userInfo:nil];
+	original.identifier = @"secure-id";
+	original.tag = 42;
+
+	NSError *error = nil;
+	NSData *data = [NSKeyedArchiver archivedDataWithRootObject:original requiringSecureCoding:YES error:&error];
+	XCTAssertNotNil(data);
+	XCTAssertNil(error);
+
+	NSKeyedUnarchiver *unarchiver = [[NSKeyedUnarchiver alloc] initForReadingFromData:data error:&error];
+	XCTAssertNil(error);
+	NSPriorityNotification *decoded = [unarchiver decodeObjectOfClass:[NSPriorityNotification class] forKey:NSKeyedArchiveRootObjectKey];
+	XCTAssertNil(unarchiver.error, @"secure decode failed: %@", unarchiver.error);
+	XCTAssertEqualObjects(decoded.identifier, @"secure-id");
+	XCTAssertEqual(decoded.tag, 42);
+}
+
 #pragma mark - supportsSecureCoding
 
 - (void)testSupportsSecureCoding {

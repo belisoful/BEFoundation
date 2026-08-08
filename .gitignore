@@ -53,3 +53,11 @@ fastlane/screenshots/**/*.png
 fastlane/test_output
 
 .DS_Store
+
+# Personal / local reference material (not part of the framework)
+Local/
+
+# Swift Package Manager
+.build/
+.swiftpm/
+Package.resolved

@@ -425,4 +425,19 @@
 	XCTAssertEqual(a.hash, b.hash, @"Two identical degenerate (timescale 0) values must hash equally.");
 }
 
+#pragma mark - Regression: rationalize must never return a zero divisor
+
+/*!
+ * For |number| >= 2^31 the very first iteration overflowed and the revert restored the
+ * 1/0 seed, handing back divisor 0. Saturate instead, as the infinite inputs do.
+ */
+- (void)testRationalize32_largeMagnitudesNeverYieldZeroDivisor {
+	const double values[] = { 2147483648.0, 3e9, 1e30, -2147483648.0, -3e9, -1e30 };
+	for (size_t i = 0; i < sizeof(values)/sizeof(values[0]); i++) {
+		SRational32 f = [FxTime rationalize:values[i]];
+		XCTAssertNotEqual(f.divisor, 0,
+						  @"divisor must never be 0 (input %g)", values[i]);
+	}
+}
+
 @end

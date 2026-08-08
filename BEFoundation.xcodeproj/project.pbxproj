@@ -12,6 +12,10 @@
 		616A1A4C875C81C98DFF9AA6 /* BEColor+BExtension.h in Headers */ = {isa = PBXBuildFile; fileRef = D4B633563FE4B1C80B91899E /* BEColor+BExtension.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		81A8B9466361933C606EAC7E /* BEPlatformTypes.h in Headers */ = {isa = PBXBuildFile; fileRef = 2DB7B4B3FEFF733995C16559 /* BEPlatformTypes.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		ABF9E751265C5E0B8A78C6E8 /* BEView+BExtension.h in Headers */ = {isa = PBXBuildFile; fileRef = 732ECCA17117D0CCC1CA737E /* BEView+BExtension.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		BED0741E0000000000000003 /* BEDotView.h in Headers */ = {isa = PBXBuildFile; fileRef = BED0741E0000000000000001 /* BEDotView.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		BEWC00000000000000000031 /* BEColor+BEWebColor.h in Headers */ = {isa = PBXBuildFile; fileRef = BEWC00000000000000000011 /* BEColor+BEWebColor.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		BED0741E0000000000000004 /* BEDotView.m in Sources */ = {isa = PBXBuildFile; fileRef = BED0741E0000000000000002 /* BEDotView.m */; };
+		BEWC00000000000000000041 /* BEColor+BEWebColor.m in Sources */ = {isa = PBXBuildFile; fileRef = BEWC00000000000000000021 /* BEColor+BEWebColor.m */; };
 		CE35545B2EA84D420018CBB0 /* NSData+URLDownload.h in Headers */ = {isa = PBXBuildFile; fileRef = CE3554592EA84D420018CBB0 /* NSData+URLDownload.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		CE35545C2EA84D420018CBB0 /* NSData+URLDownload.m in Sources */ = {isa = PBXBuildFile; fileRef = CE35545A2EA84D420018CBB0 /* NSData+URLDownload.m */; };
 		CE59B8142F92280C009ABF10 /* NSObject+Macroable.m in Sources */ = {isa = PBXBuildFile; fileRef = CE59B8132F92280C009ABF10 /* NSObject+Macroable.m */; };
@@ -24,7 +28,6 @@
 		CE8E41342E3CAD940041A7BD /* BEMetalHelper.h in Headers */ = {isa = PBXBuildFile; fileRef = CE8E40F82E3CAD940041A7BD /* BEMetalHelper.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		CE8E41352E3CAD940041A7BD /* NSOrderedSet+BExtension.h in Headers */ = {isa = PBXBuildFile; fileRef = CE8E412B2E3CAD940041A7BD /* NSOrderedSet+BExtension.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		CE8E41362E3CAD940041A7BD /* NSCoder+AtIndex.h in Headers */ = {isa = PBXBuildFile; fileRef = CE8E41122E3CAD940041A7BD /* NSCoder+AtIndex.h */; settings = {ATTRIBUTES = (Public, ); }; };
-		CE8E41372E3CAD940041A7BD /* NSPooledPriorityNotification.h in Headers */ = {isa = PBXBuildFile; fileRef = CE8E40EB2E3CAD940041A7BD /* NSPooledPriorityNotification.h */; };
 		CE8E41382E3CAD940041A7BD /* NSNumber+BExtension.h in Headers */ = {isa = PBXBuildFile; fileRef = CE8E41202E3CAD940041A7BD /* NSNumber+BExtension.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		CE8E41392E3CAD940041A7BD /* BEPathWatcher.h in Headers */ = {isa = PBXBuildFile; fileRef = CE8E40FE2E3CAD940041A7BD /* BEPathWatcher.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		CE8E413A2E3CAD940041A7BD /* BERuntime.h in Headers */ = {isa = PBXBuildFile; fileRef = CE8E41042E3CAD940041A7BD /* BERuntime.h */; settings = {ATTRIBUTES = (Public, ); }; };
@@ -55,7 +58,6 @@
 		CE8E41532E3CAD940041A7BD /* NSString+BExtension.h in Headers */ = {isa = PBXBuildFile; fileRef = CE8E412F2E3CAD940041A7BD /* NSString+BExtension.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		CE8E41542E3CAD940041A7BD /* CIImage+BExtension.h in Headers */ = {isa = PBXBuildFile; fileRef = CE8E410A2E3CAD940041A7BD /* CIImage+BExtension.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		CE8E41562E3CAD940041A7BD /* BEFoundation.docc in Sources */ = {isa = PBXBuildFile; fileRef = CE8E40F62E3CAD940041A7BD /* BEFoundation.docc */; };
-		CE8E41572E3CAD940041A7BD /* NSPooledPriorityNotification.m in Sources */ = {isa = PBXBuildFile; fileRef = CE8E40EC2E3CAD940041A7BD /* NSPooledPriorityNotification.m */; };
 		CE8E41582E3CAD940041A7BD /* BERuntime.m in Sources */ = {isa = PBXBuildFile; fileRef = CE8E41052E3CAD940041A7BD /* BERuntime.m */; };
 		CE8E41592E3CAD940041A7BD /* NSDictionary+BExtension.m in Sources */ = {isa = PBXBuildFile; fileRef = CE8E41192E3CAD940041A7BD /* NSDictionary+BExtension.m */; };
 		CE8E415A2E3CAD940041A7BD /* NSArray+BExtension.m in Sources */ = {isa = PBXBuildFile; fileRef = CE8E41112E3CAD940041A7BD /* NSArray+BExtension.m */; };
@@ -102,6 +104,11 @@
 		DE5A3C35BA4180CC92349D84 /* BEColor+BExtension.m in Sources */ = {isa = PBXBuildFile; fileRef = EF223DA086BB76EF6FC94ABE /* BEColor+BExtension.m */; };
 		E17AA58137F6BF6B5950CE12 /* BEView+BExtension.m in Sources */ = {isa = PBXBuildFile; fileRef = 6AF29E1FBDD34E82590D5DAB /* BEView+BExtension.m */; };
 		FF26C2D5FC3F39FD0FC5EF00 /* BEImage+BExtension.h in Headers */ = {isa = PBXBuildFile; fileRef = 4C89844EEE7D424601BC1C54 /* BEImage+BExtension.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		BEAF00000000000000000065 /* BEPathControl.h in Headers */ = {isa = PBXBuildFile; fileRef = BEAF00000000000000000001 /* BEPathControl.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		BEAF00000000000000000066 /* BETabView.h in Headers */ = {isa = PBXBuildFile; fileRef = BEAF00000000000000000002 /* BETabView.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		BEAF00000000000000000067 /* BEWindowController.h in Headers */ = {isa = PBXBuildFile; fileRef = BEAF00000000000000000003 /* BEWindowController.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		BEAF00000000000000000068 /* BEWindowControllerManager.h in Headers */ = {isa = PBXBuildFile; fileRef = BEAF00000000000000000004 /* BEWindowControllerManager.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		BEAF00000000000000000069 /* NSOpenPanel+BESecurityScopedURLManager.h in Headers */ = {isa = PBXBuildFile; fileRef = BEAF00000000000000000005 /* NSOpenPanel+BESecurityScopedURLManager.h */; settings = {ATTRIBUTES = (Public, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -116,129 +123,119 @@
 
 /* Begin PBXFileReference section */
 		2A11875E90273C69DBE8C843 /* NSPasteboard+BExtension.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = "NSPasteboard+BExtension.m"; sourceTree = "<group>"; };
-		2DB7B4B3FEFF733995C16559 /* BEPlatformTypes.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = BEPlatformTypes.h; sourceTree = "<group>"; };
-		4C89844EEE7D424601BC1C54 /* BEImage+BExtension.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = "BEImage+BExtension.h"; sourceTree = "<group>"; };
+		2DB7B4B3FEFF733995C16559 /* BEPlatformTypes.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = "include/BEFoundation/BEPlatformTypes.h"; sourceTree = "<group>"; };
+		4C89844EEE7D424601BC1C54 /* BEImage+BExtension.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = "include/BEFoundation/BEImage+BExtension.h"; sourceTree = "<group>"; };
 		6AF29E1FBDD34E82590D5DAB /* BEView+BExtension.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = "BEView+BExtension.m"; sourceTree = "<group>"; };
-		732ECCA17117D0CCC1CA737E /* BEView+BExtension.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = "BEView+BExtension.h"; sourceTree = "<group>"; };
+		732ECCA17117D0CCC1CA737E /* BEView+BExtension.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = "include/BEFoundation/BEView+BExtension.h"; sourceTree = "<group>"; };
 		B161246EB4A3CEE3C5A71E05 /* BEImage+BExtension.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = "BEImage+BExtension.m"; sourceTree = "<group>"; };
-		B959A8F7DA95531B84792AC0 /* NSPasteboard+BExtension.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = "NSPasteboard+BExtension.h"; sourceTree = "<group>"; };
+		B959A8F7DA95531B84792AC0 /* NSPasteboard+BExtension.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = "include/BEFoundation/NSPasteboard+BExtension.h"; sourceTree = "<group>"; };
+		BED0741E0000000000000001 /* BEDotView.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = "include/BEFoundation/BEDotView.h"; sourceTree = "<group>"; };
+		BEWC00000000000000000011 /* BEColor+BEWebColor.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = "include/BEFoundation/BEColor+BEWebColor.h"; sourceTree = "<group>"; };
+		BEWC00000000000000000021 /* BEColor+BEWebColor.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = "BEColor+BEWebColor.m"; sourceTree = "<group>"; };
+		BED0741E0000000000000002 /* BEDotView.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = BEDotView.m; sourceTree = "<group>"; };
 		CE298B532FE021D100A9A7FB /* CLAUDE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = CLAUDE.md; sourceTree = "<group>"; };
 		CE298B542FE021E700A9A7FB /* FIXES.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = FIXES.md; sourceTree = "<group>"; };
-		CE3554592EA84D420018CBB0 /* NSData+URLDownload.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "NSData+URLDownload.h"; sourceTree = "<group>"; };
+		CE3554592EA84D420018CBB0 /* NSData+URLDownload.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "include/BEFoundation/NSData+URLDownload.h"; sourceTree = "<group>"; };
 		CE35545A2EA84D420018CBB0 /* NSData+URLDownload.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "NSData+URLDownload.m"; sourceTree = "<group>"; };
 		CE59B8112F9221D2009ABF10 /* AGENTS.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = AGENTS.md; sourceTree = "<group>"; };
-		CE59B8122F92280C009ABF10 /* NSObject+Macroable.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "NSObject+Macroable.h"; sourceTree = "<group>"; };
+		CE59B8122F92280C009ABF10 /* NSObject+Macroable.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "include/BEFoundation/NSObject+Macroable.h"; sourceTree = "<group>"; };
 		CE59B8132F92280C009ABF10 /* NSObject+Macroable.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "NSObject+Macroable.m"; sourceTree = "<group>"; };
-		CE71218C2F690F0000636EB8 /* BEFileCache.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BEFileCache.h; sourceTree = "<group>"; };
+		CE71218C2F690F0000636EB8 /* BEFileCache.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "include/BEFoundation/BEFileCache.h"; sourceTree = "<group>"; };
 		CE71218D2F690F0000636EB8 /* BEFileCache.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = BEFileCache.m; sourceTree = "<group>"; };
 		CE85BA9F2E152D7F00AADE8F /* Accelerate.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Accelerate.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.5.sdk/System/Library/Frameworks/Accelerate.framework; sourceTree = DEVELOPER_DIR; };
-		CE8E40E92E3CAD940041A7BD /* NSNotification+MutableUserInfo.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "NSNotification+MutableUserInfo.h"; sourceTree = "<group>"; };
+		CE8E40E92E3CAD940041A7BD /* NSNotification+MutableUserInfo.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "../include/BEFoundation/NSNotification+MutableUserInfo.h"; sourceTree = "<group>"; };
 		CE8E40EA2E3CAD940041A7BD /* NSNotification+MutableUserInfo.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "NSNotification+MutableUserInfo.m"; sourceTree = "<group>"; };
-		CE8E40EB2E3CAD940041A7BD /* NSPooledPriorityNotification.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NSPooledPriorityNotification.h; sourceTree = "<group>"; };
-		CE8E40EC2E3CAD940041A7BD /* NSPooledPriorityNotification.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = NSPooledPriorityNotification.m; sourceTree = "<group>"; };
-		CE8E40ED2E3CAD940041A7BD /* NSPriorityNotification.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NSPriorityNotification.h; sourceTree = "<group>"; };
+		CE8E40ED2E3CAD940041A7BD /* NSPriorityNotification.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "../include/BEFoundation/NSPriorityNotification.h"; sourceTree = "<group>"; };
 		CE8E40EE2E3CAD940041A7BD /* NSPriorityNotification.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = NSPriorityNotification.m; sourceTree = "<group>"; };
-		CE8E40EF2E3CAD940041A7BD /* NSPriorityNotificationCenter.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NSPriorityNotificationCenter.h; sourceTree = "<group>"; };
+		CE8E40EF2E3CAD940041A7BD /* NSPriorityNotificationCenter.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "../include/BEFoundation/NSPriorityNotificationCenter.h"; sourceTree = "<group>"; };
 		CE8E40F02E3CAD940041A7BD /* NSPriorityNotificationCenter.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = NSPriorityNotificationCenter.m; sourceTree = "<group>"; };
 		CE8E40F22E3CAD940041A7BD /* BE_ARC.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BE_ARC.h; sourceTree = "<group>"; };
-		CE8E40F32E3CAD940041A7BD /* BECharacterSet.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BECharacterSet.h; sourceTree = "<group>"; };
+		CE8E40F32E3CAD940041A7BD /* BECharacterSet.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "include/BEFoundation/BECharacterSet.h"; sourceTree = "<group>"; };
 		CE8E40F42E3CAD940041A7BD /* BECharacterSet.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = BECharacterSet.m; sourceTree = "<group>"; };
-		CE8E40F52E3CAD940041A7BD /* BEFoundation.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BEFoundation.h; sourceTree = "<group>"; };
+		CE8E40F52E3CAD940041A7BD /* BEFoundation.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "include/BEFoundation/BEFoundation.h"; sourceTree = "<group>"; };
 		CE8E40F62E3CAD940041A7BD /* BEFoundation.docc */ = {isa = PBXFileReference; lastKnownFileType = folder.documentationcatalog; path = BEFoundation.docc; sourceTree = "<group>"; };
 		CE8E40F72E3CAD940041A7BD /* BEFoundation-Bridging-Swift.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "BEFoundation-Bridging-Swift.h"; sourceTree = "<group>"; };
-		CE8E40F82E3CAD940041A7BD /* BEMetalHelper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BEMetalHelper.h; sourceTree = "<group>"; };
+		CE8E40F82E3CAD940041A7BD /* BEMetalHelper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "include/BEFoundation/BEMetalHelper.h"; sourceTree = "<group>"; };
 		CE8E40F92E3CAD940041A7BD /* BEMetalHelper.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = BEMetalHelper.m; sourceTree = "<group>"; };
-		CE8E40FA2E3CAD940041A7BD /* BEMutable.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BEMutable.h; sourceTree = "<group>"; };
+		CE8E40FA2E3CAD940041A7BD /* BEMutable.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "include/BEFoundation/BEMutable.h"; sourceTree = "<group>"; };
 		CE8E40FB2E3CAD940041A7BD /* BEMutable.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = BEMutable.m; sourceTree = "<group>"; };
-		CE8E40FC2E3CAD940041A7BD /* BEObjectRegistry.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BEObjectRegistry.h; sourceTree = "<group>"; };
+		CE8E40FC2E3CAD940041A7BD /* BEObjectRegistry.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "include/BEFoundation/BEObjectRegistry.h"; sourceTree = "<group>"; };
 		CE8E40FD2E3CAD940041A7BD /* BEObjectRegistry.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = BEObjectRegistry.m; sourceTree = "<group>"; };
-		CE8E40FE2E3CAD940041A7BD /* BEPathWatcher.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BEPathWatcher.h; sourceTree = "<group>"; };
+		CE8E40FE2E3CAD940041A7BD /* BEPathWatcher.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "include/BEFoundation/BEPathWatcher.h"; sourceTree = "<group>"; };
 		CE8E40FF2E3CAD940041A7BD /* BEPathWatcher.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = BEPathWatcher.m; sourceTree = "<group>"; };
-		CE8E41002E3CAD940041A7BD /* BEPredicateRule.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BEPredicateRule.h; sourceTree = "<group>"; };
+		CE8E41002E3CAD940041A7BD /* BEPredicateRule.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "include/BEFoundation/BEPredicateRule.h"; sourceTree = "<group>"; };
 		CE8E41012E3CAD940041A7BD /* BEPredicateRule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = BEPredicateRule.m; sourceTree = "<group>"; };
-		CE8E41022E3CAD940041A7BD /* BEPriorityExtensions.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BEPriorityExtensions.h; sourceTree = "<group>"; };
+		CE8E41022E3CAD940041A7BD /* BEPriorityExtensions.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "include/BEFoundation/BEPriorityExtensions.h"; sourceTree = "<group>"; };
 		CE8E41032E3CAD940041A7BD /* BEPriorityExtensions.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = BEPriorityExtensions.m; sourceTree = "<group>"; };
-		CE8E41042E3CAD940041A7BD /* BERuntime.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BERuntime.h; sourceTree = "<group>"; };
+		CE8E41042E3CAD940041A7BD /* BERuntime.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "include/BEFoundation/BERuntime.h"; sourceTree = "<group>"; };
 		CE8E41052E3CAD940041A7BD /* BERuntime.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = BERuntime.m; sourceTree = "<group>"; };
-		CE8E41062E3CAD940041A7BD /* BESingleton.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BESingleton.h; sourceTree = "<group>"; };
+		CE8E41062E3CAD940041A7BD /* BESingleton.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "include/BEFoundation/BESingleton.h"; sourceTree = "<group>"; };
 		CE8E41072E3CAD940041A7BD /* BESingleton.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = BESingleton.m; sourceTree = "<group>"; };
-		CE8E41082E3CAD940041A7BD /* BEStackExtensions.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BEStackExtensions.h; sourceTree = "<group>"; };
+		CE8E41082E3CAD940041A7BD /* BEStackExtensions.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "include/BEFoundation/BEStackExtensions.h"; sourceTree = "<group>"; };
 		CE8E41092E3CAD940041A7BD /* BEStackExtensions.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = BEStackExtensions.m; sourceTree = "<group>"; };
-		CE8E410A2E3CAD940041A7BD /* CIImage+BExtension.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "CIImage+BExtension.h"; sourceTree = "<group>"; };
+		CE8E410A2E3CAD940041A7BD /* CIImage+BExtension.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "include/BEFoundation/CIImage+BExtension.h"; sourceTree = "<group>"; };
 		CE8E410B2E3CAD940041A7BD /* CIImage+BExtension.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "CIImage+BExtension.m"; sourceTree = "<group>"; };
-		CE8E410C2E3CAD940041A7BD /* FxTime.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FxTime.h; sourceTree = "<group>"; };
+		CE8E410C2E3CAD940041A7BD /* FxTime.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "include/BEFoundation/FxTime.h"; sourceTree = "<group>"; };
 		CE8E410D2E3CAD940041A7BD /* FxTime.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FxTime.m; sourceTree = "<group>"; };
-		CE8E41102E3CAD940041A7BD /* NSArray+BExtension.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "NSArray+BExtension.h"; sourceTree = "<group>"; };
+		CE8E41102E3CAD940041A7BD /* NSArray+BExtension.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "include/BEFoundation/NSArray+BExtension.h"; sourceTree = "<group>"; };
 		CE8E41112E3CAD940041A7BD /* NSArray+BExtension.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "NSArray+BExtension.m"; sourceTree = "<group>"; };
-		CE8E41122E3CAD940041A7BD /* NSCoder+AtIndex.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "NSCoder+AtIndex.h"; sourceTree = "<group>"; };
+		CE8E41122E3CAD940041A7BD /* NSCoder+AtIndex.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "include/BEFoundation/NSCoder+AtIndex.h"; sourceTree = "<group>"; };
 		CE8E41132E3CAD940041A7BD /* NSCoder+AtIndex.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "NSCoder+AtIndex.m"; sourceTree = "<group>"; };
-		CE8E41142E3CAD940041A7BD /* NSCoder+HalfFloat.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "NSCoder+HalfFloat.h"; sourceTree = "<group>"; };
+		CE8E41142E3CAD940041A7BD /* NSCoder+HalfFloat.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "include/BEFoundation/NSCoder+HalfFloat.h"; sourceTree = "<group>"; };
 		CE8E41152E3CAD940041A7BD /* NSCoder+HalfFloat.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "NSCoder+HalfFloat.m"; sourceTree = "<group>"; };
-		CE8E41162E3CAD940041A7BD /* NSDateFormatter+RFC3339.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "NSDateFormatter+RFC3339.h"; sourceTree = "<group>"; };
+		CE8E41162E3CAD940041A7BD /* NSDateFormatter+RFC3339.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "include/BEFoundation/NSDateFormatter+RFC3339.h"; sourceTree = "<group>"; };
 		CE8E41172E3CAD940041A7BD /* NSDateFormatter+RFC3339.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "NSDateFormatter+RFC3339.m"; sourceTree = "<group>"; };
-		CE8E41182E3CAD940041A7BD /* NSDictionary+BExtension.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "NSDictionary+BExtension.h"; sourceTree = "<group>"; };
+		CE8E41182E3CAD940041A7BD /* NSDictionary+BExtension.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "include/BEFoundation/NSDictionary+BExtension.h"; sourceTree = "<group>"; };
 		CE8E41192E3CAD940041A7BD /* NSDictionary+BExtension.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "NSDictionary+BExtension.m"; sourceTree = "<group>"; };
-		CE8E411A2E3CAD940041A7BD /* NSMethodSignature+BlockSignatures.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "NSMethodSignature+BlockSignatures.h"; sourceTree = "<group>"; };
+		CE8E411A2E3CAD940041A7BD /* NSMethodSignature+BlockSignatures.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "include/BEFoundation/NSMethodSignature+BlockSignatures.h"; sourceTree = "<group>"; };
 		CE8E411B2E3CAD940041A7BD /* NSMethodSignature+BlockSignatures.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "NSMethodSignature+BlockSignatures.m"; sourceTree = "<group>"; };
-		CE8E411C2E3CAD940041A7BD /* NSMutableNumber.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NSMutableNumber.h; sourceTree = "<group>"; };
+		CE8E411C2E3CAD940041A7BD /* NSMutableNumber.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "include/BEFoundation/NSMutableNumber.h"; sourceTree = "<group>"; };
 		CE8E411D2E3CAD940041A7BD /* NSMutableNumber.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = NSMutableNumber.hpp; sourceTree = "<group>"; };
 		CE8E411E2E3CAD940041A7BD /* NSMutableNumber.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = NSMutableNumber.mm; sourceTree = "<group>"; };
-		CE8E41202E3CAD940041A7BD /* NSNumber+BExtension.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "NSNumber+BExtension.h"; sourceTree = "<group>"; };
+		CE8E41202E3CAD940041A7BD /* NSNumber+BExtension.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "include/BEFoundation/NSNumber+BExtension.h"; sourceTree = "<group>"; };
 		CE8E41212E3CAD940041A7BD /* NSNumber+BExtension.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "NSNumber+BExtension.m"; sourceTree = "<group>"; };
-		CE8E41232E3CAD940041A7BD /* NSNumber+Primes16b.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "NSNumber+Primes16b.h"; sourceTree = "<group>"; };
+		CE8E41232E3CAD940041A7BD /* NSNumber+Primes16b.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "include/BEFoundation/NSNumber+Primes16b.h"; sourceTree = "<group>"; };
 		CE8E41242E3CAD940041A7BD /* NSNumber+Primes16b.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "NSNumber+Primes16b.m"; sourceTree = "<group>"; };
-		CE8E41252E3CAD940041A7BD /* NSObject+DynamicMethods.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "NSObject+DynamicMethods.h"; sourceTree = "<group>"; };
+		CE8E41252E3CAD940041A7BD /* NSObject+DynamicMethods.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "include/BEFoundation/NSObject+DynamicMethods.h"; sourceTree = "<group>"; };
 		CE8E41262E3CAD940041A7BD /* NSObject+DynamicMethods.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "NSObject+DynamicMethods.m"; sourceTree = "<group>"; };
 		CE8E41272E3CAD940041A7BD /* NSObject+DynamicMethodsHelpers.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "NSObject+DynamicMethodsHelpers.h"; sourceTree = "<group>"; };
 		CE8E41282E3CAD940041A7BD /* NSObject+DynamicMethodsHelpers.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "NSObject+DynamicMethodsHelpers.m"; sourceTree = "<group>"; };
-		CE8E41292E3CAD940041A7BD /* NSObject+GlobalRegistry.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "NSObject+GlobalRegistry.h"; sourceTree = "<group>"; };
+		CE8E41292E3CAD940041A7BD /* NSObject+GlobalRegistry.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "include/BEFoundation/NSObject+GlobalRegistry.h"; sourceTree = "<group>"; };
 		CE8E412A2E3CAD940041A7BD /* NSObject+GlobalRegistry.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "NSObject+GlobalRegistry.m"; sourceTree = "<group>"; };
-		CE8E412B2E3CAD940041A7BD /* NSOrderedSet+BExtension.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "NSOrderedSet+BExtension.h"; sourceTree = "<group>"; };
+		CE8E412B2E3CAD940041A7BD /* NSOrderedSet+BExtension.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "include/BEFoundation/NSOrderedSet+BExtension.h"; sourceTree = "<group>"; };
 		CE8E412C2E3CAD940041A7BD /* NSOrderedSet+BExtension.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "NSOrderedSet+BExtension.m"; sourceTree = "<group>"; };
-		CE8E412D2E3CAD940041A7BD /* NSSet+BExtension.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "NSSet+BExtension.h"; sourceTree = "<group>"; };
+		CE8E412D2E3CAD940041A7BD /* NSSet+BExtension.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "include/BEFoundation/NSSet+BExtension.h"; sourceTree = "<group>"; };
 		CE8E412E2E3CAD940041A7BD /* NSSet+BExtension.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "NSSet+BExtension.m"; sourceTree = "<group>"; };
-		CE8E412F2E3CAD940041A7BD /* NSString+BExtension.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "NSString+BExtension.h"; sourceTree = "<group>"; };
+		CE8E412F2E3CAD940041A7BD /* NSString+BExtension.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "include/BEFoundation/NSString+BExtension.h"; sourceTree = "<group>"; };
 		CE8E41302E3CAD940041A7BD /* NSString+BExtension.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "NSString+BExtension.m"; sourceTree = "<group>"; };
 		CE8E41792E3CB5EB0041A7BD /* LICENSE */ = {isa = PBXFileReference; lastKnownFileType = text; path = LICENSE; sourceTree = SOURCE_ROOT; };
 		CE8E417B2E3CB69B0041A7BD /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		CE9272C22D3321B60040EB84 /* BEFoundation.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = BEFoundation.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		CE9272CC2D3321B60040EB84 /* BEFoundationTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BEFoundationTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		CEA64D252E0A328A00922BF7 /* BEFoundation.profdata */ = {isa = PBXFileReference; lastKnownFileType = file; path = BEFoundation.profdata; sourceTree = "<group>"; };
-		CEBC36C72F8D6AD0000F6187 /* NSDateFormatter+RFC2822.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "NSDateFormatter+RFC2822.h"; sourceTree = "<group>"; };
+		CEBC36C72F8D6AD0000F6187 /* NSDateFormatter+RFC2822.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "include/BEFoundation/NSDateFormatter+RFC2822.h"; sourceTree = "<group>"; };
 		CEBC36C82F8D6AD0000F6187 /* NSDateFormatter+RFC2822.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "NSDateFormatter+RFC2822.m"; sourceTree = "<group>"; };
 		CEBDEECD2D3344400031DDD6 /* BEFoundation.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = BEFoundation.xctestplan; sourceTree = "<group>"; };
-		CECB0D9A2EBA36090051640C /* NSURL+Data.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "NSURL+Data.h"; sourceTree = "<group>"; };
+		CECB0D9A2EBA36090051640C /* NSURL+Data.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "include/BEFoundation/NSURL+Data.h"; sourceTree = "<group>"; };
 		CECB0D9B2EBA36090051640C /* NSURL+Data.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "NSURL+Data.m"; sourceTree = "<group>"; };
-		CECB0D9C2EBA36090051640C /* BEWebData.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BEWebData.h; sourceTree = "<group>"; };
+		CECB0D9C2EBA36090051640C /* BEWebData.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "include/BEFoundation/BEWebData.h"; sourceTree = "<group>"; };
 		CECB0D9D2EBA36090051640C /* BEWebData.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = BEWebData.m; sourceTree = "<group>"; };
-		CEFAB02D2ED1DD3A00081679 /* NSNotification+ExtraProperties.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "NSNotification+ExtraProperties.h"; sourceTree = "<group>"; };
+		CEFAB02D2ED1DD3A00081679 /* NSNotification+ExtraProperties.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "../include/BEFoundation/NSNotification+ExtraProperties.h"; sourceTree = "<group>"; };
 		CEFAB02E2ED1DD3A00081679 /* NSNotification+ExtraProperties.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "NSNotification+ExtraProperties.m"; sourceTree = "<group>"; };
-		CEFC9CAE2F69D5A9004BE0E3 /* BESecurityScopedURLManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BESecurityScopedURLManager.h; sourceTree = "<group>"; };
+		CEFC9CAE2F69D5A9004BE0E3 /* BESecurityScopedURLManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "include/BEFoundation/BESecurityScopedURLManager.h"; sourceTree = "<group>"; };
 		CEFC9CAF2F69D5A9004BE0E3 /* BESecurityScopedURLManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = BESecurityScopedURLManager.m; sourceTree = "<group>"; };
-		D4B633563FE4B1C80B91899E /* BEColor+BExtension.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = "BEColor+BExtension.h"; sourceTree = "<group>"; };
+		D4B633563FE4B1C80B91899E /* BEColor+BExtension.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = "include/BEFoundation/BEColor+BExtension.h"; sourceTree = "<group>"; };
 		EF223DA086BB76EF6FC94ABE /* BEColor+BExtension.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = "BEColor+BExtension.m"; sourceTree = "<group>"; };
+		BEAF00000000000000000001 /* BEPathControl.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = "include/BEFoundation/BEPathControl.h"; sourceTree = "<group>"; };
+		BEAF00000000000000000002 /* BETabView.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = "include/BEFoundation/BETabView.h"; sourceTree = "<group>"; };
+		BEAF00000000000000000003 /* BEWindowController.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = "include/BEFoundation/BEWindowController.h"; sourceTree = "<group>"; };
+		BEAF00000000000000000004 /* BEWindowControllerManager.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = "include/BEFoundation/BEWindowControllerManager.h"; sourceTree = "<group>"; };
+		BEAF00000000000000000005 /* NSOpenPanel+BESecurityScopedURLManager.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = "include/BEFoundation/NSOpenPanel+BESecurityScopedURLManager.h"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
-
-/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		CECB0DA82EBAB4900051640C /* Exceptions for "AppKit" folder in "BEFoundation" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			publicHeaders = (
-				BEPathControl.h,
-				BETabView.h,
-				BEWindowController.h,
-				BEWindowControllerManager.h,
-				"NSOpenPanel+BESecurityScopedURLManager.h",
-			);
-			target = CE9272C12D3321B60040EB84 /* BEFoundation */;
-		};
-/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		CE08533D2EB2D1AE00E1A47C /* AppKit */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				CECB0DA82EBAB4900051640C /* Exceptions for "AppKit" folder in "BEFoundation" target */,
-			);
 			path = AppKit;
 			sourceTree = "<group>";
 		};
@@ -284,8 +281,6 @@
 				CE8E40EA2E3CAD940041A7BD /* NSNotification+MutableUserInfo.m */,
 				CEFAB02D2ED1DD3A00081679 /* NSNotification+ExtraProperties.h */,
 				CEFAB02E2ED1DD3A00081679 /* NSNotification+ExtraProperties.m */,
-				CE8E40EB2E3CAD940041A7BD /* NSPooledPriorityNotification.h */,
-				CE8E40EC2E3CAD940041A7BD /* NSPooledPriorityNotification.m */,
 				CE8E40ED2E3CAD940041A7BD /* NSPriorityNotification.h */,
 				CE8E40EE2E3CAD940041A7BD /* NSPriorityNotification.m */,
 				CE8E40EF2E3CAD940041A7BD /* NSPriorityNotificationCenter.h */,
@@ -334,6 +329,15 @@
 				CE8E41092E3CAD940041A7BD /* BEStackExtensions.m */,
 				732ECCA17117D0CCC1CA737E /* BEView+BExtension.h */,
 				6AF29E1FBDD34E82590D5DAB /* BEView+BExtension.m */,
+				BED0741E0000000000000001 /* BEDotView.h */,
+				BEWC00000000000000000011 /* BEColor+BEWebColor.h */,
+				BEWC00000000000000000021 /* BEColor+BEWebColor.m */,
+				BEAF00000000000000000001 /* BEPathControl.h */,
+				BEAF00000000000000000002 /* BETabView.h */,
+				BEAF00000000000000000003 /* BEWindowController.h */,
+				BEAF00000000000000000004 /* BEWindowControllerManager.h */,
+				BEAF00000000000000000005 /* NSOpenPanel+BESecurityScopedURLManager.h */,
+				BED0741E0000000000000002 /* BEDotView.m */,
 				CECB0D9C2EBA36090051640C /* BEWebData.h */,
 				CECB0D9D2EBA36090051640C /* BEWebData.m */,
 				CE8E410A2E3CAD940041A7BD /* CIImage+BExtension.h */,
@@ -382,7 +386,7 @@
 				CECB0D9A2EBA36090051640C /* NSURL+Data.h */,
 				CECB0D9B2EBA36090051640C /* NSURL+Data.m */,
 			);
-			path = Source;
+			path = Sources/BEFoundation;
 			sourceTree = "<group>";
 		};
 		CE9272B82D3321B60040EB84 = {
@@ -431,7 +435,6 @@
 				CE8E41342E3CAD940041A7BD /* BEMetalHelper.h in Headers */,
 				CE8E41352E3CAD940041A7BD /* NSOrderedSet+BExtension.h in Headers */,
 				CE8E41362E3CAD940041A7BD /* NSCoder+AtIndex.h in Headers */,
-				CE8E41372E3CAD940041A7BD /* NSPooledPriorityNotification.h in Headers */,
 				CE8E41382E3CAD940041A7BD /* NSNumber+BExtension.h in Headers */,
 				CE8E41392E3CAD940041A7BD /* BEPathWatcher.h in Headers */,
 				CEFAB02F2ED1DD3A00081679 /* NSNotification+ExtraProperties.h in Headers */,
@@ -472,6 +475,13 @@
 				81A8B9466361933C606EAC7E /* BEPlatformTypes.h in Headers */,
 				616A1A4C875C81C98DFF9AA6 /* BEColor+BExtension.h in Headers */,
 				ABF9E751265C5E0B8A78C6E8 /* BEView+BExtension.h in Headers */,
+				BED0741E0000000000000003 /* BEDotView.h in Headers */,
+				BEWC00000000000000000031 /* BEColor+BEWebColor.h in Headers */,
+				BEAF00000000000000000065 /* BEPathControl.h in Headers */,
+				BEAF00000000000000000066 /* BETabView.h in Headers */,
+				BEAF00000000000000000067 /* BEWindowController.h in Headers */,
+				BEAF00000000000000000068 /* BEWindowControllerManager.h in Headers */,
+				BEAF00000000000000000069 /* NSOpenPanel+BESecurityScopedURLManager.h in Headers */,
 				FF26C2D5FC3F39FD0FC5EF00 /* BEImage+BExtension.h in Headers */,
 				16D6C38921C1796F227A091B /* NSPasteboard+BExtension.h in Headers */,
 			);
@@ -584,7 +594,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				CE8E41562E3CAD940041A7BD /* BEFoundation.docc in Sources */,
-				CE8E41572E3CAD940041A7BD /* NSPooledPriorityNotification.m in Sources */,
 				CE8E41582E3CAD940041A7BD /* BERuntime.m in Sources */,
 				CE8E41592E3CAD940041A7BD /* NSDictionary+BExtension.m in Sources */,
 				CEFAB0302ED1DD3A00081679 /* NSNotification+ExtraProperties.m in Sources */,
@@ -625,6 +634,8 @@
 				CE8E41782E3CAD940041A7BD /* NSCoder+AtIndex.m in Sources */,
 				DE5A3C35BA4180CC92349D84 /* BEColor+BExtension.m in Sources */,
 				E17AA58137F6BF6B5950CE12 /* BEView+BExtension.m in Sources */,
+				BED0741E0000000000000004 /* BEDotView.m in Sources */,
+				BEWC00000000000000000041 /* BEColor+BEWebColor.m in Sources */,
 				4A872F34B6D9DE1FC6DCE7AA /* BEImage+BExtension.m in Sources */,
 				D8216162E3FF642548B4E833 /* NSPasteboard+BExtension.m in Sources */,
 			);

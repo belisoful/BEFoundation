@@ -8,12 +8,36 @@
 #import <XCTest/XCTest.h>
 #import "BEFoundation/BEPredicateRule.h"
 
+/*! A genuine subclass used to verify factories and copies preserve subclass identity. */
+@interface BEPredicateRuleSubclassProbe : BEPredicateRule
+@end
+
+@implementation BEPredicateRuleSubclassProbe
+@end
+
+
 @interface BEPredicateRuleTests : XCTestCase
 
 @end
 
 
 @implementation BEPredicateRuleTests
+
+- (void)testSubclassFactoriesAndCopyPreserveSubclass
+{
+	BEPredicateRuleSubclassProbe *rule = [BEPredicateRuleSubclassProbe ruleWithValue:YES];
+	XCTAssertTrue([rule isMemberOfClass:BEPredicateRuleSubclassProbe.class],
+				  @"+ruleWithValue: on a subclass must return the subclass");
+
+	BEPredicateRuleSubclassProbe *fmt = [BEPredicateRuleSubclassProbe ruleWithFormat:@"SELF == %@", @"x"];
+	XCTAssertTrue([fmt isMemberOfClass:BEPredicateRuleSubclassProbe.class],
+				  @"+ruleWithFormat: on a subclass must return the subclass");
+
+	BEPredicateRule *copy = [rule copy];
+	XCTAssertTrue([copy isMemberOfClass:BEPredicateRuleSubclassProbe.class],
+				  @"-copy must preserve the subclass");
+	XCTAssertEqual(copy.outcome, rule.outcome);
+}
 
 - (void)setUp {
     // Put setup code here. This method is called before the invocation of each test method in the class.

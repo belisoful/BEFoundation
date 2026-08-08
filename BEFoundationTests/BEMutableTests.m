@@ -26,9 +26,9 @@
 - (void)testNSObject_Correctness {
 	NSObject *obj = NSObject.new;
 	
-	XCTAssertFalse(NSObject.isMutable);
-	XCTAssertFalse(obj.class.isMutable);
-	XCTAssertFalse(obj.isMutable);
+	XCTAssertFalse(NSObject.hasMutability);
+	XCTAssertFalse(obj.class.hasMutability);
+	XCTAssertFalse(obj.hasMutability);
 }
 
 #pragma mark - BECollection protocols
@@ -36,9 +36,9 @@
 - (void)testNSSet_Protocol_Correctness {
 	NSSet *set = NSSet.new;
 	
-	XCTAssertFalse(NSSet.isMutable);
-	XCTAssertFalse(set.class.isMutable);
-	XCTAssertFalse(set.isMutable);
+	XCTAssertFalse(NSSet.hasMutability);
+	XCTAssertFalse(set.class.hasMutability);
+	XCTAssertFalse(set.hasMutability);
 	
 	//XCTAssertTrue([NSSet.class conformsToProtocol:@protocol(NSHasMutable)]);
 	//XCTAssertTrue([set conformsToProtocol:@protocol(NSHasMutable)]);
@@ -59,9 +59,9 @@
 - (void)testNSOrderedSet_Protocol_Correctness {
 	NSOrderedSet *orderedSet = NSOrderedSet.new;
 	
-	XCTAssertFalse(NSOrderedSet.isMutable);
-	XCTAssertFalse(orderedSet.class.isMutable);
-	XCTAssertFalse(orderedSet.isMutable);
+	XCTAssertFalse(NSOrderedSet.hasMutability);
+	XCTAssertFalse(orderedSet.class.hasMutability);
+	XCTAssertFalse(orderedSet.hasMutability);
 	
 	//XCTAssertTrue([NSOrderedSet.class conformsToProtocol:@protocol(NSHasMutable)]);
 	//XCTAssertTrue([orderedSet conformsToProtocol:@protocol(NSHasMutable)]);
@@ -82,9 +82,9 @@
 - (void)testNSArray_Protocol_Correctness {
 	NSArray *array = NSArray.new;
 	
-	XCTAssertFalse(NSArray.isMutable);
-	XCTAssertFalse(array.class.isMutable);
-	XCTAssertFalse(array.isMutable);
+	XCTAssertFalse(NSArray.hasMutability);
+	XCTAssertFalse(array.class.hasMutability);
+	XCTAssertFalse(array.hasMutability);
 	
 	//XCTAssertTrue([NSArray.class conformsToProtocol:@protocol(NSHasMutable)]);
 	//XCTAssertTrue([array conformsToProtocol:@protocol(NSHasMutable)]);
@@ -106,9 +106,9 @@
 - (void)testNSDictionary_Protocol_Correctness {
 	NSDictionary *dictionary = NSDictionary.new;
 	
-	XCTAssertFalse(NSDictionary.isMutable);
-	XCTAssertFalse(dictionary.class.isMutable);
-	XCTAssertFalse(dictionary.isMutable);
+	XCTAssertFalse(NSDictionary.hasMutability);
+	XCTAssertFalse(dictionary.class.hasMutability);
+	XCTAssertFalse(dictionary.hasMutability);
 	
 	//XCTAssertTrue([NSDictionary.class conformsToProtocol:@protocol(NSHasMutable)]);
 	//XCTAssertTrue([dictionary conformsToProtocol:@protocol(NSHasMutable)]);
@@ -132,9 +132,9 @@
 - (void)testNSMutableSet_Protocol_Correctness {
 	NSMutableSet *set = NSMutableSet.new;
 	
-	XCTAssertTrue(NSMutableSet.isMutable);
-	XCTAssertTrue(set.class.isMutable);
-	XCTAssertTrue(set.isMutable);
+	XCTAssertTrue(NSMutableSet.hasMutability);
+	XCTAssertTrue(set.class.hasMutability);
+	XCTAssertTrue(set.hasMutability);
 	
 	//XCTAssertTrue([NSMutableSet.class conformsToProtocol:@protocol(NSHasMutable)]);
 	//XCTAssertTrue([set conformsToProtocol:@protocol(NSHasMutable)]);
@@ -155,9 +155,9 @@
 - (void)testNSMutableOrderedSet_Protocol_Correctness {
 	NSMutableOrderedSet *orderedSet = NSMutableOrderedSet.new;
 	
-	XCTAssertTrue(NSMutableOrderedSet.isMutable);
-	XCTAssertTrue(orderedSet.class.isMutable);
-	XCTAssertTrue(orderedSet.isMutable);
+	XCTAssertTrue(NSMutableOrderedSet.hasMutability);
+	XCTAssertTrue(orderedSet.class.hasMutability);
+	XCTAssertTrue(orderedSet.hasMutability);
 	
 	//XCTAssertTrue([NSMutableOrderedSet.class conformsToProtocol:@protocol(NSHasMutable)]);
 	//XCTAssertTrue([orderedSet conformsToProtocol:@protocol(NSHasMutable)]);
@@ -178,9 +178,9 @@
 - (void)testNSMutableArray_Protocol_Correctness {
 	NSMutableArray *array = NSMutableArray.new;
 	
-	XCTAssertTrue(NSMutableArray.isMutable);
-	XCTAssertTrue(array.class.isMutable);
-	XCTAssertTrue(array.isMutable);
+	XCTAssertTrue(NSMutableArray.hasMutability);
+	XCTAssertTrue(array.class.hasMutability);
+	XCTAssertTrue(array.hasMutability);
 	
 	//XCTAssertTrue([NSMutableArray.class conformsToProtocol:@protocol(NSHasMutable)]);
 	//XCTAssertTrue([array conformsToProtocol:@protocol(NSHasMutable)]);
@@ -202,9 +202,9 @@
 - (void)testNSMutableDictionary_Protocol_Correctness {
 	NSMutableDictionary *dictionary = NSMutableDictionary.new;
 	
-	XCTAssertTrue(NSMutableDictionary.isMutable);
-	XCTAssertTrue(dictionary.class.isMutable);
-	XCTAssertTrue(dictionary.isMutable);
+	XCTAssertTrue(NSMutableDictionary.hasMutability);
+	XCTAssertTrue(dictionary.class.hasMutability);
+	XCTAssertTrue(dictionary.hasMutability);
 	
 	//XCTAssertTrue([NSMutableDictionary.class conformsToProtocol:@protocol(NSHasMutable)]);
 	//XCTAssertTrue([dictionary conformsToProtocol:@protocol(NSHasMutable)]);
@@ -228,9 +228,9 @@
 - (void)testNSIndexSet_Protocol_Correctness {
 	NSIndexSet *indexSet = NSIndexSet.new;
 	
-	XCTAssertFalse(NSIndexSet.isMutable);
-	XCTAssertFalse(indexSet.class.isMutable);
-	XCTAssertFalse(indexSet.isMutable);
+	XCTAssertFalse(NSIndexSet.hasMutability);
+	XCTAssertFalse(indexSet.class.hasMutability);
+	XCTAssertFalse(indexSet.hasMutability);
 	
 	//XCTAssertTrue([NSIndexSet.class conformsToProtocol:@protocol(NSHasMutable)]);
 	//XCTAssertTrue([indexSet conformsToProtocol:@protocol(NSHasMutable)]);
@@ -252,9 +252,9 @@
 - (void)testNSNumber_Protocol_Correctness {
 	NSNumber *number = [NSNumber numberWithInt:0];
 	
-	XCTAssertFalse(NSNumber.isMutable);
-	XCTAssertFalse(number.class.isMutable);
-	XCTAssertFalse(number.isMutable);
+	XCTAssertFalse(NSNumber.hasMutability);
+	XCTAssertFalse(number.class.hasMutability);
+	XCTAssertFalse(number.hasMutability);
 	
 	
 	XCTAssertTrue([NSNumber.class conformsToProtocol:@protocol(BEHasMutable)]);
@@ -274,9 +274,9 @@
 - (void)testNSString_Protocol_Correctness {
 	NSString *string = [NSString stringWithFormat:@""];
 	
-	XCTAssertFalse(NSString.isMutable);
-	XCTAssertFalse(string.class.isMutable);
-	XCTAssertFalse(string.isMutable);
+	XCTAssertFalse(NSString.hasMutability);
+	XCTAssertFalse(string.class.hasMutability);
+	XCTAssertFalse(string.hasMutability);
 	
 	//XCTAssertTrue([NSString.class conformsToProtocol:@protocol(NSHasMutable)]);
 	//XCTAssertTrue([string conformsToProtocol:@protocol(NSHasMutable)]);
@@ -301,9 +301,9 @@
 - (void)testNSData_Protocol_Correctness {
 	NSData *data = NSData.new;
 	
-	XCTAssertFalse(NSData.isMutable);
-	XCTAssertFalse(data.class.isMutable);
-	XCTAssertFalse(data.isMutable);
+	XCTAssertFalse(NSData.hasMutability);
+	XCTAssertFalse(data.class.hasMutability);
+	XCTAssertFalse(data.hasMutability);
 	
 	//XCTAssertTrue([NSData.class conformsToProtocol:@protocol(NSHasMutable)]);
 	//XCTAssertTrue([data conformsToProtocol:@protocol(NSHasMutable)]);
@@ -325,9 +325,9 @@
 - (void)testNSAttributedString_Protocol_Correctness {
 	NSAttributedString *string = NSAttributedString.new;
 	
-	XCTAssertFalse(NSAttributedString.isMutable);
-	XCTAssertFalse(string.class.isMutable);
-	XCTAssertFalse(string.isMutable);
+	XCTAssertFalse(NSAttributedString.hasMutability);
+	XCTAssertFalse(string.class.hasMutability);
+	XCTAssertFalse(string.hasMutability);
 	
 	//XCTAssertTrue([NSAttributedString.class conformsToProtocol:@protocol(NSHasMutable)]);
 	//XCTAssertTrue([string conformsToProtocol:@protocol(NSHasMutable)]);
@@ -349,9 +349,9 @@
 - (void)testNSURLRequest_Protocol_Correctness {
 	NSURLRequest *urlRequest = NSURLRequest.new;
 	
-	XCTAssertFalse(NSURLRequest.isMutable);
-	XCTAssertFalse(urlRequest.class.isMutable);
-	XCTAssertFalse(urlRequest.isMutable);
+	XCTAssertFalse(NSURLRequest.hasMutability);
+	XCTAssertFalse(urlRequest.class.hasMutability);
+	XCTAssertFalse(urlRequest.hasMutability);
 	
 	//XCTAssertTrue([NSURLRequest.class conformsToProtocol:@protocol(NSHasMutable)]);
 	//XCTAssertTrue([urlRequest conformsToProtocol:@protocol(NSHasMutable)]);
@@ -373,9 +373,9 @@
 - (void)testNSCharacterSet_Protocol_Correctness {
 	NSCharacterSet *charSet = NSCharacterSet.new;
 	
-	XCTAssertFalse(NSCharacterSet.isMutable);
-	XCTAssertFalse(charSet.class.isMutable);
-	XCTAssertFalse(charSet.isMutable);
+	XCTAssertFalse(NSCharacterSet.hasMutability);
+	XCTAssertFalse(charSet.class.hasMutability);
+	XCTAssertFalse(charSet.hasMutability);
 	
 #if kCharSetDifferentiable
 	XCTAssertTrue([NSCharacterSet.class conformsToProtocol:@protocol(BEHasMutable)]);
@@ -399,9 +399,9 @@
 - (void)testBECharacterSet_Protocol_Correctness {
 	BECharacterSet *charSet = BECharacterSet.new;
 	
-	XCTAssertFalse(BECharacterSet.isMutable);
-	XCTAssertFalse(charSet.class.isMutable);
-	XCTAssertFalse(charSet.isMutable);
+	XCTAssertFalse(BECharacterSet.hasMutability);
+	XCTAssertFalse(charSet.class.hasMutability);
+	XCTAssertFalse(charSet.hasMutability);
 	
 	XCTAssertTrue([BECharacterSet.class conformsToProtocol:@protocol(BEHasMutable)]);
 	XCTAssertTrue([charSet conformsToProtocol:@protocol(BEHasMutable)]);
@@ -427,9 +427,9 @@
 - (void)testNSMutableIndexSet_Protocol_Correctness {
 	NSMutableIndexSet *indexSet = NSMutableIndexSet.new;
 	
-	XCTAssertTrue(NSMutableIndexSet.isMutable);
-	XCTAssertTrue(indexSet.class.isMutable);
-	XCTAssertTrue(indexSet.isMutable);
+	XCTAssertTrue(NSMutableIndexSet.hasMutability);
+	XCTAssertTrue(indexSet.class.hasMutability);
+	XCTAssertTrue(indexSet.hasMutability);
 	
 	XCTAssertFalse([NSMutableIndexSet.class conformsToProtocol:@protocol(BECollection)]);
 	XCTAssertFalse([indexSet conformsToProtocol:@protocol(BECollection)]);
@@ -445,9 +445,9 @@
 - (void)testNSMutableNumber_Protocol_Correctness {
 	NSMutableNumber *number = [NSMutableNumber numberWithInt:0];
 	
-	XCTAssertTrue(NSMutableNumber.isMutable);
-	XCTAssertTrue(number.class.isMutable);
-	XCTAssertTrue(number.isMutable);
+	XCTAssertTrue(NSMutableNumber.hasMutability);
+	XCTAssertTrue(number.class.hasMutability);
+	XCTAssertTrue(number.hasMutability);
 	
 	XCTAssertFalse([NSMutableNumber.class conformsToProtocol:@protocol(BECollection)]);
 	XCTAssertFalse([number conformsToProtocol:@protocol(BECollection)]);
@@ -463,9 +463,9 @@
 - (void)testNSMutableString_Protocol_Correctness {
 	NSMutableString *string = NSMutableString.new;
 	
-	XCTAssertTrue(NSMutableString.isMutable);
-	XCTAssertTrue(string.class.isMutable);
-	XCTAssertTrue(string.isMutable);
+	XCTAssertTrue(NSMutableString.hasMutability);
+	XCTAssertTrue(string.class.hasMutability);
+	XCTAssertTrue(string.hasMutability);
 	
 	
 	[string performSelector:@selector(setString:) withObject:@"obj"];
@@ -484,9 +484,9 @@
 - (void)testNSMutableData_Protocol_Correctness {
 	NSMutableData *data = NSMutableData.new;
 	
-	XCTAssertTrue(NSMutableData.isMutable);
-	XCTAssertTrue(data.class.isMutable);
-	XCTAssertTrue(data.isMutable);
+	XCTAssertTrue(NSMutableData.hasMutability);
+	XCTAssertTrue(data.class.hasMutability);
+	XCTAssertTrue(data.hasMutability);
 	
 	XCTAssertFalse([NSMutableData.class conformsToProtocol:@protocol(BECollection)]);
 	XCTAssertFalse([data conformsToProtocol:@protocol(BECollection)]);
@@ -502,9 +502,9 @@
 - (void)testNSMutableAttributedString_Protocol_Correctness {
 	NSMutableAttributedString *string = NSMutableAttributedString.new;
 	
-	XCTAssertTrue(NSMutableAttributedString.isMutable);
-	XCTAssertTrue(string.class.isMutable);
-	XCTAssertTrue(string.isMutable);
+	XCTAssertTrue(NSMutableAttributedString.hasMutability);
+	XCTAssertTrue(string.class.hasMutability);
+	XCTAssertTrue(string.hasMutability);
 	
 	XCTAssertFalse([NSMutableAttributedString.class conformsToProtocol:@protocol(BECollection)]);
 	XCTAssertFalse([string conformsToProtocol:@protocol(BECollection)]);
@@ -520,9 +520,9 @@
 - (void)testNSMutableURLRequest_Protocol_Correctness {
 	NSMutableURLRequest *urlRequest = NSMutableURLRequest.new;
 	
-	XCTAssertTrue(NSMutableURLRequest.isMutable);
-	XCTAssertTrue(urlRequest.class.isMutable);
-	XCTAssertTrue(urlRequest.isMutable);
+	XCTAssertTrue(NSMutableURLRequest.hasMutability);
+	XCTAssertTrue(urlRequest.class.hasMutability);
+	XCTAssertTrue(urlRequest.hasMutability);
 	
 	XCTAssertFalse([NSMutableURLRequest.class conformsToProtocol:@protocol(BECollection)]);
 	XCTAssertFalse([urlRequest conformsToProtocol:@protocol(BECollection)]);
@@ -541,9 +541,9 @@
 	
 	
 #if kCharSetDifferentiable
-	XCTAssertTrue(NSMutableCharacterSet.isMutable);
-	XCTAssertTrue(charSet.class.isMutable);
-	XCTAssertTrue(charSet.isMutable);
+	XCTAssertTrue(NSMutableCharacterSet.hasMutability);
+	XCTAssertTrue(charSet.class.hasMutability);
+	XCTAssertTrue(charSet.hasMutability);
 	
 	XCTAssertTrue([NSMutableCharacterSet.class conformsToProtocol:@protocol(BEMutable)]);
 	XCTAssertTrue([charSet conformsToProtocol:@protocol(BEMutable)]);
@@ -551,9 +551,9 @@
 	XCTAssertFalse([NSMutableCharacterSet.class conformsToProtocol:@protocol(BEHasMutable)]);
 	XCTAssertFalse([charSet conformsToProtocol:@protocol(BEHasMutable)]);
 #else
-	XCTAssertFalse(NSMutableCharacterSet.isMutable);
-	XCTAssertFalse(charSet.class.isMutable);
-	XCTAssertFalse(charSet.isMutable);
+	XCTAssertFalse(NSMutableCharacterSet.hasMutability);
+	XCTAssertFalse(charSet.class.hasMutability);
+	XCTAssertFalse(charSet.hasMutability);
 	
 	XCTAssertFalse([NSMutableCharacterSet.class conformsToProtocol:@protocol(BEMutable)]);
 	XCTAssertFalse([charSet conformsToProtocol:@protocol(BEMutable)]);
@@ -572,9 +572,9 @@
 - (void)testBEMutableCharacterSet_Protocol_Correctness {
 	BEMutableCharacterSet *charSet = BEMutableCharacterSet.new;
 	
-	XCTAssertTrue(BEMutableCharacterSet.isMutable);
-	XCTAssertTrue(charSet.class.isMutable);
-	XCTAssertTrue(charSet.isMutable);
+	XCTAssertTrue(BEMutableCharacterSet.hasMutability);
+	XCTAssertTrue(charSet.class.hasMutability);
+	XCTAssertTrue(charSet.hasMutability);
 	
 	XCTAssertTrue([BEMutableCharacterSet.class conformsToProtocol:@protocol(BEMutable)]);
 	XCTAssertTrue([charSet conformsToProtocol:@protocol(BEMutable)]);

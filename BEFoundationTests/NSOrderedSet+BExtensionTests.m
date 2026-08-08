@@ -349,14 +349,14 @@
 	{
 		NSMutableOrderedSet *orderedSet = [NSMutableOrderedSet orderedSetWithObjects:@1, @2, @3, @4, @5, nil];
 		
-		[orderedSet removeFirstObject];
+		[orderedSet removeFirstElement];
 		NSMutableOrderedSet *reference = [NSMutableOrderedSet orderedSetWithObjects:@2, @3, @4, @5, nil];
 		XCTAssertEqualObjects(orderedSet, reference);
 	}
 	{
 		NSMutableOrderedSet *orderedSet = [NSMutableOrderedSet orderedSet];
 		
-		[orderedSet removeFirstObject];
+		[orderedSet removeFirstElement];
 		
 		NSMutableOrderedSet *reference = [NSMutableOrderedSet orderedSet];
 		XCTAssertEqualObjects(orderedSet, reference);
@@ -369,7 +369,7 @@
 	{
 		NSMutableOrderedSet *orderedSet = [NSMutableOrderedSet orderedSetWithObjects:@1, @2, @3, @4, @5, nil];
 		
-		[orderedSet removeLastObject];
+		[orderedSet removeLastElement];
 		
 		NSMutableOrderedSet *reference = [NSMutableOrderedSet orderedSetWithObjects:@1, @2, @3, @4, nil];
 		XCTAssertEqualObjects(orderedSet, reference);
@@ -377,7 +377,7 @@
 	{
 		NSMutableOrderedSet *orderedSet = [NSMutableOrderedSet orderedSet];
 		
-		[orderedSet removeLastObject];
+		[orderedSet removeLastElement];
 		NSMutableOrderedSet *reference = [NSMutableOrderedSet orderedSet];
 		XCTAssertEqualObjects(orderedSet, reference);
 	}

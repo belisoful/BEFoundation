@@ -803,6 +803,28 @@
 }
 #endif
 
+#pragma mark - Regression: type qualifiers must not drop the argument
+
+/*!
+ * clang encodes `const char *` as "r*". The qualifier fell through to the default
+ * case, which emitted a bare "r" token; the offset scan then swallowed the base type
+ * and the argument vanished from the signature, handing the block a garbage register.
+ */
+- (void)testParseTypeAtPointer_consumesTypeQualifiers {
+	const char *constCharPtr = "r*24", *constIntPtr = "r^i16", *inoutObj = "N@8";
+	XCTAssertEqualObjects([BEMethodSignatureHelper parseTypeAtPointer:&constCharPtr], @"r*");
+	XCTAssertEqualObjects([BEMethodSignatureHelper parseTypeAtPointer:&constIntPtr], @"r^i");
+	XCTAssertEqualObjects([BEMethodSignatureHelper parseTypeAtPointer:&inoutObj], @"N@");
+}
+
+/*! A qualified argument must survive into the method signature, not be dropped. */
+- (void)testBlockSignature_qualifiedArgumentIsRetained {
+	NSMethodSignature *sig = [NSMethodSignature methodSignatureFromBlock:^(id _self, const char *s){ (void)s; }];
+	XCTAssertNotNil(sig);
+	XCTAssertEqual(sig.numberOfArguments, 3u,
+				   @"self, _cmd and the const char * argument must all be present.");
+}
+
 @end
 
 /*

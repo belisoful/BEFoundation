@@ -1191,4 +1191,57 @@
 								 NSInvalidArgumentException);
 }
 
+#pragma mark - Regression: isIndexedSubscriptNumeric must not freeze on an empty receiver
+
+/*!
+ * Reading the property while empty must not memoize the no-evidence default: doing so
+ * routed later indexed writes to a numeric key beside an existing string key.
+ */
+- (void)testIsIndexedSubscriptNumeric_readWhileEmptyDoesNotFreezeDetection {
+	NSMutableDictionary *control = [NSMutableDictionary dictionary];
+	control[@"5"] = @"str";
+	control[5] = @"idx";
+	XCTAssertEqual(control.count, 1u, @"Baseline: the indexed write reuses the string key.");
+
+	NSMutableDictionary *subject = [NSMutableDictionary dictionary];
+	XCTAssertTrue(subject.isIndexedSubscriptNumeric, @"Empty receiver defaults to numeric.");
+	subject[@"5"] = @"str";
+	subject[5] = @"idx";
+	XCTAssertFalse(subject.isIndexedSubscriptNumeric,
+				   @"Detection must re-run once keys exist.");
+	XCTAssertEqual(subject.count, 1u,
+				   @"An early read must not cause a duplicate numeric key.");
+	XCTAssertEqualObjects(control.allKeys, subject.allKeys);
+}
+
+/*! An explicit set still wins and is not re-derived from the keys. */
+- (void)testIsIndexedSubscriptNumeric_explicitSetIsHonored {
+	NSMutableDictionary *d = [NSMutableDictionary dictionary];
+	d.isIndexedSubscriptNumeric = YES;
+	d[@"5"] = @"str";
+	XCTAssertTrue(d.isIndexedSubscriptNumeric, @"An explicit setting must persist.");
+	d[5] = @"idx";
+	XCTAssertEqual(d.count, 2u, @"Explicit numeric keeps the numeric key separate.");
+}
+
+#pragma mark - Regression: early exits must preserve mutability
+
+/*!
+ * The nil/empty-argument early exits returned [self copy] unconditionally, so the result's
+ * mutability depended on the argument rather than the receiver.
+ */
+- (void)testDictionaryByAddingMerging_earlyExitsKeepReceiverMutability {
+	NSMutableDictionary *m = [NSMutableDictionary dictionaryWithObject:@"v" forKey:@"k"];
+	for (NSDictionary *arg in @[ @{} ]) {
+		XCTAssertTrue([[m dictionaryByAddingDictionary:arg] isKindOfClass:NSMutableDictionary.class]);
+		XCTAssertTrue([[m dictionaryByMergingDictionary:arg] isKindOfClass:NSMutableDictionary.class]);
+	}
+	NSDictionary *nilArg = nil;   // through a variable so the nonnull nil path is testable without a warning
+	XCTAssertTrue([[m dictionaryByAddingDictionary:nilArg] isKindOfClass:NSMutableDictionary.class]);
+	XCTAssertTrue([[m dictionaryByMergingDictionary:nilArg] isKindOfClass:NSMutableDictionary.class]);
+
+	NSDictionary *i = @{@"k": @"v"};
+	XCTAssertFalse([[i dictionaryByAddingDictionary:@{}] isKindOfClass:NSMutableDictionary.class]);
+}
+
 @end

@@ -1118,6 +1118,33 @@
 					@"Costly-to-recreate entry must survive at balance 1");
 }
 
+/**
+ * At evictionBalance 1 with default retention costs every score ties at 1.0;
+ * the tiebreak must evict least-recently-used first, so the
+ * retentionCost-defaults-to-cost LRU contract holds at the balance endpoint.
+ * Costs are distinct so a larger-cost-first tiebreak would pick a different
+ * victim ("c") and fail this test.
+ */
+- (void)testTrim_countLimit_balanceOneDefaultRetentionEvictsLeastRecentlyUsed {
+	_cache.evictionBalance = 1.0;
+	[_cache setObject:[BETestObject objectWithValue:@"a"] forKey:@"a" cost:5];
+	[_cache setObject:[BETestObject objectWithValue:@"b"] forKey:@"b" cost:1];
+	[_cache setObject:[BETestObject objectWithValue:@"c"] forKey:@"c" cost:10];
+	[self waitForDiskQueue];
+
+	(void)[_cache objectForKey:@"a"];   // refresh a's access: b is now oldest
+	[self waitForDiskQueue];
+
+	_cache.countLimit = 2;              // evict exactly one entry
+	[self waitForDiskQueue];
+
+	XCTAssertEqual(_cache.diskCount, 2u);
+	XCTAssertNil([_cache objectForKey:@"b"],
+				 @"The least-recently-used entry must be evicted, not the largest.");
+	XCTAssertNotNil([_cache objectForKey:@"a"]);
+	XCTAssertNotNil([_cache objectForKey:@"c"]);
+}
+
 /** A fresh cache balances recency and value density by default. */
 - (void)testEvictionBalance_defaultsToBalanced {
 	XCTAssertEqual(_cache.evictionBalance, 0.5);
@@ -1687,6 +1714,261 @@
 	XCTAssertFalse([NSFileManager.defaultManager fileExistsAtPath:metaPath],
 				   @"Lone .meta sidecar must be deleted by reconciliation.");
 	XCTAssertEqual(cache2.diskCount, 0u);
+}
+
+// ---------------------------------------------------------------------------
+#pragma mark - fileNameBlock (custom entry file naming)
+// ---------------------------------------------------------------------------
+
+/** Returns the entry files (index excluded) currently in tempDir. */
+- (NSArray<NSString *> *)entryFilesOnDisk {
+	NSArray *files = [NSFileManager.defaultManager
+						contentsOfDirectoryAtPath:_tempDir error:nil];
+	return [files filteredArrayUsingPredicate:
+			[NSPredicate predicateWithFormat:@"SELF != %@", @"BEFileCacheIndex"]];
+}
+
+/** Whether @p name is base.ext with a 64-character lowercase hex base. */
+- (BOOL)isHashNamed:(NSString *)name {
+	NSString *base = name.stringByDeletingPathExtension;
+	if (base.length != 64) return NO;
+	NSCharacterSet *nonHex = [[NSCharacterSet
+		characterSetWithCharactersInString:@"0123456789abcdef"] invertedSet];
+	return [base rangeOfCharacterFromSet:nonHex].location == NSNotFound;
+}
+
+- (void)testFileNameBlock_defaultNamesAreHashHex {
+	[_cache setObject:[BETestObject objectWithValue:@"V"] forKey:@"k" cost:1];
+	[self waitForDiskQueue];
+
+	NSArray<NSString *> *files = [self entryFilesOnDisk];
+	XCTAssertEqual(files.count, 2u);
+	for (NSString *f in files) {
+		XCTAssertTrue([self isHashNamed:f],
+					  @"Default naming must be the 64-hex digest: %@", f);
+	}
+}
+
+- (void)testFileNameBlock_customNameUsedOnDiskAndRoundTrips {
+	__block id       seenKey  = nil;
+	__block NSString *seenHash = nil;
+	_cache.fileNameBlock = ^NSString *(id<NSCopying, NSSecureCoding> key,
+									   NSString *hashName) {
+		seenKey  = key;
+		seenHash = hashName;
+		return [@"avatar-" stringByAppendingString:[hashName substringToIndex:8]];
+	};
+
+	[_cache setObject:[BETestObject objectWithValue:@"V"] forKey:@"k" cost:1];
+	[self waitForDiskQueue];
+
+	XCTAssertEqualObjects(seenKey, @"k");
+	// isHashNamed: strips a path extension; the raw digest has none.
+	XCTAssertTrue([self isHashNamed:seenHash],
+				  @"The block must receive the 64-hex digest.");
+
+	NSString *base = [@"avatar-" stringByAppendingString:[seenHash substringToIndex:8]];
+	NSString *cacheName = [base stringByAppendingPathExtension:BE_FILE_CACHE_EXTENSION];
+	NSString *metaName  = [base stringByAppendingPathExtension:BE_FILE_CACHE_META_EXTENSION];
+	NSSet *onDisk = [NSSet setWithArray:[self entryFilesOnDisk]];
+	XCTAssertEqualObjects(onDisk, ([NSSet setWithObjects:cacheName, metaName, nil]));
+
+	BETestObject *out = [_cache objectForKey:@"k"];
+	XCTAssertEqualObjects(out.value, @"V");
+}
+
+- (void)testFileNameBlock_lookupsResolveViaIndexAfterRelaunchWithoutBlock {
+	_cache.fileNameBlock = ^NSString *(id<NSCopying, NSSecureCoding> key,
+									   NSString *hashName) {
+		return [@"named-" stringByAppendingString:[hashName substringToIndex:8]];
+	};
+	[_cache setObject:[BETestObject objectWithValue:@"V"] forKey:@"k" cost:1];
+	[self waitForDiskQueue];
+
+	// The relaunched instance has NO block: the entry must still resolve,
+	// proving lookups go through the index rather than recomputing names.
+	BEFileCache *cache2 = [self freshCacheOnSameDirectory];
+	BETestObject *out = [cache2 objectForKey:@"k"];
+	XCTAssertEqualObjects(out.value, @"V");
+	XCTAssertEqual(cache2.diskCount, 1u);
+}
+
+- (void)testFileNameBlock_overwriteUnderNewNameDeletesOldPair {
+	__block NSString *suffix = @"A";
+	_cache.fileNameBlock = ^NSString *(id<NSCopying, NSSecureCoding> key,
+									   NSString *hashName) {
+		return [@"gen-" stringByAppendingString:suffix];
+	};
+
+	[_cache setObject:[BETestObject objectWithValue:@"old"] forKey:@"k" cost:1];
+	[self waitForDiskQueue];
+	suffix = @"B";
+	[_cache setObject:[BETestObject objectWithValue:@"new"] forKey:@"k" cost:1];
+	[self waitForDiskQueue];
+
+	NSSet *onDisk = [NSSet setWithArray:[self entryFilesOnDisk]];
+	NSSet *expected = [NSSet setWithObjects:
+		[@"gen-B" stringByAppendingPathExtension:BE_FILE_CACHE_EXTENSION],
+		[@"gen-B" stringByAppendingPathExtension:BE_FILE_CACHE_META_EXTENSION], nil];
+	XCTAssertEqualObjects(onDisk, expected,
+						  @"The pair at the old name must be deleted on overwrite.");
+	XCTAssertEqual(_cache.diskCount, 1u);
+
+	// Relaunch: reconciliation must not resurrect the old entry.
+	BEFileCache *cache2 = [self freshCacheOnSameDirectory];
+	BETestObject *out = [cache2 objectForKey:@"k"];
+	XCTAssertEqualObjects(out.value, @"new");
+	XCTAssertEqual(cache2.diskCount, 1u);
+}
+
+- (void)testFileNameBlock_unsafeNamesFallBackToHash {
+	NSArray *bad = @[ @"bad/name", @"", @".", @".." ];
+	__block NSUInteger i = 0;
+	_cache.fileNameBlock = ^NSString *(id<NSCopying, NSSecureCoding> key,
+									   NSString *hashName) {
+		return [(id)key isEqual:@"nilName"] ? nil : bad[i];
+	};
+
+	for (; i < bad.count; i++) {
+		NSString *key = [NSString stringWithFormat:@"k%lu", (unsigned long)i];
+		[_cache setObject:[BETestObject objectWithValue:key] forKey:key cost:1];
+		[self waitForDiskQueue];
+		BETestObject *out = [_cache objectForKey:key];
+		XCTAssertEqualObjects(out.value, key,
+							  @"Unsafe name %@ must fall back, not fail.", bad[i]);
+	}
+	[_cache setObject:[BETestObject objectWithValue:@"n"] forKey:@"nilName" cost:1];
+	[self waitForDiskQueue];
+	XCTAssertEqualObjects([(BETestObject *)[_cache objectForKey:@"nilName"] value], @"n");
+
+	for (NSString *f in [self entryFilesOnDisk]) {
+		XCTAssertTrue([self isHashNamed:f],
+					  @"Fallback names must be the 64-hex digest: %@", f);
+	}
+	XCTAssertEqual(_cache.diskCount, 5u);
+}
+
+- (void)testFileNameBlock_nulByteNameFallsBackWithoutCrashing {
+	unichar chars[3] = { 'a', 0x0000, 'b' };
+	NSString *nulName = [NSString stringWithCharacters:chars length:3];
+	_cache.fileNameBlock = ^NSString *(id<NSCopying, NSSecureCoding> key,
+									   NSString *hashName) {
+		return nulName;
+	};
+
+	[_cache setObject:[BETestObject objectWithValue:@"V"] forKey:@"k" cost:1];
+	[self waitForDiskQueue];
+
+	XCTAssertEqual(_cache.diskCount, 1u);
+	for (NSString *f in [self entryFilesOnDisk]) {
+		XCTAssertTrue([self isHashNamed:f]);
+	}
+}
+
+- (void)testFileNameBlock_overlongNameFallsBackAndPreservesExistingEntry {
+	// Persist under the default name first.
+	[_cache setObject:[BETestObject objectWithValue:@"old"] forKey:@"k" cost:1];
+	[self waitForDiskQueue];
+
+	// 300 ASCII chars exceeds NAME_MAX; the fallback must keep the write alive
+	// rather than fail it and destroy the existing entry.
+	NSString *longName = [@"" stringByPaddingToLength:300
+										   withString:@"x"
+									  startingAtIndex:0];
+	_cache.fileNameBlock = ^NSString *(id<NSCopying, NSSecureCoding> key,
+									   NSString *hashName) {
+		return longName;
+	};
+	[_cache setObject:[BETestObject objectWithValue:@"new"] forKey:@"k" cost:1];
+	[self waitForDiskQueue];
+
+	XCTAssertEqual(_cache.diskCount, 1u);
+	BEFileCache *cache2 = [self freshCacheOnSameDirectory];
+	XCTAssertEqualObjects([(BETestObject *)[cache2 objectForKey:@"k"] value], @"new",
+						  @"The write must succeed under the digest name.");
+}
+
+- (void)testFileNameBlock_collidingNamesFallBackForSecondKey {
+	_cache.fileNameBlock = ^NSString *(id<NSCopying, NSSecureCoding> key,
+									   NSString *hashName) {
+		return @"shared";
+	};
+
+	[_cache setObject:[BETestObject objectWithValue:@"v1"] forKey:@"k1" cost:1];
+	[_cache setObject:[BETestObject objectWithValue:@"v2"] forKey:@"k2" cost:1];
+	[self waitForDiskQueue];
+
+	XCTAssertEqual(_cache.diskCount, 2u);
+	XCTAssertEqual([self entryFilesOnDisk].count, 4u,
+				   @"Each key must keep its own file pair.");
+
+	// Both keys must survive a relaunch with distinct values.
+	BEFileCache *cache2 = [self freshCacheOnSameDirectory];
+	XCTAssertEqualObjects([(BETestObject *)[cache2 objectForKey:@"k1"] value], @"v1");
+	XCTAssertEqualObjects([(BETestObject *)[cache2 objectForKey:@"k2"] value], @"v2");
+	XCTAssertEqual(cache2.diskCount, 2u);
+}
+
+- (void)testFileNameBlock_composedUnicodeNameStaysSingleEntryAcrossRelaunch {
+	// Composed (NFC) "café": the file system stores and lists the decomposed
+	// form, which previously made reconciliation re-adopt the pair as a
+	// second entry and a later overwrite delete the live files.
+	NSString *nfc = [@"café-" stringByAppendingString:@"x"];
+	_cache.fileNameBlock = ^NSString *(id<NSCopying, NSSecureCoding> key,
+									   NSString *hashName) {
+		return [nfc stringByAppendingString:[hashName substringToIndex:8]];
+	};
+
+	[_cache setObject:[BETestObject objectWithValue:@"v1"] forKey:@"k" cost:1];
+	[self waitForDiskQueue];
+
+	BEFileCache *cache2 = [self freshCacheOnSameDirectory];
+	XCTAssertEqualObjects([(BETestObject *)[cache2 objectForKey:@"k"] value], @"v1");
+	XCTAssertEqual(cache2.diskCount, 1u,
+				   @"Reconciliation must not adopt the pair a second time.");
+
+	// Overwrite through a third instance with the same block: the live pair
+	// must survive (deleting it through a normalization alias was the bug).
+	BEFileCache *cache3 = [self freshCacheOnSameDirectory];
+	cache3.fileNameBlock = _cache.fileNameBlock;
+	[cache3 setObject:[BETestObject objectWithValue:@"v2"] forKey:@"k" cost:1];
+	(void)[cache3 objectForKey:@"__flush__"];
+
+	BEFileCache *cache4 = [self freshCacheOnSameDirectory];
+	XCTAssertEqualObjects([(BETestObject *)[cache4 objectForKey:@"k"] value], @"v2");
+	XCTAssertEqual(cache4.diskCount, 1u);
+}
+
+- (void)testFileNameBlock_interruptedRenameResolvesToSingleEntryOnRelaunch {
+	// Simulate a crash between writing the renamed pair and deleting the old
+	// one: both pairs exist on disk and decode to the same key.
+	_cache.fileNameBlock = ^NSString *(id<NSCopying, NSSecureCoding> key,
+									   NSString *hashName) {
+		return @"gen-A";
+	};
+	[_cache setObject:[BETestObject objectWithValue:@"V"] forKey:@"k" cost:1];
+	[self waitForDiskQueue];
+
+	NSFileManager *fm = NSFileManager.defaultManager;
+	NSString *srcCache = [_tempDir stringByAppendingPathComponent:
+		[@"gen-A" stringByAppendingPathExtension:BE_FILE_CACHE_EXTENSION]];
+	NSString *srcMeta  = [_tempDir stringByAppendingPathComponent:
+		[@"gen-A" stringByAppendingPathExtension:BE_FILE_CACHE_META_EXTENSION]];
+	[fm copyItemAtPath:srcCache
+				toPath:[_tempDir stringByAppendingPathComponent:
+						[@"gen-B" stringByAppendingPathExtension:BE_FILE_CACHE_EXTENSION]]
+				 error:nil];
+	[fm copyItemAtPath:srcMeta
+				toPath:[_tempDir stringByAppendingPathComponent:
+						[@"gen-B" stringByAppendingPathExtension:BE_FILE_CACHE_META_EXTENSION]]
+				 error:nil];
+
+	BEFileCache *cache2 = [self freshCacheOnSameDirectory];
+	XCTAssertEqualObjects([(BETestObject *)[cache2 objectForKey:@"k"] value], @"V");
+	XCTAssertEqual(cache2.diskCount, 1u,
+				   @"One key must never be counted twice.");
+	XCTAssertEqual([self entryFilesOnDisk].count, 2u,
+				   @"The losing duplicate pair must be deleted.");
 }
 
 @end

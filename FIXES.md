@@ -6,7 +6,7 @@ tracked separately in `README.md`'s Change Log.
 
 ---
 
-## 1.1 (unreleased)
+## 1.1.0 (2026-08-08)
 
 ### BEWebData / NSURL+Data / NSData+URLDownload
 
