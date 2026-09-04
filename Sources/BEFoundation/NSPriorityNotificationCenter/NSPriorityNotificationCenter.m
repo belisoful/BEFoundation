@@ -41,6 +41,20 @@ NSInteger const NSPriorityNotificationDefaultPriority = 10;
 @property (nonatomic, assign) BOOL suppressesPostBlock;
 
 - (id)initWithObserver:(id)observer selector:(SEL)selector name:(NSString *)name object:(id)object queue:(NSOperationQueue *)queue block:(void (^)(NSNotification *note))block priority:(NSInteger)priority;
+
+/*!
+ @method		postNotification:fromSuper:
+ @abstract		Delivers a notification to this observer record.
+ @param			notif		The notification to deliver.
+ @param			fromSuper	YES when the notification arrived from NSNotificationCenter.defaultCenter
+							rather than from the priority center's own post methods.
+ @discussion	A notification from the super center may carry an opaque CF pointer as its object.
+				SceneKit, for example, posts C structs through CFNotificationCenterPostNotification.
+				Retaining such a pointer crashes, so queued delivery of a super-center notification
+				forwards the notification itself, as NSNotificationCenter does, instead of copying it
+				into an NSPriorityNotification.
+ */
+- (void)postNotification:(NSNotification *)notif fromSuper:(BOOL)fromSuper;
 @end
 
 
@@ -88,16 +102,24 @@ NSInteger const NSPriorityNotificationDefaultPriority = 10;
 	}
 }
 
-- (void)postNotification:(NSNotification *)notif
+// Queued observers run after this post returns, by which point the poster's notification may
+// be gone. A center-originated post receives a stable copy decoupled from the source (userInfo
+// is shared by reference). A super-center notification is forwarded as-is: the copy would
+// retain notif.object, which may be an opaque CF pointer.
+- (NSNotification *)notificationForQueuedDelivery:(NSNotification *)notif fromSuper:(BOOL)fromSuper
+{
+	if (fromSuper) {
+		return notif;
+	}
+	return [[NSPriorityNotification alloc] initWithName:notif.name object:notif.object userInfo:notif.userInfo reverse:notif.reverse];
+}
+
+- (void)postNotification:(NSNotification *)notif fromSuper:(BOOL)fromSuper
 {
 	void (^ postBlock)(NSNotification * _Nonnull note) = self.suppressesPostBlock ? NULL : notif.postBlock;
 	if (_queue != nil && _block != NULL)
 	{
-		// Queued observers run after this post returns, by which point the poster's
-		// notification may be gone. Async observers receive a stable copy decoupled from the
-		// source (userInfo is shared by reference), and the copy is theirs to retain — it is
-		// never reclaimed or reused by the center.
-		NSPriorityNotification *notifCopy = [[NSPriorityNotification alloc] initWithName:notif.name object:notif.object userInfo:notif.userInfo reverse:notif.reverse];
+		NSNotification *notifCopy = [self notificationForQueuedDelivery:notif fromSuper:fromSuper];
 		[_queue addOperationWithBlock:^{
 			if (notifCopy.userInfo) {
 				@synchronized (notifCopy.userInfo) {
@@ -161,7 +183,7 @@ NSInteger const NSPriorityNotificationDefaultPriority = 10;
 					}
 				}
 			} else {
-				NSPriorityNotification *notifCopy = [[NSPriorityNotification alloc] initWithName:notif.name object:notif.object userInfo:notif.userInfo reverse:notif.reverse];
+				NSNotification *notifCopy = [self notificationForQueuedDelivery:notif fromSuper:fromSuper];
 				if ([signature numberOfArguments] > 2) {  // Arguments start at index 2 (first is self, second is _cmd)
 					[invocation setArgument:&notifCopy atIndex:2];
 				}
@@ -412,7 +434,10 @@ NSInteger const NSPriorityNotificationDefaultPriority = 10;
 - (void)raiseNotification:(NSNotification *)notification fromDefault:(BOOL)fromDefault
 {
 	NSString *name = [notification name];
-	id object = [notification object];
+	// Unretained: a super-center notification's object may be an opaque CF pointer, not an
+	// Objective-C object (SceneKit posts C structs through CFNotificationCenterPostNotification).
+	// It is only compared by identity here, never retained.
+	__unsafe_unretained id object = [notification object];
 	
 	// Snapshot the observers, dropping selector/target observers whose target has
 	// deallocated (weak observer now nil). Block observers (block != NULL) and live
@@ -472,15 +497,16 @@ NSInteger const NSPriorityNotificationDefaultPriority = 10;
 
 	// Invoke observers
 	NSEnumerationOptions options = notification.reverse ? NSEnumerationReverse : 0;
+	BOOL fromSuper = !fromDefault;
 	if (notification.userInfo) {
-		[observers enumerateObjectsWithOptions:options usingBlock:^(id observer, NSUInteger idx, BOOL *stop) {
+		[observers enumerateObjectsWithOptions:options usingBlock:^(_NSPriorityNotificationObserver *observer, NSUInteger idx, BOOL *stop) {
 			@synchronized (notification.userInfo) {
-				[observer postNotification:notification];
+				[observer postNotification:notification fromSuper:fromSuper];
 			}
 		}];
 	} else {
-		[observers enumerateObjectsWithOptions:options usingBlock:^(id observer, NSUInteger idx, BOOL *stop) {
-			[observer postNotification:notification];
+		[observers enumerateObjectsWithOptions:options usingBlock:^(_NSPriorityNotificationObserver *observer, NSUInteger idx, BOOL *stop) {
+			[observer postNotification:notification fromSuper:fromSuper];
 		}];
 	}
 	NARC_RELEASE(observers);

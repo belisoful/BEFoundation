@@ -1250,6 +1250,82 @@
 	[center removeObserver:token];
 }
 
+// SceneKit and other CF clients post through CFNotificationCenterPostNotification with a C
+// struct as the object. Reading it as a retained id crashes, so every path that touches the
+// object of a super-center notification must leave it unretained.
+
+static void BEPostOpaqueObjectProbe(NSString *name, const void *object)
+{
+	CFNotificationCenterPostNotification(CFNotificationCenterGetLocalCenter(), (__bridge CFStringRef)name, object, NULL, true);
+}
+
+- (void)testSystemPostWithOpaqueObjectReachesBlockObserverUnretained {
+	uint64_t storage[8] = {0};
+	const void *opaque = storage;
+	__block NSInteger count = 0;
+	__block const void *seen = NULL;
+	id token = [self.notificationCenter addObserverForName:@"BEOpaqueProbe" object:nil queue:nil usingBlock:^(NSNotification *note) {
+		__unsafe_unretained id object = note.object;
+		seen = (__bridge const void *)object;
+		count++;
+	}];
+
+	BEPostOpaqueObjectProbe(@"BEOpaqueProbe", opaque);
+
+	XCTAssertEqual(count, 1);
+	XCTAssertEqual(seen, opaque, @"the opaque pointer must pass through by identity");
+	[self.notificationCenter removeObserver:token];
+}
+
+- (void)testSystemPostWithOpaqueObjectReachesSelectorObserver {
+	uint64_t storage[8] = {0};
+	[self.notificationCenter addObserver:self.observer1 selector:@selector(handleNotificationWithoutParameter) name:@"BEOpaqueProbe" object:nil];
+
+	BEPostOpaqueObjectProbe(@"BEOpaqueProbe", storage);
+
+	XCTAssertEqual(self.observer1.receivedCount, 1);
+}
+
+- (void)testSystemPostWithOpaqueObjectSkipsObjectFilteredObservers {
+	uint64_t storage[8] = {0};
+	NSObject *filter = [[NSObject alloc] init];
+	[self.notificationCenter addObserver:self.observer1 selector:@selector(handleNotificationWithoutParameter) name:@"BEOpaqueProbe" object:filter];
+
+	BEPostOpaqueObjectProbe(@"BEOpaqueProbe", storage);
+
+	XCTAssertEqual(self.observer1.receivedCount, 0, @"an opaque object must not match a real object filter");
+}
+
+- (void)testSystemPostWithOpaqueObjectReachesQueuedBlockObserverUnretained {
+	uint64_t storage[8] = {0};
+	const void *opaque = storage;
+	NSOperationQueue *queue = [[NSOperationQueue alloc] init];
+	XCTestExpectation *delivered = [self expectationWithDescription:@"queued delivery"];
+	__block const void *seen = NULL;
+	id token = [self.notificationCenter addObserverForName:@"BEOpaqueProbe" object:nil queue:queue usingBlock:^(NSNotification *note) {
+		__unsafe_unretained id object = note.object;
+		seen = (__bridge const void *)object;
+		[delivered fulfill];
+	}];
+
+	BEPostOpaqueObjectProbe(@"BEOpaqueProbe", opaque);
+
+	[self waitForExpectations:@[delivered] timeout:2.0];
+	XCTAssertEqual(seen, opaque);
+	[self.notificationCenter removeObserver:token];
+}
+
+- (void)testSystemPostWithOpaqueObjectReachesQueuedSelectorObserver {
+	uint64_t storage[8] = {0};
+	NSOperationQueue *queue = [[NSOperationQueue alloc] init];
+	[self.notificationCenter addObserver:self.observer1 selector:@selector(handleNotificationWithoutParameter) name:@"BEOpaqueProbe" object:nil queue:queue];
+
+	BEPostOpaqueObjectProbe(@"BEOpaqueProbe", storage);
+
+	[queue waitUntilAllOperationsAreFinished];
+	XCTAssertEqual(self.observer1.receivedCount, 1);
+}
+
 - (void)testCenterDoesNotRetainObserver {
 	__weak TestObserver *weakObserver;
 	@autoreleasepool {
