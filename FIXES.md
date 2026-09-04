@@ -6,6 +6,21 @@ tracked separately in `README.md`'s Change Log.
 
 ---
 
+## 1.1.1 (unreleased)
+
+### NSPriorityNotificationCenter
+
+- **Crash on notifications whose object is a non-object pointer.** `NSPriorityNotificationCenter`
+  observes every notification on the system default center. SceneKit posts through
+  `CFNotificationCenterPostNotification` with a C struct as the `object`, and
+  `raiseNotification:fromDefault:` retained it under ARC, segfaulting in `objc_retain`. The object
+  is now read unretained on that path, and super-center notifications are forwarded to queued
+  observers as-is rather than copied into an `NSPriorityNotification`, matching
+  `NSNotificationCenter`. The header documents the opaque-object contract; regression tests cover
+  the sync, queued, and object-filtered paths.
+
+---
+
 ## 1.1.0 (2026-08-08)
 
 ### BEWebData / NSURL+Data / NSData+URLDownload

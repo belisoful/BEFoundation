@@ -162,6 +162,10 @@ BEFoundation was initially conceived and engineered by belisoful@icloud.com to r
 
 ## Change Log
 
+### New in 1.1.1
+
+ - **Fix:** `NSPriorityNotificationCenter` no longer crashes on notifications whose `object` is a non-object pointer. SceneKit posts such notifications through `CFNotificationCenterPostNotification`; the object is now read unretained, and super-center notifications reach queued observers unchanged. See [FIXES.md](FIXES.md).
+
 ### New in 1.1
 
 **Cross-Platform (iOS & macOS)**
@@ -217,6 +221,13 @@ it may retain indefinitely. Previously it received a pooled object that was recy
 the handler returned, so a retained notification's `name`, `object`, and `userInfo` went nil and
 were later overwritten by an unrelated post. `NSPooledPriorityNotification` is removed; it was
 also measurably slower than plain allocation under concurrent posting.
+
+**Behavior change: `NSMutableNumber` is a genuine `NSNumber` subclass**
+
+`NSMutableNumber` now inherits from `NSNumber` rather than wrapping one. `isKindOfClass:` reports
+`NSNumber`, equality with a plain `NSNumber` is symmetric, `CFNumberRef` bridging works, and
+inherited API such as `decimalValue` returns a value instead of raising. Vendored from the
+standalone `NSMutableNumber` v1.3.0.
 
 **AppKit**
  - [`BEPathControl`](Sources/BEFoundation/BEFoundation.docc/BEPathControl.md): an NSPathControl that displays paths relative to a sub-directory.
