@@ -61,7 +61,7 @@ Code is commit-ready only when every check below passes. These mirror the CI job
 The `Framework Release vX.Y.Z/` folders ship three artifacts:
 
 - `BEFoundation xcframework (macOS, iOS)/BEFoundation.xcframework.zip` — the recommended, multi-platform binary (macOS, iOS device, iOS simulator). Built by `Scripts/build-xcframework.sh <output-dir>`, which archives all three platforms (`BUILD_LIBRARY_FOR_DISTRIBUTION=YES`), runs `-create-xcframework`, ad-hoc signs each contained framework, and packages it. Note: a `.framework` holds one platform only; the xcframework is the one format that ships macOS + iOS together. It is Objective-C-only — the experimental `.swift` sources are not in the target, so no `.swiftinterface` is emitted.
-- `BEFoundation (arm64)/BEFoundation.framework.zip` (`ARCHS=arm64`) and `BEFoundation Universal (arm64, x86_64)/BEFoundation.framework.zip` (`ARCHS='arm64 x86_64'`) — plain **macOS** frameworks. Build each with `-configuration Release` so the binary picks up the PGO profile, then zip with `Scripts/package-release-zip.sh <BEFoundation.framework> <output.zip>`:
+- `BEFoundation (arm64)/BEFoundation.macos-arm.framework.zip` (`ARCHS=arm64`) and `BEFoundation Universal (arm64, x86_64)/BEFoundation.macos-arm-x86.framework.zip` (`ARCHS='arm64 x86_64'`) — plain **macOS** frameworks. Build each with `-configuration Release` so the binary picks up the PGO profile, then zip with `Scripts/package-release-zip.sh <BEFoundation.framework> <output.zip>`:
 
   ```bash
   xcodebuild -project BEFoundation.xcodeproj -scheme BEFoundation -configuration Release -destination 'platform=macOS' \
