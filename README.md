@@ -20,7 +20,7 @@ For full documentation, see the [BEFoundation Documentation](Sources/BEFoundatio
 ### Swift Package Manager
 
 ```swift
-.package(url: "https://github.com/belisoful/BEFoundation.git", from: "1.1.0")
+.package(url: "https://github.com/belisoful/BEFoundation.git", from: "1.1.1")
 ```
 
 or add it in Xcode via **File ▸ Add Package Dependencies…**.
@@ -41,9 +41,9 @@ Download an artifact below and drop it into your target.
 
 The `.xcframework` is the recommended download: it carries macOS and iOS (device + simulator) in one binary, so a single artifact drops into any target. The plain `.framework` builds are macOS-only.
 
- - [BEFoundation.xcframework.zip v1.1.0 (macOS + iOS)](https://github.com/belisoful/BEFoundation/blob/main/Framework%20Release%20v1.1.0/BEFoundation%20xcframework%20(macOS%2C%20iOS)/BEFoundation.xcframework.zip) — **recommended**, multi-platform
- - [BEFoundation.framework.zip v1.1.0 (macOS Universal: arm64 x86_64)](https://github.com/belisoful/BEFoundation/blob/main/Framework%20Release%20v1.1.0/BEFoundation%20Universal%20(arm64%2C%20x86_64)/BEFoundation.framework.zip)
- - [BEFoundation.framework.zip v1.1.0 (macOS arm64)](https://github.com/belisoful/BEFoundation/blob/main/Framework%20Release%20v1.1.0/BEFoundation%20(arm64)/BEFoundation.framework.zip)
+ - [BEFoundation.xcframework.zip v1.1.1 (macOS + iOS)](https://github.com/belisoful/BEFoundation/blob/main/Framework%20Release%20v1.1.1/BEFoundation%20xcframework%20(macOS%2C%20iOS)/BEFoundation.xcframework.zip) — **recommended**, multi-platform
+ - [BEFoundation.framework.zip v1.1.1 (macOS Universal: arm64 x86_64)](https://github.com/belisoful/BEFoundation/blob/main/Framework%20Release%20v1.1.1/BEFoundation%20Universal%20(arm64%2C%20x86_64)/BEFoundation.framework.zip)
+ - [BEFoundation.framework.zip v1.1.1 (macOS arm64)](https://github.com/belisoful/BEFoundation/blob/main/Framework%20Release%20v1.1.1/BEFoundation%20(arm64)/BEFoundation.framework.zip)
 
 ---
 

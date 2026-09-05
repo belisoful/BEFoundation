@@ -2,7 +2,7 @@ Pod::Spec.new do |s|
 
 # Common settings
   s.name         = "BEFoundation"
-  s.version      = "1.1.0"
+  s.version      = "1.1.1"
   s.summary      = "Objective-C extensions to Foundation: notifications, runtime, numbers, data, images, and collections."
   s.description  = <<-DESC
 BEFoundation extends Apple's Foundation with priority notifications, dynamic methods and

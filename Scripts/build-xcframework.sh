@@ -39,8 +39,11 @@ VERIFY=""
 trap 'rm -rf "$WORK" "$VERIFY"' EXIT
 
 # BUILD_LIBRARY_FOR_DISTRIBUTION=YES emits a stable module; SKIP_INSTALL=NO keeps the framework in
-# the archive's Products; unsigned slices are re-signed ad-hoc below.
-BUILD_SETTINGS="SKIP_INSTALL=NO BUILD_LIBRARY_FOR_DISTRIBUTION=YES CODE_SIGNING_ALLOWED=NO"
+# the archive's Products; unsigned slices are re-signed ad-hoc below. CLANG_COVERAGE_MAPPING=NO
+# is required for the PGO profile to apply: the shared scheme enables code coverage, which sets
+# CLANG_COVERAGE_MAPPING=YES on scheme-driven builds, and Clang.xcspec drops
+# -fprofile-instr-use whenever coverage mapping is on.
+BUILD_SETTINGS="SKIP_INSTALL=NO BUILD_LIBRARY_FOR_DISTRIBUTION=YES CODE_SIGNING_ALLOWED=NO CLANG_COVERAGE_MAPPING=NO"
 
 archive() { # <name> <destination>
 	echo ">>> archiving $1 ($2)"

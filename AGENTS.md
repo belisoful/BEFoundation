@@ -61,7 +61,14 @@ Code is commit-ready only when every check below passes. These mirror the CI job
 The `Framework Release vX.Y.Z/` folders ship three artifacts:
 
 - `BEFoundation xcframework (macOS, iOS)/BEFoundation.xcframework.zip` — the recommended, multi-platform binary (macOS, iOS device, iOS simulator). Built by `Scripts/build-xcframework.sh <output-dir>`, which archives all three platforms (`BUILD_LIBRARY_FOR_DISTRIBUTION=YES`), runs `-create-xcframework`, ad-hoc signs each contained framework, and packages it. Note: a `.framework` holds one platform only; the xcframework is the one format that ships macOS + iOS together. It is Objective-C-only — the experimental `.swift` sources are not in the target, so no `.swiftinterface` is emitted.
-- `BEFoundation (arm64)/BEFoundation.framework.zip` (`ARCHS=arm64`) and `BEFoundation Universal (arm64, x86_64)/BEFoundation.framework.zip` (`ARCHS='arm64 x86_64'`) — plain **macOS** frameworks. Build each with `-configuration Release` so the binary picks up the PGO profile, then zip with `Scripts/package-release-zip.sh <BEFoundation.framework> <output.zip>`.
+- `BEFoundation (arm64)/BEFoundation.framework.zip` (`ARCHS=arm64`) and `BEFoundation Universal (arm64, x86_64)/BEFoundation.framework.zip` (`ARCHS='arm64 x86_64'`) — plain **macOS** frameworks. Build each with `-configuration Release` so the binary picks up the PGO profile, then zip with `Scripts/package-release-zip.sh <BEFoundation.framework> <output.zip>`:
+
+  ```bash
+  xcodebuild -project BEFoundation.xcodeproj -scheme BEFoundation -configuration Release -destination 'platform=macOS' \
+    ARCHS='arm64 x86_64' ONLY_ACTIVE_ARCH=NO CLANG_COVERAGE_MAPPING=NO CONFIGURATION_BUILD_DIR=<out-dir> build
+  ```
+
+  `CLANG_COVERAGE_MAPPING=NO` is required on every scheme-driven Release build (`build` and `archive`): the shared scheme enables code coverage, which resolves `CLANG_COVERAGE_MAPPING=YES` and makes Clang.xcspec drop `-fprofile-instr-use`, so the profile is silently ignored. Verify with `grep -l fprofile-instr-use <DerivedData>/Build/Intermediates.noindex/BEFoundation.build/Release/BEFoundation.build/Objects-normal/*/*.resp`.
 
 Both scripts solve the same signature-safe packaging problem:
 
@@ -108,7 +115,7 @@ which is published separately.
 
 | BEFoundation copy | Upstream repo |
 | --- | --- |
-| `Sources/BEFoundation/NSMutableNumber.h` | `Sources/NSMutableNumber/include/NSMutableNumber.h` |
+| `Sources/BEFoundation/include/BEFoundation/NSMutableNumber.h` | `Sources/NSMutableNumber/include/NSMutableNumber.h` |
 | `Sources/BEFoundation/NSMutableNumber.hpp` | `Sources/NSMutableNumber/NSMutableNumber.hpp` |
 | `Sources/BEFoundation/NSMutableNumber.mm` | `Sources/NSMutableNumber/NSMutableNumber.mm` |
 | `BEFoundationTests/NSMutableNumberTests.m` | `Tests/NSMutableNumberTests.m` |
