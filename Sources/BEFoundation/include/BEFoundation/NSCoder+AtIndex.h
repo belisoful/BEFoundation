@@ -321,6 +321,11 @@ NS_ASSUME_NONNULL_BEGIN
  @discussion	This method decodes an NSArray whose elements are all of the specified
 				class. The array must contain only non-collection objects (no nested
 				arrays or dictionaries). Requires secure coding.
+
+				Foundation performs the class check, and its enforcement varies by OS
+				version. An enforcing runtime returns nil and sets the coder's error.
+				A lenient runtime logs a warning and returns the mismatched element
+				in the collection.
  */
 - (nullable NSArray *)decodeArrayOfObjectsOfClass:(Class)cls atIndex:(uint64_t)index API_AVAILABLE(macos(11.0), ios(14.0), watchos(7.0), tvos(14.0)) NS_REFINED_FOR_SWIFT;
 
@@ -333,6 +338,11 @@ NS_ASSUME_NONNULL_BEGIN
  @return		An NSDictionary with keys and values of the specified classes, or nil if decoding fails.
  @discussion	This method decodes an NSDictionary whose keys and values are all of
 				the specified classes. Requires secure coding.
+
+				Foundation performs the class check, and its enforcement varies by OS
+				version. An enforcing runtime returns nil and sets the coder's error.
+				A lenient runtime logs a warning and returns the mismatched element
+				in the collection.
  */
 - (nullable NSDictionary *)decodeDictionaryWithKeysOfClass:(Class)keyCls objectsOfClass:(Class)objectCls atIndex:(uint64_t)index API_AVAILABLE(macos(11.0), ios(14.0), watchos(7.0), tvos(14.0)) NS_REFINED_FOR_SWIFT;
 
@@ -370,6 +380,11 @@ NS_ASSUME_NONNULL_BEGIN
  @discussion	This method decodes an NSArray whose elements are all of one of the
 				specified classes. The array must contain only non-collection objects
 				(no nested arrays or dictionaries). Requires secure coding.
+
+				Foundation performs the class check, and its enforcement varies by OS
+				version. An enforcing runtime returns nil and sets the coder's error.
+				A lenient runtime logs a warning and returns the mismatched element
+				in the collection.
  */
 - (nullable NSArray *)decodeArrayOfObjectsOfClasses:(NSSet<Class> *)classes atIndex:(uint64_t)index API_AVAILABLE(macos(11.0), ios(14.0), watchos(7.0), tvos(14.0)) NS_REFINED_FOR_SWIFT;
 
@@ -382,6 +397,11 @@ NS_ASSUME_NONNULL_BEGIN
  @return		An NSDictionary with keys and values of the specified classes, or nil if decoding fails.
  @discussion	This method decodes an NSDictionary whose keys and values are all of
 				one of the specified classes. Requires secure coding.
+
+				Foundation performs the class check, and its enforcement varies by OS
+				version. An enforcing runtime returns nil and sets the coder's error.
+				A lenient runtime logs a warning and returns the mismatched element
+				in the collection.
  */
 - (nullable NSDictionary *)decodeDictionaryWithKeysOfClasses:(NSSet<Class> *)keyClasses objectsOfClasses:(NSSet<Class> *)objectClasses atIndex:(uint64_t)index API_AVAILABLE(macos(11.0), ios(14.0), watchos(7.0), tvos(14.0)) NS_REFINED_FOR_SWIFT;
 

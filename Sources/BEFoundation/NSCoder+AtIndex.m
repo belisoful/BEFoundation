@@ -422,6 +422,8 @@
  @return		Returns \c nil if the object for \c index is not of the expected
  				types, or cannot be decoded, and sets the \c error on the
  				decoder.
+				A runtime that does not enforce the allowed classes logs a warning
+				and returns the mismatched element in the collection.
  @throws		Requires \c NSSecureCoding otherwise an exception is thrown and
  				sets the \c decodingFailurePolicy to
  				\c NSDecodingFailurePolicySetErrorAndReturn.
@@ -445,6 +447,8 @@
  @return		Returns \c nil if the object for \c index is not of the expected
 				types, or cannot be decoded, and sets the \c error on the
 				decoder.
+				A runtime that does not enforce the allowed classes logs a warning
+				and returns the mismatched element in the collection.
  */
 - (nullable NSDictionary *)decodeDictionaryWithKeysOfClass:(Class)keyCls objectsOfClass:(Class)objectCls atIndex:(uint64_t)index
 {
@@ -505,6 +509,8 @@
  @return		Returns \c nil if the object for \c index is not of the expected
 				types, or cannot be decoded, and sets the \c error on the
 				decoder.
+				A runtime that does not enforce the allowed classes logs a warning
+				and returns the mismatched element in the collection.
  @throws		Requires \c NSSecureCoding otherwise an exception is thrown and
 				sets the \c decodingFailurePolicy to
 				\c NSDecodingFailurePolicySetErrorAndReturn.
@@ -528,6 +534,8 @@
  @return		Returns \c nil if the object for \c index is not of the expected
 				types, or cannot be decoded, and sets the \c error on the
 				decoder.
+				A runtime that does not enforce the allowed classes logs a warning
+				and returns the mismatched element in the collection.
  */
 - (nullable NSDictionary *)decodeDictionaryWithKeysOfClasses:(NSSet<Class> *)keyClasses objectsOfClasses:(NSSet<Class> *)objectClasses atIndex:(uint64_t)index
 {

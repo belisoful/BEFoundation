@@ -39,6 +39,16 @@
 	[super tearDown];
 }
 
+- (BOOL)collection:(id<NSFastEnumeration>)collection containsObjectNotKindOfClass:(Class)cls
+{
+	for (id object in collection) {
+		if (![object isKindOfClass:cls]) {
+			return YES;
+		}
+	}
+	return NO;
+}
+
 - (void)finishEncodingAndCreateUnarchiver
 {
 	[self.archiver finishEncoding];
@@ -502,17 +512,13 @@
 	NSArray *decoded3 = [self.unarchiver decodeArrayOfObjectsOfClasses:mixedClasses atIndex:2];
 	XCTAssertEqualObjects(decoded3, mixedArray);
 	
-	// Test mixed array with only string class (should fail/return nil)
+	// Allowed-class enforcement depends on the runtime: enforcing runtimes return nil, lenient ones pass the element through.
 	NSArray *decoded4 = [self.unarchiver decodeArrayOfObjectsOfClasses:stringClasses atIndex:2];
-	XCTAssertNotNil(decoded4);
-	BOOL containsNonString = NO;
-	for (id obj in decoded4) {
-		if (![obj isKindOfClass:[NSString class]]) {
-			containsNonString = YES;
-			break;
-		}
+	if (decoded4) {
+		XCTAssertTrue([self collection:decoded4 containsObjectNotKindOfClass:[NSString class]], @"Expected decoded array to contain non-NSString objects");
+	} else {
+		XCTAssertNotNil(self.unarchiver.error, @"Expected an unarchiver error when decoded4 is rejected");
 	}
-	XCTAssertTrue(containsNonString, @"Expected decoded array to contain non-NSString objects");
 }
 
 - (void)testDecodeDictionaryWithKeysOfClassesObjectsOfClasses {
@@ -556,20 +562,15 @@
 																	 atIndex:3];
 	XCTAssertEqualObjects(decoded4, mixedValuesDict);
 	
-	// Test with wrong key class (should fail/return nil)
+	// Allowed-class enforcement depends on the runtime: enforcing runtimes return nil, lenient ones pass the key through.
 	NSDictionary *decoded5 = [self.unarchiver decodeDictionaryWithKeysOfClasses:numberClasses
 															objectsOfClasses:stringClasses
 																	 atIndex:0];
-	XCTAssertNotNil(decoded5, @"Expected dictionary, even with wrong class passthrough");
-	
-	BOOL hasInvalidKey = NO;
-	for (id key in decoded5) {
-		if (![key isKindOfClass:[NSNumber class]]) {
-			hasInvalidKey = YES;
-			break;
-		}
+	if (decoded5) {
+		XCTAssertTrue([self collection:decoded5 containsObjectNotKindOfClass:[NSNumber class]], @"Expected invalid key class in decoded5");
+	} else {
+		XCTAssertNotNil(self.unarchiver.error, @"Expected an unarchiver error when decoded5 is rejected");
 	}
-	XCTAssertTrue(hasInvalidKey, @"Expected invalid key class in decoded5");
 }
 
 #pragma mark - Edge Cases
