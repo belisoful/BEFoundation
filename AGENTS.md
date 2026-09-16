@@ -73,6 +73,7 @@ The `Framework Release vX.Y.Z/` folders ship three artifacts:
 Both scripts solve the same signature-safe packaging problem:
 
 - **The issue** — a framework's symlinks (`Versions/Current → A`, the top-level stub → `Versions/Current/BEFoundation`) are sealed by the ad-hoc signature. A zip made with `ditto -c -k` extracts cleanly under `ditto -x` but breaks under Info-ZIP `unzip` (symlinks mis-restored), so `codesign --verify` reports "a sealed resource is missing or invalid". Fresh Xcode builds also carry `com.apple.*` provenance xattrs that `unzip` drops. (The xcframework's macOS slice has the same symlinks; its iOS-device slice is unsigned by the archive, so each contained framework is re-signed individually.)
+- **Deployment targets** — before signing, both scripts run `Scripts/check-deployment-target.sh`, which fails unless every slice's `LC_BUILD_VERSION` `minos` equals the podspec's `osx`/`ios` `deployment_target`. Each Xcode release raises its lowest accepted deployment target, and a build that overrides `MACOSX_DEPLOYMENT_TARGET`/`IPHONEOS_DEPLOYMENT_TARGET` to get past that produces a binary requiring a newer OS than the release declares. Build releases with an Xcode that accepts the podspec's targets. `BE_ALLOW_DEPLOYMENT_TARGET_MISMATCH=1` reports a mismatch without failing, for builds that are not published.
 - **The fix (what the scripts do)** — `xattr -cr` the bundle, re-sign ad-hoc (`codesign --force --deep --sign -`), then archive with `zip -y -r -X` (Info-ZIP, symlink-preserving). The result verifies after both `unzip` and `ditto`/Finder extraction. Each script self-checks by unzipping and re-running `codesign --verify --deep --strict`.
 
 ### DocC Catalog Images
@@ -106,7 +107,7 @@ which is published separately.
 - `BEFoundation.xcodeproj/` — Xcode project file
 - `BEFoundation.xctestplan` — Test plan configuration
 - `OptimizationProfiles/` — Profile-guided-optimization data (`BEFoundation.profdata`)
-- `Scripts/` — developer/release helpers (`build-xcframework.sh`, `package-release-zip.sh`, `check-category-collisions.sh`, `generate-docc-dark-svgs.py`, `run-noncompliant-tests.sh`)
+- `Scripts/` — developer/release helpers (`build-xcframework.sh`, `package-release-zip.sh`, `check-deployment-target.sh`, `check-category-collisions.sh`, `generate-docc-dark-svgs.py`, `run-noncompliant-tests.sh`)
 - `Local/` — personal reference material, git-ignored; nothing here ships
 
 ### Vendored: NSMutableNumber

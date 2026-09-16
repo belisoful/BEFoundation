@@ -14,6 +14,9 @@
 #   provenance extended attributes that `unzip` drops, compounding the broken seal.
 #
 # THE SOLUTION
+#   0. Confirm the binary's minimum OS versions match BEFoundation.podspec
+#      (Scripts/check-deployment-target.sh), so a build from an Xcode that cannot target them
+#      is not packaged.
 #   1. Strip extended attributes so the seal cannot depend on them.
 #   2. Re-sign ad-hoc.
 #   3. Archive with Info-ZIP `zip -y -r -X` (`-y` preserves symlinks, `-X` omits extra
@@ -30,6 +33,8 @@ FRAMEWORK="${1:?usage: package-release-zip.sh <BEFoundation.framework> <output.z
 OUTPUT="${2:?usage: package-release-zip.sh <BEFoundation.framework> <output.zip>}"
 
 [ -d "$FRAMEWORK" ] || { echo "error: not a framework directory: $FRAMEWORK" >&2; exit 1; }
+
+"$(dirname "$0")/check-deployment-target.sh" "$FRAMEWORK"
 
 FW_DIR="$(cd "$(dirname "$FRAMEWORK")" && pwd)"
 FW_NAME="$(basename "$FRAMEWORK")"

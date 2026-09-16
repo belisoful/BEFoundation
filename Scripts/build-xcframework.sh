@@ -15,6 +15,11 @@
 #   unsigned, and `codesign` on the .xcframework wrapper does not recurse into the slices. So each
 #   contained framework is ad-hoc-signed individually, matching the plain .framework release zips.
 #
+# DEPLOYMENT TARGETS
+#   Every slice's minimum OS version must match BEFoundation.podspec
+#   (Scripts/check-deployment-target.sh). The check runs before signing, so a build from an Xcode
+#   that cannot target those versions is not packaged.
+#
 # PACKAGING
 #   The macOS slice carries symlinks (`Versions/Current -> A`, the top-level stub) sealed by the
 #   signature. A `ditto -c -k` zip breaks under Info-ZIP `unzip`; `zip -y -r -X` stays valid under
@@ -26,6 +31,7 @@
 set -euo pipefail
 
 OUT="${1:?usage: build-xcframework.sh <output-dir>}"
+SCRIPTS="$(cd "$(dirname "$0")" && pwd)"
 mkdir -p "$OUT"
 OUT="$(cd "$OUT" && pwd)"
 
@@ -64,6 +70,9 @@ xcodebuild -create-xcframework \
 	-framework "$WORK/ios.xcarchive/Products/Library/Frameworks/BEFoundation.framework" \
 	-framework "$WORK/iossim.xcarchive/Products/Library/Frameworks/BEFoundation.framework" \
 	-output "$XCF" >"$WORK/create.log" 2>&1 || { echo "create-xcframework failed:"; tail -40 "$WORK/create.log"; exit 1; }
+
+echo ">>> checking deployment targets"
+"$SCRIPTS/check-deployment-target.sh" "$XCF"/*/BEFoundation.framework
 
 echo ">>> ad-hoc signing each slice"
 for fw in "$XCF"/*/BEFoundation.framework; do
