@@ -6,6 +6,20 @@ tracked separately in `README.md`'s Change Log.
 
 ---
 
+## Unreleased
+
+### BECharacterSet / BEObjectRegistry
+
+- **`init` was declared `nullable` but never returns nil.** `-[BECharacterSet init]`,
+  `-[BEObjectRegistry init]`, and `-[BEUniversalObjectRegistry init]` return the result of
+  `-[NSObject init]`, which does not fail. The `nullable` annotation made Objective-C callers nil-check
+  a value that is always present, and Swift imported each as the failable `init?()`. These `init`
+  declarations are now nonnull, following Foundation's convention of a nonnull `init` alongside
+  failable argument-taking initializers. `initWithSet:`, `initWithCoder:`, and `initWithKeySalt:`
+  keep their `nullable` returns.
+
+---
+
 ## 1.1.1 (2026-09-04)
 
 ### NSPriorityNotificationCenter

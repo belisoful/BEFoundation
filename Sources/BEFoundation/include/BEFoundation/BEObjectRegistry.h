@@ -228,9 +228,9 @@ extern NSExceptionName _Nonnull const NSDuplicateUUIDException;
  @method        init
  @abstract      Initializes a new registry with default settings.
  @discussion    Creates a new BEObjectRegistry with default settings: requireRegistryProtocol is YES, and keySalt is 0. The registry is immediately ready for use.
- @result        A new BEObjectRegistry instance, or nil if initialization fails.
+ @result        A new BEObjectRegistry instance.
  */
-- (nullable instancetype)init;
+- (instancetype)init;
 
 /*!
  @method        initWithKeySalt:
@@ -437,11 +437,11 @@ extern NSExceptionName _Nonnull const NSDuplicateUUIDException;
  
 				Unlike BEObjectRegistry, this registry will accept any NSObject instance without requiring BERegistryProtocol conformance of the object. The requireRegistryProtocol property can be modified at runtime to change this behavior.
  
- @result        A new BEUniversalObjectRegistry instance, or nil if initialization fails.
+ @result        A new BEUniversalObjectRegistry instance.
  @see           BEObjectRegistry#init
  @since         1.0
  */
-- (nullable instancetype)init;
+- (instancetype)init;
 
 @end
 

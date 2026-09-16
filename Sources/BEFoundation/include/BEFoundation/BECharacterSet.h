@@ -114,9 +114,9 @@ typedef NS_ENUM(NSInteger, BECharacterSetEquality) {
 				for NSCharacterSetAllUnequal or NSCharacterSetAllEqual, in which case the instance
 				setting is set to NSCharacterSetUnequal or NSCharacterSetEqual respectively.
  
- @return		An initialized BECharacterSet instance, or nil if initialization fails.
+ @return		An initialized BECharacterSet instance.
  */
-- (nullable instancetype)init NS_DESIGNATED_INITIALIZER;
+- (instancetype)init NS_DESIGNATED_INITIALIZER;
 
 /*!
  @method		initWithSet:
