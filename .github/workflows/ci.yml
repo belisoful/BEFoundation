@@ -49,6 +49,9 @@ jobs:
                      CODE_SIGNING_ALLOWED=NO \
                      test
 
+      # Warnings are not errors here: Xcode 16.4's DocC reports a false
+      # "Parameter is missing documentation" for +[BEWebData dataWithContentsOfURL:options:error:].
+      # The Xcode 27 job enforces --warnings-as-errors.
       - name: Validate documentation catalog
         run: |
           set -o pipefail
@@ -56,8 +59,7 @@ jobs:
                               -scheme BEFoundation \
                               -configuration Debug \
                               -destination 'platform=macOS' \
-                              CODE_SIGNING_ALLOWED=NO \
-                              OTHER_DOCC_FLAGS="--warnings-as-errors"
+                              CODE_SIGNING_ALLOWED=NO
 
   ios-test:
     name: Tests (iOS Simulator)
@@ -169,7 +171,7 @@ jobs:
       - name: Select the newest Xcode 26
         run: |
           set -o pipefail
-          XCODE=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          XCODE=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1 || true)
           if [ -z "$XCODE" ]; then
             echo "No Xcode 26 on this image:"
             ls -d /Applications/Xcode*.app
@@ -194,7 +196,7 @@ jobs:
 
   xcode-27:
     name: Build and Test (Xcode 27)
-    runs-on: macos-26
+    runs-on: xcode-27
     timeout-minutes: 60
     steps:
       - name: Checkout
@@ -205,7 +207,7 @@ jobs:
       - name: Select the newest Xcode 27
         run: |
           set -o pipefail
-          XCODE=$(ls -d /Applications/Xcode_27*.app 2>/dev/null | sort -V | tail -1)
+          XCODE=$(ls -d /Applications/Xcode_27*.app 2>/dev/null | sort -V | tail -1 || true)
           if [ -z "$XCODE" ]; then
             echo "No Xcode 27 on this image:"
             ls -d /Applications/Xcode*.app
