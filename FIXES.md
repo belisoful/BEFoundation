@@ -6,7 +6,7 @@ tracked separately in `README.md`'s Change Log.
 
 ---
 
-## 1.2.0
+## 1.2.0 (2026-09-23)
 
 ### BECharacterSet / BEObjectRegistry
 
