@@ -76,7 +76,7 @@ NSMutableOrderedSet *queue = [NSMutableOrderedSet orderedSet];
 [queue pushObject:@3];
 
 // Dequeue
-id first = [queue shift];  // Returns @1, queue is now @{@2, @3}
+id first = [queue shift];  // Returns @1, queue is now @[@2, @3]
 ```
 
 ### Method Chaining

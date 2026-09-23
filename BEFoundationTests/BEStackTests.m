@@ -16,11 +16,9 @@
 
 - (void)setUp {
 	[super setUp];
-	// Put setup code here. This method is called before the invocation of each test method in the class.
 }
 
 - (void)tearDown {
-	// Put teardown code here. This method is called after the invocation of each test method in the class.
 	[super tearDown];
 }
 
@@ -124,30 +122,25 @@
 - (void)testNSMutableArray_StackAndQueueBehavior {
 	NSMutableArray *array = [NSMutableArray array];
 
-	// Push elements
 	[[array pushObject:@"A"] pushObject:@"B"]; // A, B
 	XCTAssertEqualObjects([array lastObject], @"B");
 	XCTAssertEqualObjects([array firstObject], @"A");
 	XCTAssertEqual(array.count, 2);
 
-	// Pop one
 	id popped = [array popObject]; // A
 	XCTAssertEqualObjects(popped, @"B");
 	XCTAssertEqual(array.count, 1);
 	XCTAssertEqualObjects([array lastObject], @"A");
 
-	// Push another
 	[array pushObject:@"C"]; // A, C
 	XCTAssertEqualObjects([array lastObject], @"C");
 	XCTAssertEqual(array.count, 2);
 
-	// Shift one
 	id shifted = [array shift]; // C
 	XCTAssertEqualObjects(shifted, @"A");
 	XCTAssertEqual(array.count, 1);
 	XCTAssertEqualObjects([array lastObject], @"C");
 
-	// Pop the last one
 	popped = [array popObject]; //
 	XCTAssertEqualObjects(popped, @"C");
 	XCTAssertEqual(array.count, 0);
@@ -208,7 +201,7 @@
 	XCTAssertEqual(orderedSet.count, 2, @"Ordered set count should be 2 after second push.");
 	XCTAssertEqualObjects([orderedSet lastObject], @"Object2", @"Second pushed object should be the new last object.");
 
-	// Push a duplicate when isPushOnTop is NO: should NOT move to end
+	// Push a duplicate when isPushOnTop is NO: should not move to end
 	[orderedSet pushObject:@"Object1"];
 	XCTAssertEqual(orderedSet.count, 2, @"Ordered set count should remain 2 after pushing a duplicate.");
 	XCTAssertEqualObjects([orderedSet lastObject], @"Object2", @"Duplicate object should NOT be moved to the end when isPushOnTop is NO.");
@@ -342,13 +335,11 @@
 	NSMutableOrderedSet *orderedSet = [NSMutableOrderedSet orderedSet];
 	orderedSet.isPushOnTop = YES; // Default behavior
 
-	// Push elements
 	[[orderedSet pushObject:@"A"] pushObject:@"B"]; // A, B
 	XCTAssertEqualObjects([orderedSet lastObject], @"B");
 	XCTAssertEqualObjects([orderedSet firstObject], @"A");
 	XCTAssertEqual(orderedSet.count, 2);
 
-	// Pop one
 	id popped = [orderedSet popObject]; // A
 	XCTAssertEqualObjects(popped, @"B");
 	XCTAssertEqual(orderedSet.count, 1);
@@ -359,19 +350,16 @@
 	XCTAssertEqualObjects([orderedSet lastObject], @"A");
 	XCTAssertEqual(orderedSet.count, 1); // Still 1 because A was moved
 
-	// Push a new one
 	[orderedSet pushObject:@"C"]; // A, C
 	XCTAssertEqualObjects([orderedSet lastObject], @"C");
 	XCTAssertEqual(orderedSet.count, 2);
 	XCTAssertEqualObjects([orderedSet firstObject], @"A");
 
-	// Shift one
 	id shifted = [orderedSet shift]; // C
 	XCTAssertEqualObjects(shifted, @"A");
 	XCTAssertEqual(orderedSet.count, 1);
 	XCTAssertEqualObjects([orderedSet lastObject], @"C");
 
-	// Pop the last one
 	popped = [orderedSet popObject]; //
 	XCTAssertEqualObjects(popped, @"C");
 	XCTAssertEqual(orderedSet.count, 0);

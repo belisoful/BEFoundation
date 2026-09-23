@@ -3,8 +3,9 @@
  @copyright		-© 2025 Delicense - @belisoful. All rights released.
  @date			2025-01-01
  @author		belisoful@icloud.com
- @abstract
- @discussion
+ @abstract		Priority comparison for BEPriorityItem objects and priority-ordered collection copies.
+ @discussion	Implements BEPriorityExtensionHelper and the sortedByPriority categories declared in
+				BEPriorityExtensions.h.
 */
 
 #import "BE_ARC.h"
@@ -19,8 +20,9 @@ NSInteger	const  BEDefaultSortedItemPriority = 0;
 {
 	NSNumber *defaultPriority = @(BEDefaultSortedItemPriority);
 	return ^NSComparisonResult(id  _Nonnull obj1, id  _Nonnull obj2) {
-		NSNumber *a, *b;
-		
+		NSNumber *a = nil;
+		NSNumber *b = nil;
+
 		BOOL aPriorityItem = [obj1 conformsToProtocol:@protocol(BEPriorityItem)];
 		BOOL bPriorityItem = [obj2 conformsToProtocol:@protocol(BEPriorityItem)];
 		

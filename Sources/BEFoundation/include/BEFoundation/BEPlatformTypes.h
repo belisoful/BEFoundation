@@ -4,12 +4,13 @@
  @author     belisoful@icloud.com
  @abstract   Cross-platform aliases for the AppKit/UIKit types BEFoundation uses.
  @discussion BEFoundation targets both macOS (AppKit) and iOS (UIKit). A handful of
-             APIs traffic in UI types that are spelled differently on each platform —
+             APIs traffic in UI types that are spelled differently on each platform:
              @c NSColor vs @c UIColor, @c NSImage vs @c UIImage, and so on. These
              @c \@compatibility_alias declarations give each a single BEFoundation
              spelling that resolves to the right platform class at compile time, so the
              same source (and the same call sites, e.g. @c [BEColor whiteColor] or
              @c @interface MyView : BEView) compiles on both platforms.
+ @since      1.1
  */
 
 #ifndef BEPlatformTypes_h

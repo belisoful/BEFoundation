@@ -15,11 +15,9 @@
 @implementation NSSetBExtensionTests
 
 - (void)setUp {
-    // Put setup code here. This method is called before the invocation of each test method in the class.
 }
 
 - (void)tearDown {
-    // Put teardown code here. This method is called after the invocation of each test method in the class.
 }
 
 
@@ -31,12 +29,10 @@
 	{ // object classes
 		NSSet *input = [NSSet setWithObjects:@"NSObject", @"NSNumber", @(11), @[@1, @2], [NSNull null], @{@"A": @1, @"B": @2}, nil];
 		
-		// Map to Class objects
 		NSSet *result = [input objectsClasses];
 		
 		
 		NSCountedSet *reference = [NSCountedSet setWithObjects:@"NSObject".class, @"NSObject".class, @(11).class, @[@1, @2].class, [NSNull null].class, @{@"A": @1, @"B": @2}.class, nil];
-		// Verify that each element has been converted to the correct Class object
 		XCTAssertTrue([result isKindOfClass:reference.class]);
 		XCTAssertEqualObjects(result, reference);
 	}
@@ -46,7 +42,6 @@
 		NSSet *result = [input objectsClasses];
 		
 		NSCountedSet *reference = [NSCountedSet set];
-		// An empty set should return an empty set
 		XCTAssertTrue([result isKindOfClass:reference.class]);
 		XCTAssertEqual(result.count, 0);
 	}
@@ -59,12 +54,10 @@
 	{ // object classes
 		NSSet *input = [NSSet setWithObjects:@"NSObject", @"NSNumber", @11, @[@1, @2], [NSNull null], @{@"A": @1, @"B": @2}, nil];
 		
-		// Map to Class objects
 		NSCountedSet *result = [input objectsClassNames];
 		
 		
 		NSCountedSet *reference = [NSCountedSet setWithObjects:NSStringFromClass(@"NSObject".class), NSStringFromClass(@"NSNumber".class), NSStringFromClass(@(11).class), NSStringFromClass(@[@1, @2].class), NSStringFromClass([NSNull null].class), NSStringFromClass(@{@"A": @1, @"B": @2}.class), nil];
-		// Verify that each element has been converted to the correct Class object
 		XCTAssertTrue([result isKindOfClass:reference.class]);
 		XCTAssertEqualObjects(result, reference);
 	}
@@ -74,7 +67,6 @@
 		NSCountedSet *result = [input objectsClassNames];
 		
 		NSCountedSet *reference = [NSCountedSet set];
-		// An empty set should return an empty set
 		XCTAssertTrue([result isKindOfClass:reference.class]);
 		XCTAssertEqual(result.count, 0);
 	}
@@ -87,12 +79,10 @@
 	{ // object classes
 		NSSet *input = [NSSet setWithObjects:@"NSObject", @(11), @[@1, @2], [NSNull null], @{@"A": @1, @"B": @2}, nil];
 		
-		// Map to Class objects
 		NSCountedSet *result = [input objectsUniqueClasses];
 		
 		
 		NSCountedSet *reference = [NSCountedSet setWithObjects:@"NSObject".class, @(11).class, @[@1, @2].class, [NSNull null].class, @{@"A": @1, @"B": @2}.class, nil];
-		// Verify that each element has been converted to the correct Class object
 		XCTAssertTrue([result isKindOfClass:reference.class]);
 		XCTAssertEqualObjects(result, reference);
 	}
@@ -102,7 +92,6 @@
 		NSCountedSet *result = [input objectsUniqueClasses];
 		
 		NSCountedSet *reference = [NSCountedSet set];
-		// An empty set should return an empty set
 		XCTAssertTrue([result isKindOfClass:reference.class]);
 		XCTAssertEqual(result.count, 0);
 	}
@@ -114,12 +103,10 @@
 	{ // object classes
 		NSSet *input = [NSSet setWithObjects:@"NSObject", @(11), @[@1, @2], [NSNull null], @{@"A": @1, @"B": @2}, nil];
 		
-		// Map to Class objects
 		NSCountedSet *result = [input objectsUniqueClassNames];
 		
 		
 		NSCountedSet *reference = [NSCountedSet setWithObjects:NSStringFromClass(@"NSObject".class), NSStringFromClass(@(11).class), NSStringFromClass(@[@1, @2].class), NSStringFromClass([NSNull null].class), NSStringFromClass(@{@"A": @1, @"B": @2}.class), nil];
-		// Verify that each element has been converted to the correct Class object
 		XCTAssertTrue([result isKindOfClass:reference.class]);
 		XCTAssertEqualObjects(result, reference);
 	}
@@ -129,7 +116,6 @@
 		NSCountedSet *result = [input objectsUniqueClassNames];
 		
 		NSCountedSet *reference = [NSCountedSet set];
-		// An empty set should return an empty set
 		XCTAssertTrue([result isKindOfClass:reference.class]);
 		XCTAssertEqual(result.count, 0);
 	}
@@ -143,7 +129,6 @@
 	{	// Class Names to Class, filter out invalid classes, and objects not NSString.
 		NSSet *input = [NSSet setWithObjects:@"NSString", @"NSNumber", @"NSObject", @"NSArray", [NSNull null], @"InvalidClass", @"AnotherInvalidClass", @[], @{}, nil];
 		
-		// Map to Class objects
 		NSSet *result = [input toClassesFromStrings];
 		
 		NSSet *reference = [NSSet setWithObjects:NSString.class, NSNumber.class, NSObject.class, NSArray.class, nil];
@@ -166,7 +151,6 @@
 - (void)testNSSet_MapUsingBlock_Correctness
 {
 	NSSet *input = [NSSet setWithObjects:@1, @2, @3, @4, @5, @6, [NSNull null], nil];
-	// Test synchronous behavior (no NSEnumerationConcurrent)
 	NSSet *result = [input mapUsingBlock:^BOOL(id  _Nullable __autoreleasing * _Nonnull obj, BOOL * _Nonnull stop) {
 		if (*obj == [NSNull null]) {
 			return YES;
@@ -248,7 +232,6 @@
 	}
 	
 	NSSet *set = largeinput.copy;
-	// Measure performance for large input with synchronous processing
 	[self measureBlock:^{
 		[set mapUsingBlock:^BOOL(id  _Nullable __autoreleasing * _Nonnull obj, BOOL * _Nonnull stop) {
 			*obj = @([*obj integerValue] * 2);
@@ -263,7 +246,6 @@
 - (void)testNSMutableSet_MapUsingBlock_Correctness
 {
 	NSMutableSet *input = [NSMutableSet setWithObjects:@1, @2, @3, @4, @5, @6, [NSNull null], nil];
-	// Test synchronous behavior (no NSEnumerationConcurrent)
 	NSMutableSet *result = [input mapUsingBlock:^BOOL(id  _Nullable __autoreleasing * _Nonnull obj, BOOL * _Nonnull stop) {
 		if (*obj == [NSNull null]) {
 			return YES;
@@ -283,7 +265,6 @@
 
 - (void)testFilterUsingBlock_Correctness {
 	{	// works correctly
-		// Test the filter operation with no concurrency (map I -> I*2)
 		NSMutableSet *input = [NSMutableSet setWithObjects:@1, @2, @3, @4, @5, @6, [NSNull null], nil];
 		NSMutableSet *result = [input filterUsingBlock:^BOOL(id _Nullable *_Nonnull obj, BOOL *_Nonnull stop) {
 			if (*obj == [NSNull null]) {
@@ -323,7 +304,6 @@
 - (void)testFilterUsingBlock_WithNilBlock {
 	NSMutableSet *input = [NSMutableSet setWithObjects:@"1", @"2", @3, [NSNull null], @[], @{}, nil];
 	
-	// Test both synchronous and concurrent with a nil block
 	NSMutableSet *result = [input filterUsingBlock:nil];
 	
 	NSSet *reference = [NSSet setWithObjects:@"1", @"2", @3, [NSNull null], @[], @{}, nil];
@@ -334,13 +314,11 @@
 
 
 - (void)testFilterUsingBlock_Performance {
-	// Performance test to check how well the filter works with a large set (map I -> I*2)
 	NSMutableSet *set = [NSMutableSet set];
 	for (NSInteger i = 0; i < 100000; i++) {
 		[set addObject:@(i)];
 	}
 	
-	// Measure performance of mapping each element to I*2
 	[self measureBlock:^{
 		[set filterUsingBlock:^BOOL(id _Nullable *_Nonnull obj, BOOL *_Nonnull stop) {
 			*obj = @([*obj integerValue] * 2);

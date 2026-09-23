@@ -151,7 +151,6 @@
 #pragma mark - Edge Cases Tests
 
 - (void)testDecodeNonExistentKey {
-	// Don't encode anything, just try to decode
 	[self.archiver encodeInt:42 forKey:@"someOtherKey"]; // Encode something else
 	[self finishArchivingAndCreateUnarchiver];
 	
@@ -222,7 +221,6 @@
 #pragma mark - Boundary Values Tests
 
 - (void)testEncodeDecodeVerySmallValue {
-	// Test a very small positive value near the limit of _Float16 precision
 	_Float16 originalValue = 0.00006103515625f; // 2^-14, smallest normal _Float16
 	NSString *key = @"smallKey";
 	
@@ -237,7 +235,6 @@
 }
 
 - (void)testEncodeDecodeLargeValue {
-	// Test a large value near the limit of _Float16 range
 	_Float16 originalValue = 65504.0f; // Largest finite _Float16
 	NSString *key = @"largeKey";
 	

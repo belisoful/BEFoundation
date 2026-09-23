@@ -204,11 +204,9 @@
 @implementation NSDynamicMethodsObjectProtocolTests
 
 - (void)setUp {
-    // Put setup code here. This method is called before the invocation of each test method in the class.
 }
 
 - (void)tearDown {
-    // Put teardown code here. This method is called after the invocation of each test method in the class.
 }
 
 - (void)testProtocol_NoProtocol_target
@@ -232,7 +230,6 @@
 	XCTAssertEqualObjects([object performSelector:@selector(protocolOptionalObjectMethod)], @(130));
 	XCTAssertEqualObjects([object performSelector:@selector(optionalObjectMethod)], @(131));
 	
-	// remove target
 	XCTAssertFalse([object removeObjectProtocol:nil withTarget:nonTarget]);
 	XCTAssertTrue([object removeObjectProtocol:nil withTarget:target]);
 	XCTAssertFalse([object conformsToProtocol:@protocol(MyDMNoMethodProtocol)]);
@@ -255,7 +252,6 @@
 	XCTAssertFalse([object isDynamicObjectProtocol:@protocol(MySubDMNoMethodProtocol)]);
 	XCTAssertFalse([object isDynamicObjectProtocol:@protocol(MySubSubDMNoMethodProtocol)]);
 	
-	// Add Protocol
 	XCTAssertTrue([object addObjectProtocol:@protocol(MyDMNoMethodProtocol)]);
 	XCTAssertTrue([object conformsToProtocol:@protocol(MyDMNoMethodProtocol)]);
 	XCTAssertFalse([object conformsToProtocol:@protocol(MySubDMNoMethodProtocol)]);
@@ -264,7 +260,6 @@
 	XCTAssertFalse([object isDynamicObjectProtocol:@protocol(MySubDMNoMethodProtocol)]);
 	XCTAssertFalse([object isDynamicObjectProtocol:@protocol(MySubSubDMNoMethodProtocol)]);
 	
-	// Remove Protocol
 	XCTAssertTrue([object removeObjectProtocol:@protocol(MyDMNoMethodProtocol)]);
 	XCTAssertFalse([object conformsToProtocol:@protocol(MyDMNoMethodProtocol)]);
 	XCTAssertFalse([object conformsToProtocol:@protocol(MySubDMNoMethodProtocol)]);
@@ -289,7 +284,6 @@
 	XCTAssertFalse([object isDynamicObjectProtocol:@protocol(MySubDMNoMethodProtocol)]);
 	XCTAssertFalse([object isDynamicObjectProtocol:@protocol(MySubSubDMNoMethodProtocol)]);
 	
-	// Add nil target
 	id nilTarget = nil;
 	XCTAssertTrue([object addObjectProtocol:@protocol(MyDMNoMethodProtocol) withTarget:nilTarget]);
 	XCTAssertTrue([object conformsToProtocol:@protocol(MyDMNoMethodProtocol)]);
@@ -299,7 +293,6 @@
 	XCTAssertFalse([object isDynamicObjectProtocol:@protocol(MySubDMNoMethodProtocol)]);
 	XCTAssertFalse([object isDynamicObjectProtocol:@protocol(MySubSubDMNoMethodProtocol)]);
 	
-	// remove nil target
 	XCTAssertTrue([object removeObjectProtocol:@protocol(MyDMNoMethodProtocol) withTarget:nilTarget]);
 	XCTAssertFalse([object conformsToProtocol:@protocol(MyDMNoMethodProtocol)]);
 	XCTAssertFalse([object conformsToProtocol:@protocol(MySubDMNoMethodProtocol)]);
@@ -324,7 +317,6 @@
 	XCTAssertFalse([object isDynamicObjectProtocol:@protocol(MySubDMNoMethodProtocol)]);
 	XCTAssertFalse([object isDynamicObjectProtocol:@protocol(MySubSubDMNoMethodProtocol)]);
 	
-	// Add with target
 	NSObject *target = NSObject.new, *nonTarget = NSObject.new;
 	XCTAssertTrue([object addObjectProtocol:@protocol(MyDMNoMethodProtocol) withTarget:target]);
 	XCTAssertFalse([object addObjectProtocol:@protocol(MyDMNoMethodProtocol) withTarget:target]);
@@ -335,7 +327,6 @@
 	XCTAssertFalse([object isDynamicObjectProtocol:@protocol(MySubDMNoMethodProtocol)]);
 	XCTAssertFalse([object isDynamicObjectProtocol:@protocol(MySubSubDMNoMethodProtocol)]);
 	
-	// remove with target
 	XCTAssertFalse([object removeObjectProtocol:@protocol(MyDMNoMethodProtocol) withTarget:nonTarget]);
 	XCTAssertFalse([object removeObjectProtocol:@protocol(MySubDMNoMethodProtocol) withTarget:target]);
 	XCTAssertTrue([object removeObjectProtocol:@protocol(MyDMNoMethodProtocol) withTarget:target]);
@@ -355,7 +346,6 @@
 	XCTAssertFalse([object isDynamicObjectProtocol:@protocol(MySubDMNoMethodProtocol)]);
 	XCTAssertFalse([object isDynamicObjectProtocol:@protocol(MySubSubDMNoMethodProtocol)]);
 	
-	// remove prototol
 	XCTAssertFalse([object removeObjectProtocol:@protocol(MySubDMNoMethodProtocol) withTarget:nil]);
 	XCTAssertTrue([object removeObjectProtocol:@protocol(MyDMNoMethodProtocol) withTarget:nil]);
 	XCTAssertFalse([object conformsToProtocol:@protocol(MyDMNoMethodProtocol)]);
@@ -374,7 +364,6 @@
 	XCTAssertFalse([object isDynamicObjectProtocol:@protocol(MySubDMNoMethodProtocol)]);
 	XCTAssertFalse([object isDynamicObjectProtocol:@protocol(MySubSubDMNoMethodProtocol)]);
 	
-	// remove target
 	XCTAssertFalse([object removeObjectProtocol:nil withTarget:nonTarget]);
 	XCTAssertTrue([object removeObjectProtocol:nil withTarget:target]);
 	XCTAssertFalse([object conformsToProtocol:@protocol(MyDMNoMethodProtocol)]);
@@ -400,7 +389,6 @@
 	XCTAssertFalse([object conformsToProtocol:@protocol(MySubDMNoMethodProtocol)]);
 	XCTAssertFalse([object conformsToProtocol:@protocol(MySubSubDMNoMethodProtocol)]);
 	
-	// remove target
 	XCTAssertFalse([object removeObjectForwardTarget:nonTarget]);
 	XCTAssertTrue([object removeObjectForwardTarget:objectTarget]);
 	XCTAssertFalse([object conformsToProtocol:@protocol(MyDMNoMethodProtocol)]);
@@ -412,7 +400,7 @@
 
 
 // A selector handled only via a no-protocol forward target is reported as a dynamic
-// method, matching dynamicRespondsToSelector: (previously isDynamicMethod: returned NO).
+// method, matching dynamicRespondsToSelector:.
 - (void)testIsDynamicMethod_forwardTargetHandledSelector
 {
 	ProtocolTargetObject *object = ProtocolTargetObject.new;
@@ -449,7 +437,6 @@
 	XCTAssertFalse([object conformsToProtocol:@protocol(MySubDMNoMethodProtocol)]);
 	XCTAssertFalse([object conformsToProtocol:@protocol(MySubSubDMNoMethodProtocol)]);
 	
-	// remove target
 	XCTAssertFalse([object removeObjectForwardTarget:nonTarget]);
 	XCTAssertTrue([object removeObjectForwardTarget:objectTarget]);
 	XCTAssertTrue([object conformsToProtocol:@protocol(MyDMNoMethodProtocol)]);
@@ -475,7 +462,6 @@
 	XCTAssertFalse([object isDynamicObjectProtocol:@protocol(MySubSubDMNoMethodProtocol)]);
 	
 	
-	// Add Protocol
 	XCTAssertTrue([object addObjectProtocol:@protocol(MySubDMNoMethodProtocol)]);
 	XCTAssertTrue([object conformsToProtocol:@protocol(MyDMNoMethodProtocol)]);
 	XCTAssertTrue([object conformsToProtocol:@protocol(MySubDMNoMethodProtocol)]);
@@ -485,7 +471,6 @@
 	XCTAssertFalse([object isDynamicObjectProtocol:@protocol(MySubSubDMNoMethodProtocol)]);
 	
 	
-	// Remove Protocol
 	XCTAssertTrue([object removeObjectProtocol:@protocol(MySubDMNoMethodProtocol)]);
 	XCTAssertFalse([object conformsToProtocol:@protocol(MyDMNoMethodProtocol)]);
 	XCTAssertFalse([object conformsToProtocol:@protocol(MySubDMNoMethodProtocol)]);
@@ -510,7 +495,6 @@
 	XCTAssertFalse([object isDynamicObjectProtocol:@protocol(MySubDMNoMethodProtocol)]);
 	XCTAssertFalse([object isDynamicObjectProtocol:@protocol(MySubSubDMNoMethodProtocol)]);
 	
-	// Add nil target
 	id nilTarget = nil;
 	XCTAssertTrue([object addObjectProtocol:@protocol(MySubDMNoMethodProtocol) withTarget:nilTarget]);
 	XCTAssertTrue([object conformsToProtocol:@protocol(MyDMNoMethodProtocol)]);
@@ -520,7 +504,6 @@
 	XCTAssertTrue([object isDynamicObjectProtocol:@protocol(MySubDMNoMethodProtocol)]);
 	XCTAssertFalse([object isDynamicObjectProtocol:@protocol(MySubSubDMNoMethodProtocol)]);
 	
-	// remove nil target
 	XCTAssertTrue([object removeObjectProtocol:@protocol(MySubDMNoMethodProtocol) withTarget:nilTarget]);
 	XCTAssertFalse([object conformsToProtocol:@protocol(MyDMNoMethodProtocol)]);
 	XCTAssertFalse([object conformsToProtocol:@protocol(MySubDMNoMethodProtocol)]);
@@ -545,7 +528,6 @@
 	XCTAssertFalse([object isDynamicObjectProtocol:@protocol(MySubDMNoMethodProtocol)]);
 	XCTAssertFalse([object isDynamicObjectProtocol:@protocol(MySubSubDMNoMethodProtocol)]);
 	
-	// Add with target
 	NSObject *target = NSObject.new, *nonTarget = NSObject.new;
 	XCTAssertTrue([object addObjectProtocol:@protocol(MySubDMNoMethodProtocol) withTarget:target]);
 	XCTAssertTrue([object conformsToProtocol:@protocol(MyDMNoMethodProtocol)]);
@@ -555,7 +537,6 @@
 	XCTAssertTrue([object isDynamicObjectProtocol:@protocol(MySubDMNoMethodProtocol)]);
 	XCTAssertFalse([object isDynamicObjectProtocol:@protocol(MySubSubDMNoMethodProtocol)]);
 	
-	// remove with target
 	XCTAssertFalse([object removeObjectProtocol:@protocol(MySubDMNoMethodProtocol) withTarget:nonTarget]);
 	XCTAssertFalse([object removeObjectProtocol:@protocol(MyDMNoMethodProtocol) withTarget:target]);
 	XCTAssertTrue([object removeObjectProtocol:@protocol(MySubDMNoMethodProtocol) withTarget:target]);
@@ -576,7 +557,6 @@
 	XCTAssertTrue([object isDynamicObjectProtocol:@protocol(MySubDMNoMethodProtocol)]);
 	XCTAssertFalse([object isDynamicObjectProtocol:@protocol(MySubSubDMNoMethodProtocol)]);
 	
-	// remove nil target
 	XCTAssertFalse([object removeObjectProtocol:@protocol(MyDMNoMethodProtocol) withTarget:nil]);
 	XCTAssertTrue([object removeObjectProtocol:@protocol(MySubDMNoMethodProtocol) withTarget:nil]);
 	XCTAssertFalse([object conformsToProtocol:@protocol(MyDMNoMethodProtocol)]);
@@ -595,7 +575,6 @@
 	XCTAssertTrue([object isDynamicObjectProtocol:@protocol(MySubDMNoMethodProtocol)]);
 	XCTAssertFalse([object isDynamicObjectProtocol:@protocol(MySubSubDMNoMethodProtocol)]);
 	
-	// remove target
 	XCTAssertFalse([object removeObjectProtocol:nil withTarget:nonTarget]);
 	XCTAssertTrue([object removeObjectProtocol:nil withTarget:target]);
 	XCTAssertFalse([object conformsToProtocol:@protocol(MyDMNoMethodProtocol)]);
@@ -622,7 +601,6 @@
 	XCTAssertFalse([object isDynamicObjectProtocol:@protocol(MySubDMNoMethodProtocol)]);
 	XCTAssertFalse([object isDynamicObjectProtocol:@protocol(MySubSubDMNoMethodProtocol)]);
 	
-	// Add Protocol
 	XCTAssertTrue([object addObjectProtocol:@protocol(MySubSubDMNoMethodProtocol)]);
 	XCTAssertTrue([object conformsToProtocol:@protocol(MyDMNoMethodProtocol)]);
 	XCTAssertTrue([object conformsToProtocol:@protocol(MySubDMNoMethodProtocol)]);
@@ -631,7 +609,6 @@
 	XCTAssertTrue([object isDynamicObjectProtocol:@protocol(MySubDMNoMethodProtocol)]);
 	XCTAssertTrue([object isDynamicObjectProtocol:@protocol(MySubSubDMNoMethodProtocol)]);
 	
-	// Remove Protocol
 	XCTAssertTrue([object removeObjectProtocol:@protocol(MySubSubDMNoMethodProtocol)]);
 	XCTAssertFalse([object conformsToProtocol:@protocol(MyDMNoMethodProtocol)]);
 	XCTAssertFalse([object conformsToProtocol:@protocol(MySubDMNoMethodProtocol)]);
@@ -656,7 +633,6 @@
 	XCTAssertFalse([object isDynamicObjectProtocol:@protocol(MySubDMNoMethodProtocol)]);
 	XCTAssertFalse([object isDynamicObjectProtocol:@protocol(MySubSubDMNoMethodProtocol)]);
 	
-	// Add nil target
 	id nilTarget = nil;
 	XCTAssertTrue([object addObjectProtocol:@protocol(MySubSubDMNoMethodProtocol) withTarget:nilTarget]);
 	XCTAssertTrue([object conformsToProtocol:@protocol(MyDMNoMethodProtocol)]);
@@ -666,7 +642,6 @@
 	XCTAssertTrue([object isDynamicObjectProtocol:@protocol(MySubDMNoMethodProtocol)]);
 	XCTAssertTrue([object isDynamicObjectProtocol:@protocol(MySubSubDMNoMethodProtocol)]);
 	
-	// remove nil target
 	XCTAssertTrue([object removeObjectProtocol:@protocol(MySubSubDMNoMethodProtocol) withTarget:nilTarget]);
 	XCTAssertFalse([object conformsToProtocol:@protocol(MyDMNoMethodProtocol)]);
 	XCTAssertFalse([object conformsToProtocol:@protocol(MySubDMNoMethodProtocol)]);
@@ -691,7 +666,6 @@
 	XCTAssertFalse([object isDynamicObjectProtocol:@protocol(MySubDMNoMethodProtocol)]);
 	XCTAssertFalse([object isDynamicObjectProtocol:@protocol(MySubSubDMNoMethodProtocol)]);
 	
-	// Add with target
 	NSObject *target = NSObject.new, *nonTarget = NSObject.new;
 	XCTAssertTrue([object addObjectProtocol:@protocol(MySubSubDMNoMethodProtocol) withTarget:target]);
 	XCTAssertTrue([object conformsToProtocol:@protocol(MyDMNoMethodProtocol)]);
@@ -701,7 +675,6 @@
 	XCTAssertTrue([object isDynamicObjectProtocol:@protocol(MySubDMNoMethodProtocol)]);
 	XCTAssertTrue([object isDynamicObjectProtocol:@protocol(MySubSubDMNoMethodProtocol)]);
 	
-	// remove with target
 	XCTAssertFalse([object removeObjectProtocol:@protocol(MySubSubDMNoMethodProtocol) withTarget:nonTarget]);
 	XCTAssertFalse([object removeObjectProtocol:@protocol(MySubDMNoMethodProtocol) withTarget:target]);
 	XCTAssertTrue([object removeObjectProtocol:@protocol(MySubSubDMNoMethodProtocol) withTarget:target]);
@@ -721,7 +694,6 @@
 	XCTAssertTrue([object isDynamicObjectProtocol:@protocol(MySubDMNoMethodProtocol)]);
 	XCTAssertTrue([object isDynamicObjectProtocol:@protocol(MySubSubDMNoMethodProtocol)]);
 	
-	// remove nil target
 	XCTAssertTrue([object removeObjectProtocol:@protocol(MySubSubDMNoMethodProtocol) withTarget:nil]);
 	XCTAssertFalse([object conformsToProtocol:@protocol(MyDMNoMethodProtocol)]);
 	XCTAssertFalse([object conformsToProtocol:@protocol(MySubDMNoMethodProtocol)]);
@@ -739,7 +711,6 @@
 	XCTAssertTrue([object isDynamicObjectProtocol:@protocol(MySubDMNoMethodProtocol)]);
 	XCTAssertTrue([object isDynamicObjectProtocol:@protocol(MySubSubDMNoMethodProtocol)]);
 	
-	// remove target
 	XCTAssertFalse([object removeObjectProtocol:nil withTarget:nonTarget]);
 	XCTAssertTrue([object removeObjectProtocol:nil withTarget:target]);
 	XCTAssertFalse([object conformsToProtocol:@protocol(MyDMNoMethodProtocol)]);
@@ -782,7 +753,6 @@
 	XCTAssertNil([object methodSignatureForSelector:@selector(objectMethod)]);
 	XCTAssertFalse([object respondsToSelector:@selector(objectMethod)]);
 	
-	// perform protocol selector in target
 	NSNumber *result = nil;
 	XCTAssertNoThrow(result = [object performSelector:@selector(protocolObjectMethod)]);
 	XCTAssertEqualObjects(result, @(30));
@@ -816,7 +786,6 @@
 	XCTAssertNil([object methodSignatureForSelector:@selector(objectMethod)]);
 	XCTAssertFalse([object respondsToSelector:@selector(objectMethod)]);
 	
-	// perform protocol selector in target
 	NSNumber *result = nil;
 	XCTAssertNoThrow(result = [object performSelector:@selector(protocolObjectMethod)]);
 	XCTAssertEqualObjects(result, @(30));
@@ -851,7 +820,6 @@
 	XCTAssertNil([object methodSignatureForSelector:@selector(objectMethod)]);
 	XCTAssertFalse([object respondsToSelector:@selector(objectMethod)]);
 	
-	// perform protocol selector in target
 	NSNumber *result = nil;
 	XCTAssertNoThrow(result = [object performSelector:@selector(protocolObjectMethod)]);
 	XCTAssertEqualObjects(result, @(30));
@@ -887,7 +855,6 @@
 	XCTAssertNil([object methodSignatureForSelector:@selector(optionalObjectMethod)]);
 	XCTAssertFalse([object respondsToSelector:@selector(optionalObjectMethod)]);
 	
-	// perform protocol selector in target
 	NSNumber *result = nil;
 	XCTAssertNoThrow(result = [object performSelector:@selector(protocolOptionalObjectMethod)]);
 	XCTAssertEqualObjects(result, @(130));
@@ -921,7 +888,6 @@
 	XCTAssertNil([object methodSignatureForSelector:@selector(optionalObjectMethod)]);
 	XCTAssertFalse([object respondsToSelector:@selector(optionalObjectMethod)]);
 	
-	// perform protocol selector in target
 	NSNumber *result = nil;
 	XCTAssertNoThrow(result = [object performSelector:@selector(protocolOptionalObjectMethod)]);
 	XCTAssertEqualObjects(result, @(130));
@@ -955,7 +921,6 @@
 	XCTAssertNil([object methodSignatureForSelector:@selector(optionalObjectMethod)]);
 	XCTAssertFalse([object respondsToSelector:@selector(optionalObjectMethod)]);
 	
-	// perform protocol selector in target
 	NSNumber *result = nil;
 	XCTAssertNoThrow(result = [object performSelector:@selector(protocolOptionalObjectMethod)]);
 	XCTAssertEqualObjects(result, @(130));
@@ -992,7 +957,6 @@
 	XCTAssertNil([object methodSignatureForSelector:@selector(optionalObjectMethod)]);
 	XCTAssertFalse([object respondsToSelector:@selector(optionalObjectMethod)]);
 	
-	// perform protocol selector in target
 	XCTAssertThrowsSpecificNamed([object performSelector:@selector(protocolOptionalObjectMethod)], NSException, NSInvalidArgumentException);
 	XCTAssertThrowsSpecificNamed([object performSelector:@selector(optionalObjectMethod)], NSException, NSInvalidArgumentException);
 	
@@ -1024,7 +988,6 @@
 	XCTAssertNil([object methodSignatureForSelector:@selector(optionalObjectMethod)]);
 	XCTAssertFalse([object respondsToSelector:@selector(optionalObjectMethod)]);
 	
-	// perform protocol selector in target
 	XCTAssertThrowsSpecificNamed([object performSelector:@selector(protocolOptionalObjectMethod)], NSException, NSInvalidArgumentException);
 	XCTAssertThrowsSpecificNamed([object performSelector:@selector(optionalObjectMethod)], NSException, NSInvalidArgumentException);
 	
@@ -1056,7 +1019,6 @@
 	XCTAssertNil([object methodSignatureForSelector:@selector(optionalObjectMethod)]);
 	XCTAssertFalse([object respondsToSelector:@selector(optionalObjectMethod)]);
 	
-	// perform protocol selector in target
 	XCTAssertThrowsSpecificNamed([object performSelector:@selector(protocolOptionalObjectMethod)], NSException, NSInvalidArgumentException);
 	XCTAssertThrowsSpecificNamed([object performSelector:@selector(optionalObjectMethod)], NSException, NSInvalidArgumentException);
 	

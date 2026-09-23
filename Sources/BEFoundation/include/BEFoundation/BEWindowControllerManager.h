@@ -17,7 +17,7 @@
 				windows when a parent window is closed.
 
 				The manager also supports fast enumeration (for...in) and subscripting
-				for convenient access.
+				for direct access.
 
 				Use the application-wide instance via `+sharedManager`. Because every instance
 				observes the global load/close notifications, you should normally use the
@@ -129,7 +129,7 @@ NS_SWIFT_NAME(windowControllers(ofKind:));
  @method        objectAtIndexedSubscript:
  @abstract      Provides support for indexed subscripting (e.g., `manager[0]`).
  @param         idx The index of the window controller to retrieve.
- @return        The `NSWindowController` at the specified index.
+ @return        The `NSWindowController` at the specified index, or nil when idx is out of range.
 */
 - (nullable NSWindowController *)objectAtIndexedSubscript:(NSUInteger)idx;
 

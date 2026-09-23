@@ -317,7 +317,6 @@ typedef struct { uint8_t bytes[320]; } BEBigStruct320;
 
 - (void)setUp {
 	[super setUp];
-	// Reset any potential swizzling from previous tests
 	self.swizzler = nil;
 }
 
@@ -411,7 +410,6 @@ typedef struct { uint8_t bytes[320]; } BEBigStruct320;
 	
 	BEDynamicMethodSwizzleSelectors *instanceSwizzler = [BEDynamicMethodSwizzleSelectors swizzleOriginal:classMethod1 withSelector:classMethod2];
 	
-	// Swizzle Superclass
 	[instanceSwizzler swizzleMethodsOnClass:superCls];
 	
 	XCTAssertEqual([superObject classMethod1], 100);
@@ -422,7 +420,6 @@ typedef struct { uint8_t bytes[320]; } BEBigStruct320;
 	XCTAssertEqual([object classMethod2], 10);
 	XCTAssertEqual([subObject classMethod2], 10);
 	
-	//Swizzle main class back.
 	[instanceSwizzler swizzleMethodsOnClass:cls];
 	
 	XCTAssertEqual([superObject classMethod1], 100);
@@ -569,15 +566,12 @@ typedef struct { uint8_t bytes[320]; } BEBigStruct320;
 	int result = [swizzle swizzleMethodsOnClass:[DynamicSwizzleTestClass class]];
 	XCTAssertEqual(result, 1, @"Should return 1 for successful method exchange");
 	
-	// Verify swizzle worked
 	NSString *afterSwizzle = [testObj originalMethod];
 	XCTAssertEqualObjects(afterSwizzle, @"swizzled", @"Original method should now return 'swizzled'");
 	
-	// Verify reverse swizzle
 	NSString *swizzledCall = [testObj swizzledMethod];
 	XCTAssertEqualObjects(swizzledCall, @"original", @"Swizzled method should now return 'original'");
 	
-	// Restore original state
 	XCTAssertEqual([swizzle swizzleMethodsOnClass:[DynamicSwizzleTestClass class]], 1);
 }
 
@@ -591,11 +585,9 @@ typedef struct { uint8_t bytes[320]; } BEBigStruct320;
 	int result = [swizzle swizzleMethodsOnClass:[DynamicSwizzleTestClass class]];
 	XCTAssertEqual(result, 1, @"Should return 1 for successful method exchange");
 	
-	// Verify swizzle worked
 	NSString *afterSwizzle = [DynamicSwizzleTestClass classMethod];
 	XCTAssertEqualObjects(afterSwizzle, @"class_swizzled", @"Class method should now return 'class_swizzled'");
 	
-	// Restore original state
 	XCTAssertEqual([swizzle swizzleMethodsOnClass:[DynamicSwizzleTestClass class]], 1);
 }
 
@@ -606,17 +598,14 @@ typedef struct { uint8_t bytes[320]; } BEBigStruct320;
 	int result = [swizzle swizzleMethodsOnClass:[DynamicSwizzleTestClass class]];
 	XCTAssertEqual(result, 1, @"Should return 1 for successful void method exchange");
 	
-	// Restore original state
 	XCTAssertEqual([swizzle swizzleMethodsOnClass:[DynamicSwizzleTestClass class]], 1);
 }
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wundeclared-selector"
 - (void)testSwizzleMethodsOnClass_MethodAddition_Success {
-   // Add a method from DynamicSwizzleTestClass to DynamicSwizzleEmptyTestClass
    BEDynamicMethodSwizzleSelectors *swizzle = [BEDynamicMethodSwizzleSelectors swizzleOriginal:@selector(nonExistentMethod)
 															withSelector:@selector(swizzledMethod)];
    
-   // First add the swizzled method to the empty class
    Method sourceMethod = class_getInstanceMethod([DynamicSwizzleTestClass class], @selector(swizzledMethod));
    XCTAssertNotEqual(sourceMethod, NULL, @"Source method should exist");
    
@@ -636,7 +625,6 @@ typedef struct { uint8_t bytes[320]; } BEBigStruct320;
    int result = [swizzle swizzleMethodsOnClass:[DynamicSwizzleEmptyTestClass class]];
    XCTAssertEqual(result, 1, @"Should return 1 for method exchange");
    
-   // Verify the method was added
    DynamicSwizzleEmptyTestClass *emptyObj = [[DynamicSwizzleEmptyTestClass alloc] init];
    XCTAssertTrue([emptyObj respondsToSelector:@selector(nonExistentMethod)], @"Should respond to added method");
    
@@ -715,21 +703,17 @@ typedef struct { uint8_t bytes[320]; } BEBigStruct320;
 }
 
 - (void)testSwizzleMethodsOnClass_MetaClassTargeting {
-	// Test that isMetaClass:YES correctly targets the meta class
 	BEDynamicMethodSwizzleSelectors *swizzle = [[BEDynamicMethodSwizzleSelectors alloc] initWithOriginal:@selector(classMethod)
 																	 swizzleSelector:@selector(swizzledClassMethod)
 																		 isMetaClass:YES];
 	
-	// This should work because we're targeting the meta class
 	int result = [swizzle swizzleMethodsOnClass:[DynamicSwizzleTestClass class]];
 	XCTAssertEqual(result, 1, @"Should successfully swizzle meta class methods");
 	
-	// Restore
 	XCTAssertEqual([swizzle swizzleMethodsOnClass:[DynamicSwizzleTestClass class]], 1);
 }
 
 - (void)testSwizzleMethodsOnClass_MetaClassWithClassMethod_ReturnsZero {
-	// Test trying to swizzle instance methods on meta class (should fail)
 	BEDynamicMethodSwizzleSelectors *swizzle = [[BEDynamicMethodSwizzleSelectors alloc] initWithOriginal:@selector(originalMethod)
 																	 swizzleSelector:@selector(swizzledMethod)
 																		 isMetaClass:YES];
@@ -739,7 +723,6 @@ typedef struct { uint8_t bytes[320]; } BEBigStruct320;
 }
 
 - (void)testSwizzleMethodsOnClass_ClassMethodAsClassMethod_ReturnsZero {
-	// Test trying to swizzle class methods as instance methods (should fail)
 	BEDynamicMethodSwizzleSelectors *swizzle = [[BEDynamicMethodSwizzleSelectors alloc] initWithOriginal:@selector(classMethod)
 																	 swizzleSelector:@selector(swizzledClassMethod)
 																		 isMetaClass:NO];
@@ -749,24 +732,20 @@ typedef struct { uint8_t bytes[320]; } BEBigStruct320;
 }
 
 - (void)testSwizzleMethodsOnClass_SameSelector_Success {
-	// Test swizzling a method with itself (should work but be no-op)
 	BEDynamicMethodSwizzleSelectors *swizzle = [BEDynamicMethodSwizzleSelectors swizzleOriginal:@selector(originalMethod)
 															   withSelector:@selector(originalMethod)];
 	
 	int result = [swizzle swizzleMethodsOnClass:[DynamicSwizzleTestClass class]];
 	XCTAssertEqual(result, 1, @"Should return 1 even when swizzling method with itself");
 	
-	// Verify functionality is unchanged
 	DynamicSwizzleTestClass *testObj = [[DynamicSwizzleTestClass alloc] init];
 	NSString *resultString = [testObj originalMethod];
 	XCTAssertEqualObjects(resultString, @"original", @"Method should still return original value");
 }
 
 - (void)testSwizzleMethodsOnClass_MultipleSwizzles {
-	// Test multiple swizzles on the same class
 	DynamicSwizzleTestClass *testObj = [[DynamicSwizzleTestClass alloc] init];
 	
-	// First swizzle
 	BEDynamicMethodSwizzleSelectors *swizzle1 = [BEDynamicMethodSwizzleSelectors swizzleOriginal:@selector(originalMethod)
 																withSelector:@selector(swizzledMethod)];
 	int result1 = [swizzle1 swizzleMethodsOnClass:[DynamicSwizzleTestClass class]];
@@ -775,7 +754,6 @@ typedef struct { uint8_t bytes[320]; } BEBigStruct320;
 	NSString *afterFirst = [testObj originalMethod];
 	XCTAssertEqualObjects(afterFirst, @"swizzled", @"First swizzle should be effective");
 	
-	// Second swizzle (restore)
 	int result2 = [swizzle1 swizzleMethodsOnClass:[DynamicSwizzleTestClass class]];
 	XCTAssertEqual(result2, 1, @"Second swizzle should succeed");
 	
@@ -792,12 +770,10 @@ typedef struct { uint8_t bytes[320]; } BEBigStruct320;
 																	 swizzleSelector:@selector(swizzledTestMethod)
 																		 isMetaClass:YES];
 
-	// Test that properties are correctly synthesized and accessible
 	XCTAssertTrue(swizzle.isMetaClass, @"isMetaClass property should be accessible");
 	XCTAssertEqual(swizzle.originalSelector, @selector(testMethod), @"originalSelector property should be accessible");
 	XCTAssertEqual(swizzle.swizzleSelector, @selector(swizzledTestMethod), @"swizzleSelector property should be accessible");
 
-	// Test property mutability (if setters exist)
 	XCTAssertFalse([swizzle respondsToSelector:@selector(setIsMetaClass:)], @"Should nothave isMetaClass setter");
 	XCTAssertFalse([swizzle respondsToSelector:@selector(setOriginalSelector:)], @"Should have originalSelector setter");
 	XCTAssertFalse([swizzle respondsToSelector:@selector(setswizzleSelector:)], @"Should have swizzleSelector setter");
@@ -807,29 +783,23 @@ typedef struct { uint8_t bytes[320]; } BEBigStruct320;
 #pragma mark Memory Management Tests
 
 - (void)testMemoryManagement {
-	// Test that objects are properly allocated and can be deallocated
 	@autoreleasepool {
 		BEDynamicMethodSwizzleSelectors *swizzle = [BEDynamicMethodSwizzleSelectors swizzleOriginal:@selector(originalMethod)
 																   withSelector:@selector(swizzledMethod)];
 		XCTAssertNotNil(swizzle, @"Should create valid instance");
 		
-		// Use the object
 		[swizzle swizzleMethodsOnClass:[DynamicSwizzleTestClass class]];
 		
-		// Object should be deallocated when leaving this scope
 		[swizzle swizzleMethodsOnClass:[DynamicSwizzleTestClass class]];
 	}
 	
-	// Test factory method memory management
 	@autoreleasepool {
 		BEDynamicMethodSwizzleSelectors *metaSwizzle = [BEDynamicMethodSwizzleSelectors swizzleMetaOriginal:@selector(classMethod)
 																		  withSelector:@selector(swizzledClassMethod)];
 		XCTAssertNotNil(metaSwizzle, @"Should create valid meta instance");
 		
-		// Use the object
 		[metaSwizzle swizzleMethodsOnClass:[DynamicSwizzleTestClass class]];
 		
-		// Object should be deallocated when leaving this scope
 		[metaSwizzle swizzleMethodsOnClass:[DynamicSwizzleTestClass class]];
 	}
 }
@@ -1132,9 +1102,7 @@ typedef struct { uint8_t bytes[320]; } BEBigStruct320;
 	XCTAssertNotNil([BEMethodSignatureHelper mutateInvocation:invocation withMeta:meta]);
 }
 
-// A by-value struct argument larger than the 256-byte copy buffer must round-trip intact. Under the
-// old code (buffer sized by getArgumentSizeAtIndex:, which reports 8 for a struct) this overflowed the
-// buffer and corrupted the copied value; sizing by NSGetSizeAndAlignment fixes it.
+// A by-value struct argument larger than the 256-byte copy buffer must round-trip intact; the buffer is sized by NSGetSizeAndAlignment.
 - (void)testBEMethodSignatureHelper_mutateInvocation_LargeStructArgumentRoundTrips
 {
 	BEDynamicMethodMeta *meta = [BEDynamicMethodMeta.alloc initWithSelector:@selector(init)
@@ -1244,6 +1212,39 @@ typedef struct { uint8_t bytes[320]; } BEBigStruct320;
 	
 	[invokableCmd getReturnValue:&returnValue];
 	XCTAssertEqualObjects(returnValue, @(numberArgument.intValue * -3));
+}
+
+#pragma mark - methodSignature:matchesSignature:
+
+- (void)testMethodSignatureMatchesSignature_equalAndIdentical
+{
+	NSMethodSignature *first = [NSMethodSignature signatureWithObjCTypes:"@@:q"];
+	NSMethodSignature *second = [NSMethodSignature signatureWithObjCTypes:"@@:q"];
+	XCTAssertTrue([BEMethodSignatureHelper methodSignature:first matchesSignature:first]);
+	XCTAssertTrue([BEMethodSignatureHelper methodSignature:first matchesSignature:second]);
+}
+
+- (void)testMethodSignatureMatchesSignature_ignoresTypeQualifiers
+{
+	NSMethodSignature *plain = [NSMethodSignature signatureWithObjCTypes:"v@:*^v"];
+	NSMethodSignature *qualified = [NSMethodSignature signatureWithObjCTypes:"Vv@:r*o^v"];
+	XCTAssertTrue([BEMethodSignatureHelper methodSignature:plain matchesSignature:qualified]);
+}
+
+- (void)testMethodSignatureMatchesSignature_rejectsMismatches
+{
+	NSMethodSignature *base = [NSMethodSignature signatureWithObjCTypes:"q@:q"];
+	NSMethodSignature *fewerArguments = [NSMethodSignature signatureWithObjCTypes:"q@:"];
+	NSMethodSignature *otherArgument = [NSMethodSignature signatureWithObjCTypes:"q@:@"];
+	NSMethodSignature *otherReturn = [NSMethodSignature signatureWithObjCTypes:"@@:q"];
+	NSMethodSignature *nilSignature = nil;
+
+	XCTAssertFalse([BEMethodSignatureHelper methodSignature:base matchesSignature:fewerArguments]);
+	XCTAssertFalse([BEMethodSignatureHelper methodSignature:base matchesSignature:otherArgument]);
+	XCTAssertFalse([BEMethodSignatureHelper methodSignature:base matchesSignature:otherReturn]);
+	XCTAssertFalse([BEMethodSignatureHelper methodSignature:base matchesSignature:nilSignature]);
+	XCTAssertFalse([BEMethodSignatureHelper methodSignature:nilSignature matchesSignature:base]);
+	XCTAssertFalse([BEMethodSignatureHelper methodSignature:nilSignature matchesSignature:nilSignature]);
 }
 
 @end

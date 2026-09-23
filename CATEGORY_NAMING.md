@@ -11,12 +11,12 @@ different binary.
 - A public category method on an Apple class uses a descriptive name that Apple does not use.
   Prefer Apple's own public naming idioms without colliding with them:
   `imageFromCGImage:`, `CGImageRepresentation`, `pngRepresentation` (the `TIFFRepresentation`
-  idiom). Never reuse a UIKit/AppKit method name — those exact spellings are what Apple's
-  compatibility shims define.
+  idiom). Never reuse a UIKit/AppKit method name; Apple's compatibility shims define those exact
+  spellings.
 - A private (non-header) category helper carries the `be_` prefix: `be_bitmapRep`.
 - Before adding a category method, verify the selector is absent from the target class at
-  runtime with the relevant Apple frameworks loaded (see "Checking a selector" below), not just
-  absent from the SDK headers.
+  runtime with the relevant Apple frameworks loaded (see "Checking a selector" below); the SDK
+  headers do not list private methods.
 
 ## Why headers are not enough
 
@@ -25,9 +25,8 @@ some of those frameworks load lazily mid-process.
 
 **A collision presents as a flaky test.** Dispatch resolves to one implementation or the other
 depending on image load order, so the same test passes in isolation, passes under ASan, and
-fails intermittently under parallel full-suite runs. Every flaky failure investigated in this
-project traced back to a selector collision. Treat intermittent, load-order-dependent failures
-as a collision until proven otherwise.
+fails intermittently under parallel full-suite runs. An intermittent, load-order-dependent
+failure indicates a possible collision.
 
 The 1.1 release fixed a real instance:
 
@@ -37,20 +36,20 @@ The 1.1 release fixed a real instance:
 - BEFoundation's 1.0 `BEImage (BExtension)` used the same UIImage spellings. Once PencilKit
   loaded, dispatch could resolve to PencilKit's implementation (observed: a non-nil empty
   `NSImage` for `NULL` where BEFoundation returns nil), which failed
-  `testNilInputsReturnNil` in 25–31% of parallel full-suite runs — exactly the runs where a
-  worker executed the window-controller suites first. Both resolution directions were observed
+  `testNilInputsReturnNil` in 25–31% of parallel full-suite runs, the runs where a worker
+  executed the window-controller suites first. Both resolution directions were observed
   across load configurations; the runtime makes no promise.
 - The collision is bidirectional: in a load order where BEFoundation's implementation wins,
   PencilKit's internal calls receive BEFoundation's semantics. Re-asserting an IMP after
-  Apple's framework loads is therefore not a fix; non-overlapping names are.
+  Apple's framework loads leaves the collision in place. Only non-overlapping names resolve it.
 
 Full incident record: [FIXES.md](FIXES.md) ("BEImage+BExtension").
 
-## Resolving a collision: rename, never share
+## Resolving a collision: rename the selector
 
 When a desired selector already exists privately on the target class, BE renames its
-method. Sharing the selector — whether by category (undefined winner) or by runtime
-registration that yields to Apple's copy — leaves BE callers invoking a private Apple
+method. Sharing the selector, whether by category (undefined winner) or by runtime
+registration that yields to Apple's copy, leaves BE callers invoking a private Apple
 implementation whose semantics are unversioned and whose use violates the no-private-API
 rule for shipping products. A BE-owned selector is deterministic on every OS release.
 
@@ -77,7 +76,14 @@ the most collision-prone place a generic name can live.
 `Scripts/check-category-collisions.sh <BEFoundation.framework>` extracts every category
 method on an external class from the built binary and fails if any selector already exists
 in a clean process (with PencilKit and ScreenReaderCore force-loaded). Run it as part of
-the full check; it prevents this entire bug class from returning.
+the full check.
+
+The guard probes macOS only. `BEColor`, `BEImage`, and `BEView` categories resolve to
+`NSColor`, `NSImage`, and `NSView` in the probe, so their selectors are never checked
+against `UIColor`, `UIImage`, or `UIView`, and any class the macOS probe cannot load is
+skipped. A UIKit-only collision therefore reaches the iOS slices without a CI signal. When
+adding a category method on one of these aliases, check the selector by hand in an iOS
+Simulator process (the probe below works in an iOS test host with UIKit in place of AppKit).
 
 ## Checking a selector
 
@@ -101,7 +107,7 @@ To enumerate everything a lazily loaded Apple framework adds to a class, diff
 
 Capture the evidence inside the failing test: store the baseline IMP in `+load`, and on failure
 report the current IMP, whether it changed, and its providing image via `dladdr`. That turns an
-"impossible" result — a nil-guarded method returning non-nil — into a named binary.
+unexpected result, such as a nil-guarded method returning non-nil, into a named binary.
 `BEImage+BExtensionTests.m`'s `testNilFactories_returnNilWithPencilKitLoaded` keeps the
 PencilKit scenario pinned.
 
@@ -109,6 +115,7 @@ PencilKit scenario pinned.
 
 `BEColor+BExtension` (`colorWithHexString:`, `dynamicColorWithLight:dark:`) and
 `BEView+BExtension` (`pinEdgesToSuperview`, `centerInSuperview`, `constrainToSize:`, …) predate
-this policy. No Apple collision exists for them today (probed against PencilKit); review them at
-the next minor release. The `NSOpenPanel` category's public `ss_` methods also predate the
-policy and keep their names.
+this policy. No Apple collision exists for them today: the 1.2.0 review ran
+`Scripts/check-category-collisions.sh` against a Debug build (634 category selectors, PencilKit
+and ScreenReaderCore loaded) with no hit. Review them again at 1.3.0. The `NSOpenPanel`
+category's public `ss_` methods also predate the policy and keep their names.

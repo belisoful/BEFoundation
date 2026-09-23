@@ -8,7 +8,7 @@ Auto Layout convenience for `NSView` (macOS) and `UIView` (iOS).
 
 ## Overview
 
-`BEView` is a cross-platform alias (`NSView` / `UIView` — see <doc:BEPlatformTypes>). These helpers replace the usual anchor boilerplate. Each one clears `translatesAutoresizingMaskIntoConstraints`, **activates** the constraints it creates, and **returns** them so you can deactivate or animate them later. The implementation is shared — `NSLayoutAnchor` and `UILayoutAnchor` are the same API.
+`BEView` is a cross-platform alias (`NSView` / `UIView`; see <doc:BEPlatformTypes>). Each helper clears `translatesAutoresizingMaskIntoConstraints`, **activates** the constraints it creates, and **returns** them so you can deactivate or animate them later. `NSLayoutAnchor` and `UILayoutAnchor` are the same API, so a single implementation serves both platforms.
 
 ## Usage
 

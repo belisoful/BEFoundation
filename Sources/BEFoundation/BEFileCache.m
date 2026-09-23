@@ -5,9 +5,9 @@
  * ────────────────────────
  *   BEFileCache registers itself as _memoryCache's NSCacheDelegate.  The sole
  *   purpose is to forward cache:willEvictObject: to the caller's delegate as
- *   cache:willEvictObjectFromMemory:.  No disk I/O is performed in response —
- *   the object is already safely on disk (or was never serialisable and was
- *   always memory-only, in which case it is simply gone).
+ *   cache:willEvictObjectFromMemory:.  No disk I/O is performed in response;
+ *   the object is already safely on disk (or was never serializable and was
+ *   always memory-only, in which case it is gone).
  *
  * Private method naming
  * ─────────────────────
@@ -24,11 +24,10 @@
  * ───────────────────────────────────
  *   NSCache trims by cost first (to bring total cost under totalCostLimit) then
  *   by count.  We keep that two-pass order, but both passes evict by one
- *   eviction score (recency, optionally weighted by value density) rather than
- *   blindly by cost or insertion age.
+ *   eviction score (recency, optionally weighted by value density).
  *
- *   Pass 1 — cost:   remove highest-score-first until totalCostLimit met.
- *   Pass 2 — count:  remove highest-score-first until countLimit met.
+ *   Pass 1 (cost):   remove highest-score-first until totalCostLimit met.
+ *   Pass 2 (count):  remove highest-score-first until countLimit met.
  */
 
 #import "BEFileCache.h"
@@ -46,6 +45,11 @@ static NSString * const kItemKey       = @"key";
 static NSString * const kItemCost      = @"cost";
 static NSString * const kItemRetention = @"retentionCost";   // absent in pre-1.1 .meta files
 static NSString * const kItemDate      = @"dateStored";
+static NSString * const kItemClass     = @"objectClass";     // absent in pre-1.2.0 .meta files
+
+@interface BEFileCacheItem ()
+@property (nonatomic, copy, readwrite, nullable) NSString *objectClassName;
+@end
 
 @implementation BEFileCacheItem
 
@@ -80,6 +84,7 @@ static NSString * const kItemDate      = @"dateStored";
 			? (NSUInteger)[coder decodeIntegerForKey:kItemRetention]
 			: _cost;
 		_dateStored = [coder decodeObjectOfClass:[NSDate class] forKey:kItemDate];
+		_objectClassName = [coder decodeObjectOfClass:[NSString class] forKey:kItemClass];
 	}
 	return self;
 }
@@ -89,6 +94,7 @@ static NSString * const kItemDate      = @"dateStored";
 	[coder encodeInteger:(NSInteger)_cost          forKey:kItemCost];
 	[coder encodeInteger:(NSInteger)_retentionCost forKey:kItemRetention];
 	[coder encodeObject:_dateStored                forKey:kItemDate];
+	[coder encodeObject:_objectClassName           forKey:kItemClass];
 }
 
 @end
@@ -104,34 +110,58 @@ static NSString * const kItemDate      = @"dateStored";
 
 static NSString * const kMetaKey        = @"key";         // original key object
 static NSString * const kMetaCost       = @"cost";        // NSNumber(NSUInteger)
-static NSString * const kMetaRetention  = @"retention";   // NSNumber(NSUInteger) — replacement cost
-static NSString * const kMetaDate       = @"date";        // NSDate — insertion time
-static NSString * const kMetaAccess     = @"access";      // NSDate — last access (in-RAM live LRU)
-static NSString * const kMetaObjectFile = @"objectFile";  // NSString — absolute .cache path
-static NSString * const kMetaMetaFile   = @"metaFile";    // NSString — absolute .meta path
-static NSString * const kMetaScore      = @"score";       // NSNumber(double) — transient eviction score
+static NSString * const kMetaRetention  = @"retention";   // NSNumber(NSUInteger): replacement cost
+static NSString * const kMetaDate       = @"date";        // NSDate: insertion time
+static NSString * const kMetaAccess     = @"access";      // NSDate: last access (in-RAM live LRU)
+static NSString * const kMetaObjectFile = @"objectFile";  // NSString: absolute .cache path
+static NSString * const kMetaMetaFile   = @"metaFile";    // NSString: absolute .meta path
+static NSString * const kMetaClass      = @"objectClass"; // NSString: payload root class name (absent for pre-1.2.0 entries)
+static NSString * const kMetaScore      = @"score";       // NSNumber(double): transient eviction score
 
 // ── BEFileCacheIndex entry keys ───────────────────────────────────────────────
 // These keys appear inside each entry dictionary in the on-disk index archive.
 // Changing them would invalidate existing BEFileCacheIndex files.
 
-static NSString * const kIdxKeyData     = @"keyData";     // NSData — archived key object
+static NSString * const kIdxKeyData     = @"keyData";     // NSData: archived key object
 static NSString * const kIdxCost        = @"cost";        // NSNumber
-static NSString * const kIdxRetention   = @"retention";   // NSNumber — replacement cost (absent in pre-1.1 indexes)
-static NSString * const kIdxDate        = @"date";        // NSDate — insertion time
-static NSString * const kIdxAccess      = @"access";      // NSDate — last access (absent in pre-1.1 indexes)
-static NSString * const kIdxObjectFile  = @"objectFile";  // NSString — absolute path
-static NSString * const kIdxMetaFile    = @"metaFile";    // NSString — absolute path
+static NSString * const kIdxRetention   = @"retention";   // NSNumber: replacement cost (absent in pre-1.1 indexes)
+static NSString * const kIdxDate        = @"date";        // NSDate: insertion time
+static NSString * const kIdxAccess      = @"access";      // NSDate: last access (absent in pre-1.1 indexes)
+static NSString * const kIdxObjectFile  = @"objectFile";  // NSString: absolute path
+static NSString * const kIdxMetaFile    = @"metaFile";    // NSString: absolute path
+static NSString * const kIdxClass       = @"objectClass"; // NSString: payload root class name (absent in pre-1.2.0 indexes)
 
 /** Name of the index file stored inside cacheDirectory. */
 static NSString * const kIndexFileName  = @"BEFileCacheIndex";
+
+/**
+ * Builds one @c _diskMeta entry.  @p objectClassName is @c nil for an entry written before
+ * the payload class was recorded; the entry then has no @c kMetaClass slot.
+ */
+static NSDictionary *BEDiskMetaEntry(id key, NSNumber *cost, NSNumber *retention,
+									 NSDate *date, NSDate *access,
+									 NSString *objectFile, NSString *metaFile,
+									 NSString * _Nullable objectClassName) {
+	NSMutableDictionary *entry = [NSMutableDictionary dictionaryWithDictionary:
+		@{ kMetaKey        : key,
+		   kMetaCost       : cost,
+		   kMetaRetention  : retention,
+		   kMetaDate       : date,
+		   kMetaAccess     : access,
+		   kMetaObjectFile : objectFile,
+		   kMetaMetaFile   : metaFile }];
+	if (objectClassName) {
+		entry[kMetaClass] = objectClassName;
+	}
+	return [entry copy];
+}
 
 /**
  * Returns the singleton set of Foundation classes permitted when unarchiving
  * the BEFileCacheIndex file.  Covers every concrete type written into index
  * entry dictionaries: NSArray, NSDictionary, NSData, NSString, NSNumber, NSDate.
  *
- * @return A lazily-initialised, shared NSSet of Class objects.
+ * @return A lazily-initialized, shared NSSet of Class objects.
  */
 static NSSet<Class> *BEIndexAllowedClasses(void) {
 	static NSSet          *s;
@@ -182,7 +212,7 @@ static NSSet<Class> *BEIndexAllowedClasses(void) {
 @property (strong, nonatomic) NSMutableDictionary *diskMeta;
 
 /**
- * Serial GCD queue that serialises all disk I/O and diskMeta mutations.
+ * Serial GCD queue that serializes all disk I/O and diskMeta mutations.
  * Using a serial queue removes the need for explicit locks on disk state.
  */
 @property (strong, nonatomic) dispatch_queue_t diskQueue;
@@ -262,10 +292,10 @@ static NSString * _Nullable BEHashForKey(id<NSCopying, NSSecureCoding> key) {
  *   component and must produce a writable file name:
  *
  *   - a single component: no @c "/", and not @c "." or @c ".."
- *   - no embedded NUL — @c stringByAppendingPathComponent: returns @c nil for
+ *   - no embedded NUL: @c stringByAppendingPathComponent: returns @c nil for
  *     such a component, and a @c nil path raises inside @c writeToFile:
  *   - within @c NAME_MAX (255) bytes of file-system representation once the
- *     longest extension is appended — over-length names fail every write
+ *     longest extension is appended; over-length names fail every write
  *
  * @param name  The candidate base name from a fileNameBlock, already in
  *              decomposed form (the form @c fileSystemRepresentation uses,
@@ -286,13 +316,22 @@ static BOOL BEIsSafeBaseFileName(NSString * _Nullable name) {
 }
 
 /**
+ * Returns the class name NSKeyedArchiver records for @p obj's root object: its
+ * @c classForKeyedArchiver, or its class when that is @c Nil.
+ */
+static NSString *BEArchivedClassName(id obj) {
+	Class archived = [obj classForKeyedArchiver] ?: [obj class];
+	return NSStringFromClass(archived);
+}
+
+/**
  * @abstract  Returns whether two paths refer to the same file.
  *
  * @discussion
  *   Identical path strings compare equal without consulting the file system.
  *   Otherwise both paths must exist and share device and inode numbers, so
- *   path aliases the string comparison misses — Unicode normalization
- *   variants, case differences on case-insensitive volumes — are still
+ *   path aliases the string comparison misses (Unicode normalization
+ *   variants, case differences on case-insensitive volumes) are still
  *   recognized as one file.  Used to guard deletions of a "different" sibling
  *   path that may alias the file just written.
  *
@@ -331,7 +370,7 @@ static BOOL BEIsSameFile(NSString *a, NSString *b) {
 	_memoryCache          = [[NSCache alloc] init];
 	_memoryCache.delegate = self;
 
-	// Initialise the disk layer index and its dedicated serialisation queue.
+	// Initialize the disk layer index and its dedicated serialization queue.
 	_diskMeta  = [NSMutableDictionary dictionary];
 	_diskQueue = dispatch_queue_create("com.be.filecache.disk", DISPATCH_QUEUE_SERIAL);
 
@@ -342,7 +381,7 @@ static BOOL BEIsSameFile(NSString *a, NSString *b) {
 
 	// ── Resolve the cache directory ───────────────────────────────────────────
 	if (!directory.length) {
-		// nil or empty string — use a "BEFileCache" subdirectory inside the
+		// nil or empty string: use a "BEFileCache" subdirectory inside the
 		// system's designated caches directory.
 		NSString *caches =
 			NSSearchPathForDirectoriesInDomains(NSCachesDirectory,
@@ -361,7 +400,7 @@ static BOOL BEIsSameFile(NSString *a, NSString *b) {
 			// Caller supplied an absolute path to an existing directory.
 			_cacheDirectory = [directory copy];
 		} else {
-			// Plain subdirectory name — append to the system caches path.
+			// Plain subdirectory name: append to the system caches path.
 			NSString *caches =
 				NSSearchPathForDirectoriesInDomains(NSCachesDirectory,
 													NSUserDomainMask, YES).firstObject;
@@ -371,8 +410,8 @@ static BOOL BEIsSameFile(NSString *a, NSString *b) {
 
 	// Create the resolved directory if it does not yet exist, then rebuild
 	// diskMeta asynchronously so -init returns without blocking on disk I/O.
-	// Public methods that read diskMeta use dispatch_sync and will naturally
-	// wait for the bootstrap to complete if called immediately after init.
+	// Public methods that read diskMeta use dispatch_sync and wait for
+	// the bootstrap to complete if called immediately after init.
 	[self createCacheDirectory];
 	[self loadIndex];
 
@@ -444,7 +483,7 @@ static BOOL BEIsSameFile(NSString *a, NSString *b) {
 - (NSUInteger)memoryTotalCostLimit          { return _memoryCache.totalCostLimit; }
 - (void)setMemoryTotalCostLimit:(NSUInteger)v { _memoryCache.totalCostLimit = v; }
 
-// ── NSCacheDelegate — memory-eviction forwarding only ────────────────────────
+// ── NSCacheDelegate: memory-eviction forwarding only ────────────────────────
 
 /**
  * @method cache:willEvictObject:
@@ -460,8 +499,8 @@ static BOOL BEIsSameFile(NSString *a, NSString *b) {
  *
  *   No disk I/O is performed here.  If the object conforms to NSSecureCoding
  *   it was already written to disk in @c setObject:forKey:cost: and is safe.
- *   If the object was non-serialisable it was never persisted; its departure
- *   from memory is final, matching plain NSCache behaviour.
+ *   If the object was non-serializable it was never persisted; its departure
+ *   from memory is final, matching plain NSCache behavior.
  *
  * @param cache   The NSCache that is evicting the object (always _memoryCache).
  * @param object  The object about to be evicted from the memory tier.
@@ -487,11 +526,11 @@ static BOOL BEIsSameFile(NSString *a, NSString *b) {
 		   forKey:(id<NSCopying, NSSecureCoding>)key
 			 cost:(NSUInteger)g
 	retentionCost:(NSUInteger)r {
-	// Step 1 — Write to disk immediately so the entry survives app termination
+	// Step 1: Write to disk immediately so the entry survives app termination
 	//          before NSCache has a chance to evict it from memory.
 	//          Objects that don't conform to NSSecureCoding cannot be archived
 	//          and are stored in memory only; if NSCache evicts them later they
-	//          are lost, identical to plain NSCache behaviour.
+	//          are lost, identical to plain NSCache behavior.
 	if ([obj conformsToProtocol:@protocol(NSSecureCoding)]) {
 		// writeToDisk: warms the memory tier in the same disk-queue critical section, so the
 		// two tiers stay consistent under concurrent same-key writes.
@@ -521,33 +560,35 @@ static BOOL BEIsSameFile(NSString *a, NSString *b) {
 	// ── Slow path: disk hit ───────────────────────────────────────────────────
 	// Snapshot the file path and cost from diskMeta on the disk queue.
 	// We do this separately from the file read so the queue is not held
-	// during what could be a slow deserialisation.
+	// during what could be a slow deserialization.
 	__block NSString  *objectFilePath = nil;
+	__block NSString  *objectClassName = nil;
 	__block NSUInteger cost           = 0;
 	dispatch_sync(_diskQueue, ^{
 		NSDictionary *m = self->_diskMeta[(id)key];
 		objectFilePath  = m[kMetaObjectFile];
+		objectClassName = m[kMetaClass];
 		cost            = [m[kMetaCost] unsignedIntegerValue];
 	});
 
-	// Key is absent from both tiers — genuine cache miss.
+	// Key is absent from both tiers: a genuine cache miss.
 	if (!objectFilePath) return nil;
 
-	// Deserialise the object from its .cache payload file.
-	obj = [self loadObjectAtPath:objectFilePath];
+	// Deserialize the object from its .cache payload file.
+	obj = [self loadObjectAtPath:objectFilePath rootClassName:objectClassName];
 	if (!obj) return nil;
 
 	// ── NSDiscardableContent: disk-hit access grant ───────────────────────────
 	// On a memory hit NSCache calls beginContentAccess before returning the
 	// object.  On this disk hit the object bypassed NSCache's objectForKey:
-	// entirely, so NSCache has NOT called beginContentAccess on our behalf.
+	// entirely, so NSCache has not called beginContentAccess on our behalf.
 	// We call it exactly once here to put the object in the "accessible" state
-	// before handing it to the caller — matching the guarantee NSCache
+	// before handing it to the caller, matching the guarantee NSCache
 	// provides on a memory hit.  The caller is responsible for the paired
 	// endContentAccess call.  All future memory hits are managed by NSCache.
 	if ([obj conformsToProtocol:@protocol(NSDiscardableContent)]) {
 		if (![(id<NSDiscardableContent>)obj beginContentAccess]) {
-			// Content was discarded between writing and reading — treat as miss.
+			// Content was discarded between writing and reading: treat as miss.
 			return nil;
 		}
 	}
@@ -566,7 +607,7 @@ static BOOL BEIsSameFile(NSString *a, NSString *b) {
 }
 
 - (void)removeObjectForKey:(id<NSCopying, NSSecureCoding>)key {
-	// Both tiers in one critical section; notifyDelegate:NO — an explicit remove is not an eviction.
+	// Both tiers in one critical section; notifyDelegate:NO, since an explicit remove is not an eviction.
 	dispatch_sync(_diskQueue, ^{
 		[self removeDiskEntryOnQueue:key notifyDelegate:NO];
 		[self->_memoryCache removeObjectForKey:key];
@@ -604,8 +645,7 @@ static BOOL BEIsSameFile(NSString *a, NSString *b) {
  * @discussion
  *   Called once from @c initWithCacheDirectory: after the resolved path is
  *   stored in @c _cacheDirectory.  On failure the error is logged and
- *   execution continues; subsequent write attempts will fail gracefully with
- *   their own log messages rather than crashing.
+ *   execution continues; subsequent write attempts fail with their own log messages.
  */
 - (void)createCacheDirectory {
 	NSError *err = nil;
@@ -637,7 +677,7 @@ static BOOL BEIsSameFile(NSString *a, NSString *b) {
  *
  *   On failure (index absent or corrupt) execution falls through to
  *   @c scanMetaFilesForIndex, which rebuilds the index by scanning @c .meta
- *   sidecars directly — never opening the potentially large @c .cache files.
+ *   sidecars directly, never opening the potentially large @c .cache files.
  *
  *   Both paths finish with @c reconcileWithDirectoryOnQueue, which adopts
  *   complete pairs the index never recorded and deletes stray files.
@@ -673,6 +713,7 @@ static BOOL BEIsSameFile(NSString *a, NSString *b) {
 					NSNumber *retention     = entry[kIdxRetention] ?: cost;  // pre-1.1 indexes lack retention
 					NSDate   *date          = entry[kIdxDate];
 					NSDate   *access        = entry[kIdxAccess] ?: date;  // pre-1.1 indexes lack access
+					NSString *objectClass   = entry[kIdxClass];           // pre-1.2.0 indexes lack the class
 
 					if (!keyData || !objectFileRef || !metaFileRef
 						|| cost == nil || !date) continue;
@@ -703,13 +744,8 @@ static BOOL BEIsSameFile(NSString *a, NSString *b) {
 
 					// Use the recovered key object so isEqual: / hash lookups
 					// in objectForKey: resolve correctly.
-					self->_diskMeta[key] = @{ kMetaKey        : key,
-											  kMetaCost       : cost,
-											  kMetaRetention  : retention,
-											  kMetaDate       : date,
-											  kMetaAccess     : access,
-											  kMetaObjectFile : objectFilePath,
-											  kMetaMetaFile   : metaFilePath };
+					self->_diskMeta[key] = BEDiskMetaEntry(key, cost, retention, date, access,
+															objectFilePath, metaFilePath, objectClass);
 					self->_diskCount++;
 					self->_diskTotalCost += cost.unsignedIntegerValue;
 				}
@@ -720,7 +756,7 @@ static BOOL BEIsSameFile(NSString *a, NSString *b) {
 			}
 		}
 
-		// Index absent or corrupt — rebuild diskMeta by scanning .meta sidecars.
+		// Index absent or corrupt: rebuild diskMeta by scanning .meta sidecars.
 		if (!populated) {
 			[self scanMetaFilesForIndex];
 		}
@@ -741,7 +777,7 @@ static BOOL BEIsSameFile(NSString *a, NSString *b) {
  * @discussion
  *   This is the slow-path fallback used on first launch or when the index file
  *   is missing or corrupt.  Because @c .meta files are small (key + cost + retention cost + date
- *   only) the scan is fast even for a large number of cached entries.
+ *   + payload class name) the scan is fast even for a large number of cached entries.
  *
  *   For each valid @c .meta file the method verifies that the sibling @c .cache
  *   file also exists before adding the entry, skipping orphaned sidecars.
@@ -781,7 +817,7 @@ static BOOL BEIsSameFile(NSString *a, NSString *b) {
 		// Skip orphaned .meta files that have no corresponding .cache file.
 		if (![fm fileExistsAtPath:objectFilePath]) continue;
 
-		// Deserialise the lightweight metadata sidecar to recover key/cost/date.
+		// Deserialize the lightweight metadata sidecar to recover key/cost/date.
 		BEFileCacheItem *item = [self unarchiveMetaAtPath:metaFilePath];
 		if (!item || !item.key) continue;
 
@@ -803,14 +839,9 @@ static BOOL BEIsSameFile(NSString *a, NSString *b) {
 			_diskCount--;            // re-counted by the shared insert below
 		}
 
-		_diskMeta[(id)item.key] = @{ kMetaKey        : (id)item.key,
-									 kMetaCost       : @(item.cost),
-									 kMetaRetention  : @(item.retentionCost),
-									 kMetaDate       : item.dateStored,
-									 kMetaAccess     : [self accessSeedForObjectPath:objectFilePath
-																			fallback:item.dateStored],
-									 kMetaObjectFile : objectFilePath,
-									 kMetaMetaFile   : metaFilePath };
+		_diskMeta[(id)item.key] = [self diskMetaEntryForItem:item
+												objectFilePath:objectFilePath
+												  metaFilePath:metaFilePath];
 		_diskCount++;
 		_diskTotalCost += item.cost;
 	}
@@ -829,7 +860,7 @@ static BOOL BEIsSameFile(NSString *a, NSString *b) {
  * @discussion
  *   @c loadIndex trusts the index as the authoritative set and only prunes
  *   entries whose files have vanished.  It cannot discover files the index never
- *   recorded — for example a @c .cache / @c .meta pair written just before the
+ *   recorded, for example a @c .cache / @c .meta pair written just before the
  *   process was killed, before @c saveIndexOnQueue ran.  Such files would
  *   otherwise be invisible: never returned, never counted toward the limits, and
  *   never trimmed, leaking disk space until the index is deleted or corrupted.
@@ -843,7 +874,7 @@ static BOOL BEIsSameFile(NSString *a, NSString *b) {
  *     deleting the old) resolves to the pair with the newer @c dateStored; the
  *     loser's files are deleted (guarded by @c BEIsSameFile) and the key is
  *     counted once.
- *   - A pair whose @c .meta will not decode is deleted (the entry is unusable).
+ *   - A pair whose @c .meta does not decode is deleted (the entry is unusable).
  *   - A lone @c .cache with no sidecar is deleted; the key lives in the @c .meta,
  *     so the payload cannot be recovered.
  *   - A lone @c .meta with no payload is deleted.
@@ -898,7 +929,7 @@ static BOOL BEIsSameFile(NSString *a, NSString *b) {
 			 [base stringByAppendingPathExtension:cacheExt]];
 
 		if (![metaBases containsObject:base]) {
-			// Lone .cache with no sidecar — the key lives in the .meta, so the
+			// Lone .cache with no sidecar: the key lives in the .meta, so the
 			// payload is unrecoverable.  Delete it.
 			[fm removeItemAtPath:objectFilePath error:nil];
 			changed = YES;
@@ -912,7 +943,7 @@ static BOOL BEIsSameFile(NSString *a, NSString *b) {
 		// Crash-orphan: a complete pair the index missed.  Recover the key.
 		BEFileCacheItem *item = [self unarchiveMetaAtPath:metaFilePath];
 		if (!item || !item.key) {
-			// Corrupt sidecar — the entry is unusable.  Delete both files.
+			// Corrupt sidecar: the entry is unusable.  Delete both files.
 			[fm removeItemAtPath:objectFilePath error:nil];
 			[fm removeItemAtPath:metaFilePath   error:nil];
 			changed = YES;
@@ -939,14 +970,9 @@ static BOOL BEIsSameFile(NSString *a, NSString *b) {
 			_diskCount--;            // re-counted by the shared insert below
 		}
 
-		_diskMeta[(id)item.key] = @{ kMetaKey        : (id)item.key,
-									 kMetaCost       : @(item.cost),
-									 kMetaRetention  : @(item.retentionCost),
-									 kMetaDate       : item.dateStored,
-									 kMetaAccess     : [self accessSeedForObjectPath:objectFilePath
-																			fallback:item.dateStored],
-									 kMetaObjectFile : objectFilePath,
-									 kMetaMetaFile   : metaFilePath };
+		_diskMeta[(id)item.key] = [self diskMetaEntryForItem:item
+												objectFilePath:objectFilePath
+												  metaFilePath:metaFilePath];
 		_diskCount++;
 		_diskTotalCost += item.cost;
 		changed = YES;
@@ -979,8 +1005,8 @@ static BOOL BEIsSameFile(NSString *a, NSString *b) {
  *   @c NSSecureCoding.  The index is written atomically so a crash during the
  *   write cannot leave a corrupt or partial index on disk.
  *
- *   This method is called after every mutation to @c diskMeta — insertions,
- *   removals, and trims — to keep the index consistent with the actual files
+ *   This method is called after every mutation to @c diskMeta (insertions,
+ *   removals, and trims) to keep the index consistent with the actual files
  *   in the cache directory.
  *
  * @note Must be called on @c diskQueue.
@@ -1000,7 +1026,7 @@ static BOOL BEIsSameFile(NSString *a, NSString *b) {
 								  requiringSecureCoding:YES
 												  error:&keyErr];
 		if (!keyData) {
-			// Non-fatal: skip this entry.  It will be recovered by the .meta
+			// Non-fatal: skip this entry.  It is recovered by the .meta
 			// scan fallback on the next launch if the index is rebuilt.
 			NSLog(@"[BEFileCache] index key archive failed: %@",
 				  keyErr.localizedDescription);
@@ -1009,13 +1035,18 @@ static BOOL BEIsSameFile(NSString *a, NSString *b) {
 
 		// Store base filenames, not absolute paths, so the index survives a cache-directory
 		// relocation; loadIndex recomposes them against the current cacheDirectory.
-		[entries addObject:@{ kIdxKeyData    : keyData,
-							  kIdxCost       : meta[kMetaCost],
-							  kIdxRetention  : (meta[kMetaRetention] ?: meta[kMetaCost]),
-							  kIdxDate       : meta[kMetaDate],
-							  kIdxAccess     : (meta[kMetaAccess] ?: meta[kMetaDate]),
-							  kIdxObjectFile : [meta[kMetaObjectFile] lastPathComponent],
-							  kIdxMetaFile   : [meta[kMetaMetaFile]   lastPathComponent] }];
+		NSMutableDictionary *entry = [NSMutableDictionary dictionaryWithDictionary:
+			@{ kIdxKeyData    : keyData,
+			   kIdxCost       : meta[kMetaCost],
+			   kIdxRetention  : (meta[kMetaRetention] ?: meta[kMetaCost]),
+			   kIdxDate       : meta[kMetaDate],
+			   kIdxAccess     : (meta[kMetaAccess] ?: meta[kMetaDate]),
+			   kIdxObjectFile : [meta[kMetaObjectFile] lastPathComponent],
+			   kIdxMetaFile   : [meta[kMetaMetaFile]   lastPathComponent] }];
+		if (meta[kMetaClass]) {
+			entry[kIdxClass] = meta[kMetaClass];
+		}
+		[entries addObject:entry];
 	}];
 
 	// Archive the full array with secure coding enabled.
@@ -1052,8 +1083,8 @@ static BOOL BEIsSameFile(NSString *a, NSString *b) {
  *
  * @discussion
  *   A set @c fileNameBlock receives the key and @p hashName and may substitute
- *   its own name.  The result is normalized to decomposed Unicode form — the
- *   form @c fileSystemRepresentation writes and directory listings return — so
+ *   its own name.  The result is normalized to decomposed Unicode form (the
+ *   form @c fileSystemRepresentation writes and directory listings return), so
  *   recorded paths compare equal to what the file system reports.  A @c nil or
  *   unsafe result (see @c BEIsSafeBaseFileName) falls back to @p hashName.
  *
@@ -1094,8 +1125,8 @@ static BOOL BEIsSameFile(NSString *a, NSString *b) {
  *   @c baseFileNameForKey:hashName: (the key's SHA-256 digest, or the
  *   fileNameBlock's substitute):
  *
- *   - @c <base>.BE_FILE_CACHE_EXTENSION      — the archived object, no wrapper.
- *   - @c <base>.BE_FILE_CACHE_META_EXTENSION — @c BEFileCacheItem (key, cost,
+ *   - @c <base>.BE_FILE_CACHE_EXTENSION      : the archived object, no wrapper.
+ *   - @c <base>.BE_FILE_CACHE_META_EXTENSION : @c BEFileCacheItem (key, cost,
  *     retention cost, and date); intentionally excludes the object so index rebuilds via
  *     @c scanMetaFilesForIndex never need to open large payload files.
  *
@@ -1139,9 +1170,9 @@ static BOOL BEIsSameFile(NSString *a, NSString *b) {
 	NSString *base = [self baseFileNameForKey:key hashName:hashName];
 
 	// ── Archive the object payload ────────────────────────────────────────────
-	// The object is archived directly — no envelope wrapper — into the .cache
-	// file so loadObjectAtPath: can deserialise it without knowing the
-	// concrete class in advance.
+	// The object is archived directly, with no envelope wrapper, into the .cache
+	// file.  The sidecar records the root class name so the payload can be
+	// decoded with secure coding on.
 	//
 	// Hold content access across the archive for NSDiscardableContent objects so
 	// the payload cannot capture a half-discarded state.  If the content is
@@ -1166,9 +1197,11 @@ static BOOL BEIsSameFile(NSString *a, NSString *b) {
 	}
 
 	// ── Archive the metadata sidecar ──────────────────────────────────────────
-	// BEFileCacheItem stores key + cost + retentionCost + dateStored.
+	// BEFileCacheItem stores key + cost + retentionCost + dateStored + the payload's root
+	// class name, which loadObjectAtPath:rootClassName: admits when decoding.
 	BEFileCacheItem *item =
 		[[BEFileCacheItem alloc] initWithKey:key cost:cost retentionCost:retentionCost];
+	item.objectClassName = BEArchivedClassName(obj);
 	NSError *metaErr  = nil;
 	NSData  *metaData =
 		[NSKeyedArchiver archivedDataWithRootObject:item
@@ -1233,7 +1266,7 @@ static BOOL BEIsSameFile(NSString *a, NSString *b) {
 			NSLog(@"[BEFileCache] object write failed: %@",
 				  writeErr.localizedDescription);
 			[self removeDiskEntryOnQueue:key notifyDelegate:NO];
-			return;     // meta not yet written — nothing to roll back
+			return;     // meta not yet written: nothing to roll back
 		}
 
 		// Write the metadata sidecar.
@@ -1275,13 +1308,11 @@ static BOOL BEIsSameFile(NSString *a, NSString *b) {
 			self->_diskCount += 1;     // genuinely new entry
 		}
 
-		self->_diskMeta[(id)key] = @{ kMetaKey        : (id)key,
-									  kMetaCost       : @(cost),
-									  kMetaRetention  : @(retentionCost),
-									  kMetaDate       : item.dateStored,
-									  kMetaAccess     : item.dateStored,   // a write is also an access
-									  kMetaObjectFile : objectFilePath,
-									  kMetaMetaFile   : metaFilePath };
+		// A write is also an access, so the access date seeds from dateStored.
+		self->_diskMeta[(id)key] = BEDiskMetaEntry((id)key, @(cost), @(retentionCost),
+												   item.dateStored, item.dateStored,
+												   objectFilePath, metaFilePath,
+												   item.objectClassName);
 		self->_diskTotalCost += cost;
 
 		// Persist the updated index so cold-start reconstruction is O(1).
@@ -1299,36 +1330,35 @@ static BOOL BEIsSameFile(NSString *a, NSString *b) {
 // ---------------------------------------------------------------------------
 
 /**
- * @method loadObjectAtPath:
+ * @method loadObjectAtPath:rootClassName:
  *
- * @abstract  Deserialises and returns the cached object stored at @p path.
+ * @abstract  Deserializes and returns the cached object stored at @p path.
  *
  * @discussion
- *   Accepts any @c NSSecureCoding-conforming class; the concrete type is
- *   determined entirely by the archived data itself.  Returns @c nil and logs
- *   a message if the file is missing or the archive cannot be decoded.
+ *   Decodes with secure coding on.  The admitted classes are those from
+ *   @c decodingClassesForRootClassName:.  Returns @c nil and logs a message if
+ *   the file is missing, the archive is corrupt, or the archive's classes are
+ *   not admitted.
  *
  *   A missing file is not treated as a fatal error; it can occur if a file
  *   was deleted externally while the app was running.
  *
- * @param path  Absolute path to a @c .BE_FILE_CACHE_EXTENSION payload file.
+ * @param path           Absolute path to a @c .BE_FILE_CACHE_EXTENSION payload file.
+ * @param rootClassName  The payload root class recorded when the entry was
+ *                       written, or @c nil for an entry that predates the record.
  *
- * @return The deserialised object, or @c nil on failure.
+ * @return The deserialized object, or @c nil on failure.
  */
-- (nullable id)loadObjectAtPath:(NSString *)path {
+- (nullable id)loadObjectAtPath:(NSString *)path
+				  rootClassName:(nullable NSString *)rootClassName {
 	NSData *data = [NSData dataWithContentsOfFile:path];
-	if (!data) return nil;     // file missing — may have been deleted externally
+	if (!data) return nil;     // file missing: may have been deleted externally
 
 	NSError *err = nil;
-	// The cache stores arbitrary caller-supplied objects, so the concrete class is
-	// unknown here. Secure coding cannot express "any class" (and modern OS versions
-	// reject [NSObject class] in the allowed list), so the object payload is decoded
-	// without secure-coding enforcement. The cache only ever reads files it wrote
-	// itself, under its own caches directory.
-	NSKeyedUnarchiver *unarchiver = [[NSKeyedUnarchiver alloc] initForReadingFromData:data error:&err];
-	unarchiver.requiresSecureCoding = NO;
-	id obj = err ? nil : [unarchiver decodeObjectForKey:NSKeyedArchiveRootObjectKey];
-	[unarchiver finishDecoding];
+	id obj = [NSKeyedUnarchiver
+			  unarchivedObjectOfClasses:[self decodingClassesForRootClassName:rootClassName]
+							   fromData:data
+								  error:&err];
 	if (!obj)
 		NSLog(@"[BEFileCache] object unarchive failed at '%@': %@",
 			  path, err.localizedDescription);
@@ -1336,18 +1366,81 @@ static BOOL BEIsSameFile(NSString *a, NSString *b) {
 }
 
 /**
+ * @method loadObjectForDiskMetaEntry:
+ *
+ * @abstract  Deserializes the payload that a @c _diskMeta entry describes.
+ *
+ * @param entry  A @c _diskMeta entry (or a snapshot of one).
+ *
+ * @return The deserialized object, or @c nil on failure.
+ */
+- (nullable id)loadObjectForDiskMetaEntry:(NSDictionary *)entry {
+	return [self loadObjectAtPath:entry[kMetaObjectFile] rootClassName:entry[kMetaClass]];
+}
+
+/**
+ * @method decodingClassesForRootClassName:
+ *
+ * @abstract  Returns the classes a payload archive may instantiate.
+ *
+ * @discussion
+ *   The set is the union of the Foundation property-list classes
+ *   (@c BEIndexAllowedClasses), @c allowedClasses, and the recorded root class
+ *   when it resolves to a class that supports secure coding.  A recorded name
+ *   that does not resolve, or resolves to a class without secure coding, adds
+ *   nothing; the unarchiver then rejects the payload.
+ *
+ * @param rootClassName  The recorded payload root class name, or @c nil.
+ *
+ * @return The admitted classes.
+ */
+- (NSSet<Class> *)decodingClassesForRootClassName:(nullable NSString *)rootClassName {
+	NSMutableSet<Class> *classes = [BEIndexAllowedClasses() mutableCopy];
+	NSSet<Class> *allowed = self.allowedClasses;
+	if (allowed) {
+		[classes unionSet:allowed];
+	}
+	Class root = rootClassName ? NSClassFromString(rootClassName) : Nil;
+	if (root && [root conformsToProtocol:@protocol(NSSecureCoding)]
+		&& [(Class<NSSecureCoding>)root supportsSecureCoding]) {
+		[classes addObject:root];
+	}
+	return classes;
+}
+
+/**
+ * @method diskMetaEntryForItem:objectFilePath:metaFilePath:
+ *
+ * @abstract  Builds a @c _diskMeta entry from a decoded @c .meta sidecar.
+ *
+ * @param item            The decoded sidecar.
+ * @param objectFilePath  Absolute path of the entry's payload file.
+ * @param metaFilePath    Absolute path of the sidecar itself.
+ *
+ * @return The entry dictionary.
+ */
+- (NSDictionary *)diskMetaEntryForItem:(BEFileCacheItem *)item
+						objectFilePath:(NSString *)objectFilePath
+						  metaFilePath:(NSString *)metaFilePath {
+	return BEDiskMetaEntry((id)item.key, @(item.cost), @(item.retentionCost),
+						   item.dateStored,
+						   [self accessSeedForObjectPath:objectFilePath fallback:item.dateStored],
+						   objectFilePath, metaFilePath, item.objectClassName);
+}
+
+/**
  * @method unarchiveMetaAtPath:
  *
- * @abstract  Deserialises and returns the @c BEFileCacheItem stored at @p path.
+ * @abstract  Deserializes and returns the @c BEFileCacheItem stored at @p path.
  *
  * @discussion
  *   @c BEFileCacheItem contains the entry's key, cost, retention cost, and
- *   @c dateStored but NOT the cached object itself.  Used during the index-rebuild fallback scan
+ *   @c dateStored but not the cached object itself.  Used during the index-rebuild fallback scan
  *   so that large @c .cache payload files are never opened during start-up.
  *
  * @param path  Absolute path to a @c .BE_FILE_CACHE_META_EXTENSION sidecar file.
  *
- * @return The deserialised @c BEFileCacheItem, or @c nil on failure.
+ * @return The deserialized @c BEFileCacheItem, or @c nil on failure.
  */
 - (nullable BEFileCacheItem *)unarchiveMetaAtPath:(NSString *)path {
 	NSData *data = [NSData dataWithContentsOfFile:path];
@@ -1383,7 +1476,7 @@ static BOOL BEIsSameFile(NSString *a, NSString *b) {
  */
 - (void)touchAccessForKeyOnQueue:(id<NSCopying, NSSecureCoding>)key {
 	NSDictionary *m = _diskMeta[(id)key];
-	if (!m) return;     // memory-only entry or already evicted — nothing to record
+	if (!m) return;     // memory-only entry or already evicted: nothing to record
 	NSMutableDictionary *mm = [m mutableCopy];
 	mm[kMetaAccess] = [NSDate date];
 	_diskMeta[(id)key] = mm;
@@ -1435,7 +1528,7 @@ static BOOL BEIsSameFile(NSString *a, NSString *b) {
 - (double)evictionScoreForEntry:(NSDictionary *)e now:(NSTimeInterval)now {
 	double w   = _evictionBalance;
 	double age = MAX(now - [e[kMetaAccess] timeIntervalSinceReferenceDate], 0.0);
-	if (w <= 0.0) return age;                       // pure LRU — skip the pow pair
+	if (w <= 0.0) return age;                       // pure LRU: skip the pow pair
 	double cost = MAX([e[kMetaCost]      doubleValue], 1.0);
 	double ret  = MAX([e[kMetaRetention] doubleValue], 1.0);
 	if (w >= 1.0) return cost / ret;                // pure value density
@@ -1474,7 +1567,7 @@ static BOOL BEIsSameFile(NSString *a, NSString *b) {
 	}];
 	[scored sortUsingComparator:^NSComparisonResult(NSDictionary *a,
 													 NSDictionary *b) {
-		// Descending — highest (most evictable) score first.
+		// Descending: highest (most evictable) score first.
 		double sa = [a[kMetaScore] doubleValue];
 		double sb = [b[kMetaScore] doubleValue];
 		if (sa > sb) return NSOrderedAscending;
@@ -1505,8 +1598,8 @@ static BOOL BEIsSameFile(NSString *a, NSString *b) {
  *
  * @discussion
  *   When @p notify is @c YES, @c cache:willEvictObject: is called on the
- *   delegate before the files are deleted, passing the deserialised object so
- *   the delegate receives the actual cached value — mirroring the
+ *   delegate before the files are deleted, passing the deserialized object so
+ *   the delegate receives the actual cached value, mirroring the
  *   NSCacheDelegate contract.
  *
  *   When @p notify is @c NO (explicit caller removes, overwrites, and
@@ -1536,7 +1629,7 @@ static BOOL BEIsSameFile(NSString *a, NSString *b) {
  * @discussion
  *   Deletes the @c .cache / @c .meta pair, removes the entry from @c diskMeta,
  *   updates the running totals, and persists the index. When @c notify is YES the
- *   delegate's @c cache:willEvictObject: is fired BEFORE deletion — on the disk
+ *   delegate's @c cache:willEvictObject: is fired before deletion, on the disk
  *   queue, exactly as @c trimDiskOnQueue does. The delegate must not synchronously
  *   re-enter the cache from this callback (see the header's thread-safety note).
  *
@@ -1546,12 +1639,12 @@ static BOOL BEIsSameFile(NSString *a, NSString *b) {
 - (void)removeDiskEntryOnQueue:(id<NSCopying, NSSecureCoding>)key
 				notifyDelegate:(BOOL)notify {
 	NSDictionary *meta = self->_diskMeta[(id)key];
-	if (!meta) return;     // key not on disk — nothing to do
+	if (!meta) return;     // key not on disk: nothing to do
 
 	if (notify) {
 		id<BEFileCacheDelegate> d = self->_delegate;
 		if ([d respondsToSelector:@selector(cache:willEvictObject:)]) {
-			id obj = [self loadObjectAtPath:meta[kMetaObjectFile]];
+			id obj = [self loadObjectForDiskMetaEntry:meta];
 			if (obj) [d cache:self willEvictObject:obj];
 		}
 	}
@@ -1584,7 +1677,7 @@ static BOOL BEIsSameFile(NSString *a, NSString *b) {
  * @discussion
  *   The asynchronous dispatch means the caller is not blocked waiting for file
  *   deletions to complete.  Any public method that reads @c diskMeta
- *   (e.g. @c objectForKey:) uses @c dispatch_sync and will execute after any
+ *   (e.g. @c objectForKey:) uses @c dispatch_sync and executes after any
  *   pending trim has finished.
  */
 - (void)trimDiskIfNeeded {
@@ -1595,7 +1688,7 @@ static BOOL BEIsSameFile(NSString *a, NSString *b) {
  * @method trimDiskOnQueue
  *
  * @abstract
- *   Trims the disk cache in two passes, mirroring NSCache's trim behaviour.
+ *   Trims the disk cache in two passes, mirroring NSCache's trim behavior.
  *
  * @discussion
  *   Both passes evict in @c scoredEvictionSnapshot order: the highest-scoring
@@ -1606,16 +1699,16 @@ static BOOL BEIsSameFile(NSString *a, NSString *b) {
  *   1 and eviction is least-recently-used.  Last access updates on every memory
  *   or disk hit, so frequently-read entries survive.
  *
- *   **Pass 1 — Cost** removes entries until @c diskTotalCost is within
- *   @c totalCostLimit.  **Pass 2 — Count** removes entries until @c diskCount is
+ *   Pass 1 (cost) removes entries until @c diskTotalCost is within
+ *   @c totalCostLimit.  Pass 2 (count) removes entries until @c diskCount is
  *   within @c countLimit.  The two passes differ only in the budget they enforce.
  *
  *   Both passes work on a snapshot of @c diskMeta taken at the start of each
  *   pass so that mutations inside the loop do not invalidate the enumeration.
  *
  *   @c cache:willEvictObject: is fired on the delegate for each deletion in
- *   both passes — this is the @b only code path that calls that callback.
- *   The index is saved once after all evictions to minimise file-system writes.
+ *   both passes; this is the only code path that calls that callback.
+ *   The index is saved once after all evictions to minimize file-system writes.
  *
  * @note Must be called on @c diskQueue.
  *
@@ -1631,7 +1724,7 @@ static BOOL BEIsSameFile(NSString *a, NSString *b) {
 
 		// Evict most-evictable first by the same score the count pass uses.
 		for (NSDictionary *entry in [self scoredEvictionSnapshot]) {
-			// Re-check each iteration — a previous deletion may have already
+			// Re-check each iteration: a previous deletion may have already
 			// brought the total cost within the limit.
 			if (_diskTotalCost <= _totalCostLimit) break;
 
@@ -1640,9 +1733,9 @@ static BOOL BEIsSameFile(NSString *a, NSString *b) {
 			NSString  *metaFilePath   = entry[kMetaMetaFile];
 			NSUInteger cost           = [entry[kMetaCost] unsignedIntegerValue];
 
-			// Notify the delegate before deleting — the object is still readable.
+			// Notify the delegate before deleting, while the object is still readable.
 			if ([d respondsToSelector:@selector(cache:willEvictObject:)]) {
-				id obj = [self loadObjectAtPath:objectFilePath];
+				id obj = [self loadObjectForDiskMetaEntry:entry];
 				if (obj) [d cache:self willEvictObject:obj];
 			}
 
@@ -1672,7 +1765,7 @@ static BOOL BEIsSameFile(NSString *a, NSString *b) {
 			NSUInteger cost           = [entry[kMetaCost] unsignedIntegerValue];
 
 			if ([d respondsToSelector:@selector(cache:willEvictObject:)]) {
-				id obj = [self loadObjectAtPath:objectFilePath];
+				id obj = [self loadObjectForDiskMetaEntry:entry];
 				if (obj) [d cache:self willEvictObject:obj];
 			}
 
@@ -1687,8 +1780,7 @@ static BOOL BEIsSameFile(NSString *a, NSString *b) {
 		}
 	}
 
-	// Save the index once after all evictions rather than after each individual
-	// deletion to keep file-system write traffic to a minimum.
+	// Save the index once after all evictions to keep file-system write traffic to a minimum.
 	if (didEvict) [self saveIndexOnQueue];
 }
 

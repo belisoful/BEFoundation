@@ -174,7 +174,6 @@
 	NSMutableString *methodSignature = [NSMutableString string];
 	const char *p = signature;
 	
-	// Parse return type
 	NSString *returnType = [self parseTypeAtPointer:&p];
 	if (!returnType) {
 		return nil;
@@ -185,10 +184,8 @@
 	if(!*p){
 		return nil;
 	}
-	// Parse frame size
 	NSInteger frameSize = [self parseNumberAtPointer:&p];
 	
-	// Parse arguments
 	NSMutableArray<NSString*> *argTypes = [NSMutableArray array];
 	NSMutableArray<NSNumber*> *argOffsets = [NSMutableArray array];
 	
@@ -204,19 +201,7 @@
 		[argOffsets addObject:@(offset)];
 	}
 	
-	/*
-	NSMutableArray<NSNumber*> *argSizes = [NSMutableArray array];
-	__block NSInteger lastOffset = -1;
-	[argOffsets enumerateObjectsUsingBlock:^(NSNumber * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
-		if (lastOffset >= 0) {
-			[argSizes addObject:@(obj.intValue - lastOffset)];
-		}
-		lastOffset = obj.intValue;
-	}];
-	[argSizes addObject:@(frameSize - lastOffset)];
-	 */
 	
-	// Skip the first argument (block itself) if it's @?
 	NSInteger offsetAdjustment = 0;
 	if (!(flags & BEKeepBlockArgumentFlag) && argTypes.count > 0 && [argTypes[0] isEqualToString:@"@?"]) {
 		[argTypes removeObjectAtIndex:0];
@@ -225,12 +210,10 @@
 		offsetAdjustment -= sizeof(id);
 	}
 	
-	// Check if we need to add selector as second argument
 	BOOL needsSelector = NO, hasSelector, replicateSelector = flags & BEReplicateSelectorFlag;
 	
 	hasSelector = argTypes.count > 1 && [argTypes[1] isEqualToString:NSStringTypeEncode(SEL)];
 	if ((flags & BERequireSelectorFlag) && !hasSelector) {
-		// Add space for the selector argument
 		needsSelector = YES;
 		frameSize += sizeof(SEL);
 	}
@@ -238,12 +221,9 @@
 		frameSize += sizeof(SEL);
 	}
 	
-	// Append frame size
 	[methodSignature appendFormat:@"%ld", (long)frameSize];
 	
-	// Append arguments
 	for (NSInteger i = 0; i < argTypes.count; i++) {
-		// Insert selector as second argument if needed
 		if (i == 1 && needsSelector) {
 			[methodSignature appendFormat:@"%s%ld", @encode(SEL), (long)sizeof(SEL)];
 			offsetAdjustment += sizeof(SEL);
@@ -298,23 +278,20 @@
 			break;
 			
 		case '@': // object
-			p++; // skip '@'
-			// Check for optional specifiers after @
+			p++;
 			if (*p == '?') {
 				// Block type: @?
 				p++;
 			} else if (*p == '"') {
 				// Class name in quotes: @"ClassName"
-				p++; // skip opening quote
-				while (*p && *p != '"') p++; // skip to closing quote
-				if (*p == '"') p++; // skip closing quote
+				p++;
+				while (*p && *p != '"') p++;
+				if (*p == '"') p++;
 			}
-			// If neither ? nor ", it's just a generic object (@)
 			break;
 			
 		case '^': // pointer
 			p++;
-			// Parse the pointed-to type recursively
 			{
 				NSString *pointedType = [self parseTypeAtPointer:&p];
 				if (!pointedType) return nil;
@@ -322,57 +299,50 @@
 			break;
 			
 		case '[': // array
-			p++; // skip '['
-			// Parse array size
+			p++;
 			while (*p && isdigit(*p)) p++;
-			// Parse array element type
 			{
 				NSString *elementType = [self parseTypeAtPointer:&p];
 				if (!elementType) return nil;
 			}
-			if (*p == ']') p++; // skip ']'
+			if (*p == ']') p++;
 			break;
 			
 		case '{': // structure
-			p++; // skip '{'
-			// Parse struct name (optional)
+			p++;
 			while (*p && *p != '=' && *p != '}') p++;
 			if (*p == '=') {
-				p++; // skip '='
-				// Parse struct members
+				p++;
 				while (*p && *p != '}') {
 					NSString *memberType = [self parseTypeAtPointer:&p];
 					if (!memberType) break;
 				}
 			}
-			if (*p == '}') p++; // skip '}'
+			if (*p == '}') p++;
 			break;
 			
 		case '(': // union
-			p++; // skip '('
-			// Parse union name (optional)
+			p++;
 			while (*p && *p != '=' && *p != ')') p++;
 			if (*p == '=') {
-				p++; // skip '='
-				// Parse union members
+				p++;
 				while (*p && *p != ')') {
 					NSString *memberType = [self parseTypeAtPointer:&p];
 					if (!memberType) break;
 				}
 			}
-			if (*p == ')') p++; // skip ')'
+			if (*p == ')') p++;
 			break;
 			
 		case 'b': // bitfield
-			p++; // skip 'b'
-			// Parse bitfield size
+			p++;
 			while (*p && isdigit(*p)) p++;
 			break;
 			
 		default:
 			// Reached for the separators inside aggregate encodings (the '=' of
-			// "{name=fields}"), so advancing one character is correct here.  Type
-			// qualifiers no longer land here; they are consumed above.
+			// "{name=fields}"); advancing one character is correct here. Type
+			// qualifiers are consumed above.
 			p++;
 			if (isdigit(*p)) {
 				break;
@@ -394,10 +364,8 @@
 	const char *p = *pointer;
 	NSInteger result = 0;
 	
-	// Skip non-digits
 	while (*p && !isdigit(*p)) p++;
 	
-	// Parse digits
 	while (*p && isdigit(*p)) {
 		result = result * 10 + (*p - '0');
 		p++;

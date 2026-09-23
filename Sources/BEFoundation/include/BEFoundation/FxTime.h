@@ -4,7 +4,7 @@
  @date 			2025-01-01
  @author		belisoful@icloud.com
  @abstract 		An Objective-C wrapper for CoreMedia's CMTime structure providing time manipulation and arithmetic operations.
- @discussion	FxTime encapsulates CoreMedia's CMTime structure in an Objective-C object, providing an object-oriented interface for time-based operations in media applications. This class supports all standard CMTime operations including arithmetic, comparison, and conversion while maintaining compatibility with NSSecureCoding, NSCopying, and NSMutableCopying protocols.
+ @discussion	FxTime encapsulates CoreMedia's CMTime structure in an Objective-C object, providing an object-oriented interface for time-based operations in media applications. It conforms to NSSecureCoding, NSCopying, and NSMutableCopying.
 
  The class provides factory methods for creating common time values (zero, invalid, infinity) and supports various initialization methods for different time representations.
 
@@ -23,7 +23,7 @@ NS_ASSUME_NONNULL_BEGIN
  @struct SRational32
  @abstract A structure representing a rational number with 32-bit integer components.
  @discussion
- This structure is used to represent fractional values as a ratio of two integers, providing precise representation of decimal numbers without floating-point precision loss.
+ This structure represents a fractional value as a ratio of two integers.
  @field multiplier The numerator of the rational number.
  @field divisor The denominator of the rational number.
  */
@@ -39,9 +39,11 @@ typedef struct SRational32 SRational32;
  @discussion
  FxTime provides an object-oriented interface for working with time values in media applications. It encapsulates a CMTime structure and provides methods for comparison and conversion operations.
 
- The class supports secure coding and copying, making it suitable for serialization and for use as a thread-safe, immutable time representation.
+ The class supports secure coding and copying.
 
  FxTime is immutable. Arithmetic and component mutation live on the mutable subclass FxMutableTime; create one with -mutableCopy (or FxMutableTime's factory/initializers) to perform in-place operations.
+
+ An archive holds the CMTime as raw bytes. Decoding fails (returns nil and reports NSCoderReadCorruptError to the decoder) when the payload size differs from sizeof(CMTime).
 
  @code
  // Half a second at a 600 timescale.
@@ -76,7 +78,7 @@ typedef struct SRational32 SRational32;
  @method time:
  @abstract Creates a new FxTime instance with the specified CMTime value.
  @param time The CMTime value to wrap.
- @return A new autoreleased FxTime instance.
+ @return A new FxTime instance.
  @discussion
  This is the primary factory method for creating FxTime instances from existing CMTime values.
  */
@@ -86,9 +88,9 @@ typedef struct SRational32 SRational32;
  @method timeWithDictionary:
  @abstract Creates a new FxTime instance from a dictionary representation.
  @param timeDictionary A dictionary containing CMTime components as created by CMTimeCopyAsDictionary.
- @return A new autoreleased FxTime instance.
+ @return A new FxTime instance.
  @discussion
- This method is useful for deserializing time values from property lists or other dictionary-based storage formats.
+ The dictionary holds the keys and values that CMTimeCopyAsDictionary creates.
  */
 + (instancetype)timeWithDictionary:(NSDictionary*)timeDictionary;
 
@@ -133,7 +135,7 @@ typedef struct SRational32 SRational32;
  @abstract Creates a zero time value.
  @return A new FxTime instance representing zero time (kCMTimeZero).
  @discussion
- Zero time represents the origin point for time calculations and is commonly used as a starting reference.
+ Zero time is the origin for time calculations.
  */
 + (instancetype)zero;
 
@@ -155,7 +157,7 @@ typedef struct SRational32 SRational32;
  @param time The CMTime value to wrap.
  @return An initialized FxTime instance.
  @discussion
- This is the designated initializer for creating FxTime instances from CMTime values.
+ This initializer wraps the CMTime value.
  */
 - (instancetype)initWithCMTime:(CMTime)time;
 
@@ -330,7 +332,7 @@ typedef struct SRational32 SRational32;
  @method rationalize:tolerance:
  @abstract Converts a floating-point number to a rational representation with specified tolerance.
  @param number The floating-point number to rationalize.
- @param tolerance The maximum acceptable error in the approximation.
+ @param tolerance The maximum acceptable relative error; the absolute error bound is tolerance multiplied by the magnitude of number.
  @return A SRational32 structure containing the rational representation.
  @discussion
  This method finds the best rational approximation of the given floating-point number within the specified tolerance using continued fractions.
@@ -394,17 +396,16 @@ typedef struct SRational32 SRational32;
  @abstract The mutable subclass of FxTime.
  @discussion
  FxMutableTime adds read-write access to the time components and in-place arithmetic,
- timescale conversion, and min/max operations. Use it wherever you previously mutated an
- FxTime. Obtain one via -[FxTime mutableCopy], any inherited factory/initializer, or by
+ timescale conversion, and min/max operations. Obtain one via -[FxTime mutableCopy], any inherited factory/initializer, or by
  constructing it directly.
 
- Because it is mutable, FxMutableTime is NOT thread-safe; do not mutate a shared instance
+ Because it is mutable, FxMutableTime is not thread-safe; do not mutate a shared instance
  from multiple threads without external synchronization. -copy returns an immutable FxTime
  snapshot; -mutableCopy returns an independent FxMutableTime.
 
- WARNING: like NSMutableString/NSMutableArray, an FxMutableTime's -hash changes when its
- value changes. Do NOT mutate an FxMutableTime after it has been added to an NSSet or used
- as an NSDictionary key — doing so corrupts the collection. Store an immutable -copy instead.
+ Like NSMutableString and NSMutableArray, an FxMutableTime's -hash changes when its
+ value changes. Mutating an FxMutableTime after it is added to an NSSet or used as an
+ NSDictionary key corrupts the collection. Store an immutable -copy instead.
 
  @code
  FxTime *start = [FxTime time:CMTimeMake(300, 600)]; // 0.5 s

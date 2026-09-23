@@ -15,11 +15,9 @@
 
 - (void)setUp {
 	[super setUp];
-	// Put setup code here. This method is called before the invocation of each test method in the class.
 }
 
 - (void)tearDown {
-	// Put teardown code here. This method is called after the invocation of each test method in the class.
 	[super tearDown];
 }
 
@@ -54,7 +52,6 @@
  */
 - (void)testRfc2822DateFormatterSetsCorrectTimeZone {
 	NSDateFormatter *formatter = [NSDateFormatter rfc2822DateFormatter];
-	// Check if the timeZone is UTC/GMT with 0 seconds from GMT
 	XCTAssertEqualObjects(formatter.timeZone, [NSTimeZone timeZoneForSecondsFromGMT:0], @"The RFC2822 date formatter time zone should be UTC/GMT.");
 	XCTAssertEqual(formatter.timeZone.secondsFromGMT, 0, @"The RFC2822 date formatter time zone should have 0 seconds from GMT.");
 }
@@ -65,7 +62,6 @@
 - (void)testRfc2822DateFormatterFormatsDateCorrectly {
 	NSDateFormatter *formatter = [NSDateFormatter rfc2822DateFormatter];
 
-	// Create a known date in UTC
 	NSDateComponents *components = [[NSDateComponents alloc] init];
 	components.year = 2025;
 	components.month = 6;
@@ -142,7 +138,6 @@
 	NSDateFormatter *formatter = NSDateFormatter.new;
 	[formatter rfc2822Format]; // Apply the RFC2822 format
 
-	// Create a known date in UTC
 	NSDateComponents *components = [[NSDateComponents alloc] init];
 	components.year = 2025;
 	components.month = 6;
@@ -188,7 +183,7 @@
 	XCTAssertNil([formatter dateFromString:@"23 Jun 2025 14:45:30 +0000"]);
 }
 
-// Gotcha: the weekday is required syntactically but is NOT validated against the date. An
+// Gotcha: the weekday is required syntactically but is not validated against the date. An
 // inconsistent weekday ("Tue" for a Monday) is silently accepted; the date fields win.
 - (void)testRfc2822DoesNotValidateWeekday {
 	NSDateFormatter *formatter = [NSDateFormatter rfc2822DateFormatter];
@@ -214,7 +209,7 @@
 }
 
 // Real email Date: headers may carry a trailing zone comment / CFWS, e.g. "+0000 (UTC)".
-// The fixed format does not accept it — strip comments before parsing actual headers.
+// The fixed format does not accept it; strip comments before parsing actual headers.
 - (void)testRfc2822RejectsTrailingComment {
 	NSDateFormatter *formatter = [NSDateFormatter rfc2822DateFormatter];
 	XCTAssertNil([formatter dateFromString:@"Mon, 23 Jun 2025 14:45:30 +0000 (UTC)"]);

@@ -180,7 +180,6 @@
 	NSComparator comparator = BEPriorityExtensionHelper.priorityComparator;
 	NSComparisonResult result = comparator(capture, item);
 	
-	// Should set default priority on capture object
 	XCTAssertEqual(capture.itemPriority.integerValue, BEDefaultSortedItemPriority);
 	XCTAssertEqual(result, NSOrderedAscending); // 0 < 5
 }
@@ -202,7 +201,6 @@
 	NSComparator comparator = BEPriorityExtensionHelper.priorityComparator;
 	NSComparisonResult result = comparator(both, item);
 	
-	// Should set default priority and then read it
 	XCTAssertEqual(both.itemPriority.integerValue, BEDefaultSortedItemPriority);
 	XCTAssertEqual(result, NSOrderedAscending); // 0 < 7
 }
@@ -232,7 +230,6 @@
 	XCTAssertEqual(((TestPriorityItem *)sortedArray[1]).itemPriority.integerValue, 2);
 	XCTAssertEqual(((TestPriorityItem *)sortedArray[2]).itemPriority.integerValue, 3);
 	
-	// Verify original array is unchanged
 	XCTAssertEqual(((TestPriorityItem *)originalArray[0]).itemPriority.integerValue, 3);
 }
 
@@ -305,7 +302,6 @@
 	XCTAssertEqual(((TestPriorityItem *)sortedArray[1]).itemPriority.integerValue, 4);
 	XCTAssertEqual(((TestPriorityItem *)sortedArray[2]).itemPriority.integerValue, 9);
 	
-	// Verify original ordered set is unchanged
 	XCTAssertEqual(((TestPriorityItem *)orderedSet[0]).itemPriority.integerValue, 9);
 }
 
@@ -427,13 +423,11 @@
 }
 
 - (void)testProtocolConformanceChecking {
-	// Test that protocol conformance is checked correctly
 	TestPriorityItem *priorityItem = [[TestPriorityItem alloc] initWithPriority:@5 name:@"Priority"];
 	TestPriorityCapture *captureItem = [[TestPriorityCapture alloc] initWithName:@"Capture"];
 	TestPriorityProperty *propertyItem = [[TestPriorityProperty alloc] initWithPriority:@3 name:@"Property"];
 	TestNonPriorityObject *nonPriorityItem = [[TestNonPriorityObject alloc] initWithName:@"NonPriority"];
 	
-	// Verify protocol conformance
 	XCTAssertTrue([priorityItem conformsToProtocol:@protocol(BEPriorityItem)]);
 	XCTAssertFalse([priorityItem conformsToProtocol:@protocol(BEPriorityCapture)]);
 	
@@ -470,7 +464,6 @@
 	NSComparator comparator = BEPriorityExtensionHelper.priorityComparator;
 	NSComparisonResult result = comparator(nonPriorityObj, nilPriorityItem);
 	
-	// Both should get default priority (0)
 	XCTAssertEqual(result, NSOrderedSame); // 0 == 0
 }
 

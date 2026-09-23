@@ -8,7 +8,7 @@ Prime number operations within the 16-bit range using a precomputed lookup table
 
 ## Overview
 
-This category provides efficient prime number operations using a precomputed lookup table containing all 6542 primes from 2 to 65521 (the largest 16-bit prime).
+This category provides prime number operations using a precomputed lookup table containing all 6542 primes from 2 to 65521 (the largest 16-bit prime).
 
 ## Usage
 

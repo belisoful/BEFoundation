@@ -27,14 +27,13 @@
 				ReturnType (^)(id self, SEL _cmd, ...parameters)
 				```
 				
-				The `SEL _cmd` parameter is optional. If included, the block will receive the selector
-				of the method being called. If omitted, the system automatically adjusts the signature.
+				The `SEL _cmd` parameter is optional. If included, the block receives the selector
+				of the method being called. If omitted, the system adjusts the signature.
 				
 				## Limitations
 				
-				NSMethodSignatures cannot properly encode compiler SIMD, vector, or NEON parameter types and will fail.
-				Use their base types as arrays or pointers instead for arguments.
-				The `_Float16` type also produces errors for malformed Block Signatures.
+				NSMethodSignature cannot encode SIMD, vector, or NEON parameter types; pass their base
+				types as arrays or pointers instead. `_Float16` parameters also fail signature parsing.
 				
 				## Usage Example
 				
@@ -66,11 +65,11 @@
 				so the resulting binary contains no non-public symbol references and is safe for App
 				Store submission (App Store Review Guideline 2.5.1).
 
-				Define it to 0 — e.g. a `-DBE_APPLE_TERMS_COMPLIANT=0` compiler flag, or before importing this
-				header — to permit the authoritative but non-public runtime function @c _Block_signature
-				for block-signature extraction. That path resolves every block descriptor layout
-				(including small descriptors) directly via the runtime; the hand-rolled reader remains
-				as a fallback. Do NOT ship a binary built with @c BE_APPLE_TERMS_COMPLIANT=0 to the App Store.
+				Define it to 0 (with a `-DBE_APPLE_TERMS_COMPLIANT=0` compiler flag, or before importing this
+				header) to permit the non-public runtime function @c _Block_signature for block-signature
+				extraction. That path resolves every block descriptor layout (including small descriptors)
+				through the runtime; the hand-rolled reader remains as a fallback. Do not ship a binary
+				built with @c BE_APPLE_TERMS_COMPLIANT=0 to the App Store.
 
  @since			1.1
  */
@@ -141,8 +140,8 @@ typedef enum {
 
 				When @c BLOCK_SMALL_DESCRIPTOR is set the descriptor instead uses a compact form: a
 				32-bit @c size and 32-bit @em relative offsets in place of the pointers below. This
-				struct does not model that form — use @c NSSignatureForBlock (or
-				@c BEMethodSignatureHelper) which resolves both layouts.
+				struct does not model that form; @c NSSignatureForBlock and @c BEMethodSignatureHelper
+				resolve both layouts.
  @field			reserved		Reserved field, typically NULL.
  @field			size			Size of the block in bytes.
  @field			copy_helper		Optional copy helper function (if BLOCK_HAS_COPY_DISPOSE is set).
@@ -194,8 +193,13 @@ typedef struct Block_literal {
 				Returns NULL when @c BLOCK_HAS_SIGNATURE is not set.
 
 				The regular-descriptor path matches this platform's runtime @c _Block_signature exactly.
-				The small-descriptor path is defensive; its offset arithmetic is covered by synthetic-block
-				tests, but no current Apple toolchain emits small descriptors. See the implementation note.
+				The small-descriptor path is defensive: no current Apple toolchain emits
+				@c BLOCK_SMALL_DESCRIPTOR for Objective-C blocks, and this platform's libsystem_blocks
+				@c _Block_signature has no small-descriptor branch, so a compiler-produced block never
+				reaches it. Its offset arithmetic (positive, negative, and zero relative offsets) is pinned
+				by synthetic-block tests in NSMethodSignature+BlockSignaturesTests.m; the layout itself is
+				unvalidated against a toolchain-emitted small descriptor. Re-validate it on any toolchain
+				that begins emitting them.
  */
 static inline const char * _Nullable BEBlockSignatureChar(const void * _Nonnull block)
 {
@@ -216,13 +220,6 @@ static inline const char * _Nullable BEBlockSignatureChar(const void * _Nonnull 
 		// BLOCK_HAS_COPY_DISPOSE is set. A relative field stores (target - &field), so the target is
 		// recovered by adding the offset back to the field's own address; the runtime treats a zero
 		// offset as no signature.
-		// NOTE: defensive. No current Apple toolchain emits BLOCK_SMALL_DESCRIPTOR for Objective-C
-		// blocks, and this platform's libsystem_blocks _Block_signature has no small-descriptor branch
-		// (it reads an absolute pointer at descriptor +16/+32), so this branch is unreachable through a
-		// compiler-produced block here. The field arithmetic (positive, negative, and zero relative
-		// offsets) is pinned by synthetic-block tests in NSMethodSignature+BlockSignaturesTests.m; the
-		// layout itself stays unvalidated against a real toolchain-emitted small descriptor until one
-		// exists. Re-validate before relying on it on any toolchain that begins emitting them.
 		const uint8_t *cursor = (const uint8_t *)literal->descriptor;
 		cursor += sizeof(uint32_t); // the signature's relative offset immediately follows the 32-bit size
 		int32_t relativeOffset;
@@ -271,7 +268,7 @@ typedef NS_ENUM(NSInteger, BEMethodSignatureParseFlags) {
 #pragma mark - NSMethodSignature Block Extensions
 
 /*!
- @category		NSMethodSignature (BlockMethods)
+ @category		NSMethodSignature (BlockSignatures)
  @abstract		Extensions to NSMethodSignature for working with blocks.
  @discussion	This category provides methods for creating method signatures from blocks
 				and utilities for working with method signature data.
@@ -281,8 +278,9 @@ typedef NS_ENUM(NSInteger, BEMethodSignatureParseFlags) {
 /*!
  @method		signatureFromBlock:
  @abstract		Creates a method signature directly from a block's signature.
- @param			block	The block to extract the signature from.
+ @param			block	The block to extract the signature from. Must be a block.
  @return		An NSMethodSignature object, or nil if the block has no signature.
+ @exception	NSInvalidArgumentException Raised when block is nil or is not a block.
  @discussion	This method creates a method signature from the block's signature.
 				The leading block pointer argument is dropped, so self is the first parameter (index 0),
 				followed by the block's remaining parameters. No SEL `_cmd` is inserted.
@@ -292,8 +290,9 @@ typedef NS_ENUM(NSInteger, BEMethodSignatureParseFlags) {
 /*!
  @method		methodSignatureFromBlock:
  @abstract		Creates a method signature suitable for dynamic method implementation from a block.
- @param			block	The block to convert to a method signature.
- @return		An NSMethodSignature object suitable for method implementation, or nil if conversion fails.
+ @param			block	The block to convert to a method signature. Must be a block.
+ @return		An NSMethodSignature object suitable for method implementation, or nil if the block has no signature.
+ @exception	NSInvalidArgumentException Raised when block is nil or is not a block.
  @discussion	This method transforms a block signature into a proper method signature by:
 				- Removing the initial block pointer parameter
 				- Keeping self as the first parameter
@@ -307,8 +306,7 @@ typedef NS_ENUM(NSInteger, BEMethodSignatureParseFlags) {
  @property		methodReturnTypeString
  @abstract		The method's return type as a string.
  @return		An NSString containing the encoded return type.
- @discussion	This property returns the return type as a string
-				rather than a C string. Useful for debugging and introspection.
+ @discussion	This property wraps methodReturnType in an NSString.
  */
 @property (readonly, nonnull) NSString *methodReturnTypeString;
 
@@ -327,9 +325,9 @@ typedef NS_ENUM(NSInteger, BEMethodSignatureParseFlags) {
  @method		getArgumentSizeAtIndex:
  @abstract		Returns the size in bytes of the argument at the specified index.
  @param			idx		The index of the argument to examine.
- @return		The size of the argument in bytes.
- @discussion	This method provides the size of arguments based on their encoded types.
-				It's useful for memory allocation and argument copying operations.
+ @return		The size of the argument in bytes, as promoted for argument passing.
+ @discussion	Integer types narrower than int (char, short, BOOL and their unsigned forms)
+				report sizeof(int), the size they occupy when promoted as an argument.
 				Returns 0 for unknown or invalid types.
  */
 - (NSUInteger)getArgumentSizeAtIndex:(NSUInteger)idx;
@@ -354,8 +352,9 @@ typedef NS_ENUM(NSInteger, BEMethodSignatureParseFlags) {
 /*!
  @method		rawBlockSignatureChar:
  @abstract		Extracts the raw type signature from a block as a C string.
- @param			block	The block to examine.
- @return		A C string containing the block's type signature, or NULL if unavailable.
+ @param			block	The block to examine. Must be a block.
+ @return		A C string containing the block's type signature, or NULL if the block carries none.
+ @exception	NSInvalidArgumentException Raised when block is nil or is not a block.
  @discussion	This method directly accesses the block's internal structure to retrieve
 				its type signature. The signature includes all parameters, with the block
 				pointer as the first parameter and self as the second.
@@ -365,18 +364,19 @@ typedef NS_ENUM(NSInteger, BEMethodSignatureParseFlags) {
 /*!
  @method		rawBlockSignatureString:
  @abstract		Extracts the raw type signature from a block as an NSString.
- @param			block	The block to examine.
- @return		An NSString containing the block's type signature, or nil if unavailable.
- @discussion	This method provides the same functionality as rawBlockSignatureChar:
-				but returns an NSString for easier handling in Objective-C code.
+ @param			block	The block to examine. Must be a block.
+ @return		An NSString containing the block's type signature, or nil if the block carries none.
+ @exception	NSInvalidArgumentException Raised when block is nil or is not a block.
+ @discussion	This method returns the rawBlockSignatureChar: result as an NSString.
  */
 + (nullable NSString *)rawBlockSignatureString:(nonnull id)block;
 
 /*!
  @method		blockSignatureString:
  @abstract		Returns a processed block signature string suitable for NSMethodSignature.
- @param			block	The block to process.
- @return		A processed signature string, or nil if processing fails.
+ @param			block	The block to process. Must be a block.
+ @return		A processed signature string, or nil if the block carries no signature.
+ @exception	NSInvalidArgumentException Raised when block is nil or is not a block.
  @discussion	This method takes a block's raw signature and processes it to create
 				a signature string that can be used with NSMethodSignature. It handles
 				the removal of the block parameter and other necessary transformations.

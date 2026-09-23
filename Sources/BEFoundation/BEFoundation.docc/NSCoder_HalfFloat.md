@@ -8,7 +8,7 @@ Half-precision floating-point encoding and decoding support for NSCoder.
 
 ## Overview
 
-This category adds methods for encoding and decoding half-precision floating-point values (`_Float16`) to NSCoder. Half-precision floats are 16-bit IEEE 754 floating-point numbers commonly used in graphics programming and machine learning.
+This category adds methods for encoding and decoding half-precision floating-point values (`_Float16`) to NSCoder. Half-precision floats are 16-bit IEEE 754 floating-point numbers.
 
 ## Usage
 
@@ -28,19 +28,11 @@ This category adds methods for encoding and decoding half-precision floating-poi
 // like decodeFloatForKey: and the other NSCoder scalar decoders)
 _Float16 value = [coder decodeHalfForKey:@"halfValue"];
 
-// A stored 0 is indistinguishable from a missing key — check presence explicitly if it matters:
+// A stored 0 is indistinguishable from a missing key; check presence explicitly if it matters:
 if (![coder containsValueForKey:@"halfValue"]) {
     NSLog(@"Value was not found");
 }
 ```
-
-### When to Use Half Floats
-
-Half-precision floats are ideal for:
-- Graphics programming (shaders, textures)
-- Machine learning (neural network weights)
-- Memory-constrained environments
-- Situations where full precision is unnecessary
 
 ### Precision Considerations
 

@@ -2,7 +2,7 @@ Pod::Spec.new do |s|
 
 # Common settings
   s.name         = "BEFoundation"
-  s.version      = "1.1.1"
+  s.version      = "1.2.0"
   s.summary      = "Objective-C extensions to Foundation: notifications, runtime, numbers, data, images, and collections."
   s.description  = <<-DESC
 BEFoundation extends Apple's Foundation with priority notifications, dynamic methods and
@@ -12,13 +12,13 @@ collection and string categories. It is cross-platform: AppKit and UIKit differe
 bridged by BEPlatformTypes.
                       DESC
   s.homepage     = "https://github.com/belisoful/BEFoundation"
-  s.license      = { :type => 'MIT', :file => 'LICENSE' }
+  s.license      = { :type => 'Public Domain', :file => 'LICENSE' }
   s.author       = { "belisoful" => "belisoful@icloud.com" }
   s.source       = { :git => 'https://github.com/belisoful/BEFoundation.git', :tag => s.version.to_s }
 
 # Platforms
-  s.osx.deployment_target = "11.0"
-  s.ios.deployment_target = "14.0"
+  s.osx.deployment_target = "12.0"
+  s.ios.deployment_target = "15.0"
 
 # Build
   s.source_files        = 'Sources/BEFoundation/**/*.{h,hpp,m,mm}'

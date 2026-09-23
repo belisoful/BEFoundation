@@ -53,7 +53,7 @@ NSOrderedSet *doubledEvens = [numbers mapUsingBlock:^BOOL(id *obj, NSUInteger id
     }
     return NO;
 }];
-// Result: @{@4, @8} in order
+// Result: @[@4, @8] in order
 ```
 
 ### Mutable Ordered Set Operations
@@ -63,18 +63,18 @@ NSMutableOrderedSet *orderedSet = [NSMutableOrderedSet orderedSetWithArray:@[@1,
 
 // Remove first object
 [orderedSet removeFirstElement];
-// Result: @{@2, @3}
+// Result: @[@2, @3]
 
 // Remove last object
 [orderedSet removeLastElement];
-// Result: @{@2}
+// Result: @[@2]
 
 // Filter in place
 [orderedSet filterUsingBlock:^BOOL(id *obj, NSUInteger idx, BOOL *stop) {
     NSNumber *num = *obj;
     return [num intValue] > 1;
 }];
-// Result: @{@2}
+// Result: @[@2]
 ```
 
 ### Set Conversion
@@ -84,15 +84,15 @@ NSMutableOrderedSet *orderedSet = [NSMutableOrderedSet orderedSetWithArray:@[@1,
 
 // Set from array
 orderedSet.array = @[@4, @5, @6];
-// Result: @{@4, @5, @6}
+// Result: @[@4, @5, @6]
 
 // Set from set
 orderedSet.set = [NSSet setWithArray:@[@7, @8]];
-// Result: @{@7, @8} (order may vary)
+// Result: @[@7, @8] (order may vary)
 
 // Intersect with array
 [orderedSet intersectArray:@[@8, @9]];
-// Result: @{@8}
+// Result: @[@8]
 ```
 
 ## See Also

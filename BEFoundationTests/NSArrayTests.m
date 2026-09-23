@@ -15,11 +15,9 @@
 @implementation NSArrayTests
 
 - (void)setUp {
-    // Put setup code here. This method is called before the invocation of each test method in the class.
 }
 
 - (void)tearDown {
-    // Put teardown code here. This method is called after the invocation of each test method in the class.
 }
 
 
@@ -49,7 +47,6 @@
 	{ // object classes
 		NSArray *input = @[@"NSObject", @"NSNumber", @11, @[@1, @2], [NSNull null], @{@"A": @1, @"B": @2}];
 		
-		// Map to Class objects
 		NSArray *result = [input objectsClasses];
 		
 		
@@ -63,7 +60,6 @@
 		NSArray *result = [input objectsClasses];
 		
 		NSArray *reference = @[];
-		// An empty set should return an empty set
 		XCTAssertEqualObjects(result, reference);
 	}
 }
@@ -75,12 +71,10 @@
 	{ // object classes
 		NSArray *input = @[@"NSObject", @"NSNumber", @11, @[@1, @2], [NSNull null], @{@"A": @1, @"B": @2}];
 		
-		// Map to Class objects
 		NSArray *result = [input objectsClassNames];
 		
 		
 		NSArray *reference = @[NSStringFromClass(@"NSObject".class), NSStringFromClass(@"NSNumber".class), NSStringFromClass(@(11).class), NSStringFromClass(@[@1, @2].class), NSStringFromClass([NSNull null].class), NSStringFromClass(@{@"A": @1, @"B": @2}.class)];
-		// Verify that each element has been converted to the correct Class object
 		XCTAssertEqualObjects(result, reference);
 	}
 	{ // empty set
@@ -90,7 +84,6 @@
 		
 		NSArray *reference = @[];
 		
-		// An empty set should return an empty set
 		XCTAssertEqual(result.count, reference.count);
 	}
 }
@@ -102,12 +95,10 @@
 	{ // object classes
 		NSArray *input = @[@"NSObject", @"NSNumber", @11, @[@1, @2], [NSNull null], @0, @{@"A": @1, @"B": @2}];
 		
-		// Map to Class objects
 		NSCountedSet *result = [input objectsUniqueClasses];
 		
 		
 		NSCountedSet *reference = [NSCountedSet setWithObjects:@"NSObject".class, @"NSNumber".class, @(11).class, @[@1, @2].class, [NSNull null].class, @(0).class, @{@"A": @1, @"B": @2}.class, nil];
-		// Verify that each element has been converted to the correct Class object
 		XCTAssertEqualObjects(result, reference);
 	}
 	{ // empty set
@@ -116,7 +107,6 @@
 		NSCountedSet *result = [input objectsUniqueClasses];
 		
 		NSCountedSet *reference = [NSCountedSet set];
-		// An empty set should return an empty set
 		XCTAssertTrue([result isKindOfClass:reference.class]);
 		XCTAssertEqual(result.count, 0);
 	}
@@ -128,12 +118,10 @@
 	{ // object classes
 		NSArray *input = @[@"NSObject", @"NSNumber", @11, @[@1, @2], [NSNull null], @{@"A": @1, @"B": @2}];
 		
-		// Map to Class objects
 		NSCountedSet *result = [input objectsUniqueClassNames];
 		
 		
 		NSCountedSet *reference = [NSCountedSet setWithObjects:NSStringFromClass(@"NSObject".class), NSStringFromClass(@"NSNumber".class), NSStringFromClass(@(11).class), NSStringFromClass(@[@1, @2].class), NSStringFromClass([NSNull null].class), NSStringFromClass(@{@"A": @1, @"B": @2}.class), nil];
-		// Verify that each element has been converted to the correct Class object
 		XCTAssertTrue([result isKindOfClass:reference.class]);
 		XCTAssertEqualObjects(result, reference);
 	}
@@ -143,7 +131,6 @@
 		NSCountedSet *result = [input objectsUniqueClassNames];
 		
 		NSCountedSet *reference = [NSCountedSet set];
-		// An empty set should return an empty set
 		XCTAssertTrue([result isKindOfClass:reference.class]);
 		XCTAssertEqual(result.count, 0);
 	}
@@ -157,7 +144,6 @@
 	{	// Class Names to Class, filter out invalid classes, and objects not NSString.
 		NSArray *input = @[@"NSString", @"NSNumber", @"NSObject", @"NSMutableArray", [NSNull null], @"InvalidClass", @"AnotherInvalidClass", @[], @{}];
 		
-		// Map to Class objects
 		NSArray *result = [input toClassesFromStrings];
 		
 		NSArray *reference = @[NSString.class, NSNumber.class, NSObject.class, NSMutableArray.class];
@@ -234,7 +220,6 @@
 {
 	NSArray *input = @[@1, @2, @3, @4, @5, @6, [NSNull null]];
 	
-	// Test synchronous behavior (no NSEnumerationConcurrent)
 	NSArray *result = [input mapUsingBlock:^BOOL(id  _Nullable __autoreleasing * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
 		if (*obj == [NSNull null]) {
 			return YES;
@@ -256,7 +241,6 @@
 {
 	NSMutableArray *input = @[@1, @2, @3, @4, @5, @6, [NSNull null]].mutableCopy;
 	
-	// Test synchronous behavior (no NSEnumerationConcurrent)
 	NSMutableArray *result = [input mapUsingBlock:^BOOL(id  _Nullable __autoreleasing * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
 		if (*obj == [NSNull null]) {
 			return YES;
@@ -325,7 +309,6 @@
 	}
 	
 	NSArray *array = largeinput.copy;
-	// Measure performance for large input with synchronous processing
 	[self measureBlock:^{
 		[array mapUsingBlock:^BOOL(id  _Nullable __autoreleasing * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
 			*obj = @([*obj integerValue] * 2);
@@ -448,7 +431,6 @@
 
 - (void)testFilterUsingBlock_Correctness {
 	{	// works correctly
-		// Test the filter operation with no concurrency (map I -> I*2)
 		NSMutableArray *input = @[@1, @2, @3, @4, @5, @6, [NSNull null]].mutableCopy;
 		NSMutableArray *result = [input filterUsingBlock:^BOOL(id _Nullable *_Nonnull obj, NSUInteger idx, BOOL *_Nonnull stop) {
 			if (*obj == [NSNull null]) {
@@ -489,7 +471,6 @@
 {
 	NSMutableArray *input = @[@"1", @"2", @3, [NSNull null], @[], @{}].mutableCopy;
 	
-	// Test both synchronous and concurrent with a nil block
 	NSMutableArray *result = [input filterUsingBlock:nil];
 	
 	NSArray *reference = @[@"1", @"2", @3, [NSNull null], @[], @{}];
@@ -500,13 +481,11 @@
 
 
 - (void)testFilterUsingBlock_Performance {
-	// Performance test to check how well the filter works with a large set (map I -> I*2)
 	NSMutableArray *array = @[].mutableCopy;
 	for (NSInteger i = 0; i < 100000; i++) {
 		[array addObject:@(i)];
 	}
 	
-	// Measure performance of mapping each element to I*2
 	[self measureBlock:^{
 		[array filterUsingBlock:^BOOL(id _Nullable *_Nonnull obj, NSUInteger idx, BOOL *_Nonnull stop) {
 			*obj = @([*obj integerValue] * 2);

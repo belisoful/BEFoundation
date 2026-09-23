@@ -22,7 +22,6 @@
 	[super setUp];
 	self.pathControl = [[BEPathControl alloc] initWithFrame:NSMakeRect(0, 0, 200, 30)];
 	
-	// Create a temporary directory structure for testing
 	self.tempDirPath = [NSTemporaryDirectory() stringByAppendingPathComponent:[[NSUUID UUID] UUIDString]];
 	[[NSFileManager defaultManager] createDirectoryAtPath:self.tempDirPath
 							  withIntermediateDirectories:YES
@@ -33,7 +32,6 @@
 - (void)tearDown {
 	self.pathControl = nil;
 	
-	// Clean up temporary directory
 	if (self.tempDirPath) {
 		[[NSFileManager defaultManager] removeItemAtPath:self.tempDirPath error:nil];
 		self.tempDirPath = nil;
@@ -80,7 +78,6 @@
 	NSArray *pathItems = self.pathControl.pathItems;
 	XCTAssertTrue(pathItems.count > 0, @"Should have path items");
 	
-	// Should include root and all components
 	BOOL hasRootComponent = NO;
 	for (NSPathControlItem *item in pathItems) {
 		if ([item.URL.path isEqualToString:@"/"]) {
@@ -146,13 +143,11 @@
 	
 	NSArray *pathItems = self.pathControl.pathItems;
 	
-	// Verify no items exist outside the relative URL
 	for (NSPathControlItem *item in pathItems) {
 		XCTAssertTrue([self.pathControl containsURL:item.URL],
 					 @"All path items should be within the relative URL: %@", item.URL);
 	}
 	
-	// Verify we don't have root or /Users in the path
 	for (NSPathControlItem *item in pathItems) {
 		XCTAssertFalse([item.URL.path isEqualToString:@"/"],
 					  @"Should not include root component");
@@ -170,10 +165,8 @@
 	
 	NSArray *pathItems = self.pathControl.pathItems;
 	
-	// Should include Sources, Subfolder, and File.m
 	XCTAssertTrue(pathItems.count >= 3, @"Should have at least 3 items (Sources, Subfolder, File.m)");
 	
-	// Verify no items before Sources
 	for (NSPathControlItem *item in pathItems) {
 		NSString *path = item.URL.path;
 		XCTAssertFalse([path isEqualToString:@"/Users/test/Projects/MyProject"],
@@ -190,10 +183,8 @@
 	
 	NSArray *pathItems = self.pathControl.pathItems;
 	
-	// Should show at least the MyProject component
 	XCTAssertTrue(pathItems.count >= 1, @"Should have at least one item");
 	
-	// Verify the relative URL itself is included
 	NSString *urlAbsString = reference.standardizedURL.absoluteString;
 	BOOL foundRelativeURL = NO;
 	for (NSPathControlItem *item in pathItems) {
@@ -377,7 +368,6 @@
 	
 	XCTAssertTrue(pathItems.count > 0, @"Should have path items with root as relative URL");
 	
-	// All items should be contained since root contains everything
 	for (NSPathControlItem *item in pathItems) {
 		XCTAssertTrue([self.pathControl containsURL:item.URL],
 					 @"Root relative URL should contain all paths");
@@ -399,10 +389,8 @@
 	
 	NSArray *pathItems = self.pathControl.pathItems;
 	
-	// Should have many items
 	XCTAssertTrue(pathItems.count > 5, @"Should handle deep nested paths");
 	
-	// All should be within relative URL
 	for (NSPathControlItem *item in pathItems) {
 		XCTAssertTrue([self.pathControl containsURL:item.URL],
 					 @"All items in deep path should be within relative URL");
@@ -416,7 +404,6 @@
 	self.pathControl.relativeURL = relativeURL;
 	self.pathControl.URL = urlWithEmptyComponents;
 	
-	// Should standardize and handle correctly
 	XCTAssertNotNil(self.pathControl.URL, @"Should handle URLs with empty components");
 }
 
@@ -533,13 +520,10 @@
 	NSURL *relativeURL = [NSURL fileURLWithPath:@"/Users/test/Projects/MyProject/"];
 	NSURL *fullURL = [NSURL fileURLWithPath:@"/Users/test/Projects/MyProject/Sources/File.m"];
 	
-	// Set relative URL first
 	self.pathControl.relativeURL = relativeURL;
 	
-	// Then set full URL
 	self.pathControl.URL = fullURL;
 	
-	// Verify trimming occurred
 	NSArray *pathItems = self.pathControl.pathItems;
 	for (NSPathControlItem *item in pathItems) {
 		XCTAssertTrue([self.pathControl containsURL:item.URL],
@@ -551,15 +535,12 @@
 	NSURL *fullURL = [NSURL fileURLWithPath:@"/Users/test/Projects/MyProject/Sources/File.m"];
 	NSURL *relativeURL = [NSURL fileURLWithPath:@"/Users/test/Projects/MyProject/"];
 	
-	// Set full URL first
 	self.pathControl.URL = fullURL;
 	NSInteger initialCount = self.pathControl.pathItems.count;
 	
-	// Then set relative URL
 	self.pathControl.relativeURL = relativeURL;
 	NSInteger finalCount = self.pathControl.pathItems.count;
 
-	// Verify trimming occurred
 	XCTAssertLessThan(finalCount, initialCount, @"Setting relative URL should trim path");
 }
 
@@ -595,8 +576,8 @@
 }
 
 - (void)testContainsURL_SchemeMismatchNotContained {
-	// A non-file URL with a coincidentally matching path must NOT be contained under a
-	// file:// root — schemes must match.
+	// A non-file URL with a coincidentally matching path must not be contained under a
+	// file:// root; schemes must match.
 	self.pathControl.relativeURL = [NSURL fileURLWithPath:@"/Users/test/Projects"];
 	NSURL *httpURL = [NSURL URLWithString:@"http://host/Users/test/Projects/File.m"];
 	XCTAssertFalse([self.pathControl containsURL:httpURL], @"Different scheme must not be contained.");

@@ -1,12 +1,12 @@
 #import <TargetConditionals.h>
 #if TARGET_OS_OSX
-//
-//  NSOpenPanel+BESecurityScopedURLManager.h
-//  BESecurityScopedURLManager
-//
-//  Optional AppKit convenience category for NSOpenPanel integration.
-//  Include this file only in projects that use macOS AppKit.
-//
+/*!
+ @header        NSOpenPanel+BESecurityScopedURLManager.h
+ @copyright     -© 2025 Delicense - @belisoful. All rights released.
+ @author        belisoful@icloud.com
+ @abstract      Optional AppKit category for NSOpenPanel integration with BESecurityScopedURLManager.
+ @discussion    Include this file only in projects that use macOS AppKit.
+ */
 
 #import <AppKit/AppKit.h>
 #import <BEFoundation/BESecurityScopedURLManager.h>
@@ -43,6 +43,7 @@ NS_ASSUME_NONNULL_BEGIN
 				// Or drive bookmark creation directly (e.g. in tests), without the panel UI:
 				NSArray<NSURL *> *failed = [panel ss_addURLsToCatalog:someURLs];
 				@endcode
+ @since      1.1
  */
 @interface NSOpenPanel (BESecurityScopedURLManager)
 
@@ -119,7 +120,7 @@ NS_ASSUME_NONNULL_BEGIN
 /*!
  @category      NSOpenPanel (BEPanelHelper)
  @abstract      Helper methods for configuring the appearance and starting location of panels.
- @discussion    These methods provide convenient ways to set the initial directory shown in an open panel
+ @discussion    These methods set the initial directory shown in an open panel
 				based on a file URL, automatically determining whether to show the directory itself or its parent.
  */
 @interface NSOpenPanel (BEPanelHelper)
@@ -127,9 +128,9 @@ NS_ASSUME_NONNULL_BEGIN
 /*!
  @method        ss_presetDirectoryAtURL:
  @abstract      Sets the panel's initial directory based on the provided URL.
- @discussion    Intelligently determines the appropriate directory to display. If the URL points to a directory,
-				that directory is used. If the URL points to a file, the file's parent directory is used.
-				This is useful for returning to the last-selected file or folder on subsequent file selection dialogs.
+ @discussion    If the URL points to a directory, that directory is used. If the URL points to a
+				file, the file's parent directory is used.
+				This returns the user to the last-selected file or folder on subsequent file selection dialogs.
  @param         url The file or directory URL to start browsing from. A nil or non-file URL is ignored
 				(the panel's directory is left unchanged).
  */

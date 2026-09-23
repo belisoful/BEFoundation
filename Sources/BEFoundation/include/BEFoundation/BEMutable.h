@@ -3,7 +3,7 @@
  @copyright     -© 2025 Delicense - @belisoful. All rights released.
  @date          2025-01-01
  @author		belisoful@icloud.com
- @brief         Protocols and categories for object mutability and recursive copying of collections.
+ @abstract      Protocols and categories for object mutability and recursive copying of collections.
  @discussion    This header provides protocols and categories for determining object mutability and
 				performing recursive copying operations on Foundation collections. It defines protocols
 				to categorize objects based on their mutability characteristics and provides methods
@@ -19,16 +19,28 @@
 				Additionally, it provides recursive copying methods that can create both immutable
 				and mutable deep copies of nested data structures.
 				
-				@note This implementation addresses the unique behavior of NSCharacterSet and
-				NSMutableCharacterSet, which cannot be programmatically distinguished due to
-				Apple's implementation. The framework provides BECharacterSet and BEMutableCharacterSet
-				as replacements for clearer type distinction.
+				@note NSCharacterSet and NSMutableCharacterSet share one class cluster and cannot be
+				told apart at runtime. BECharacterSet and BEMutableCharacterSet replace them where
+				the distinction matters.
  */
 
 #ifndef BEMutable_h
 #define BEMutable_h
 
+/*!
+ @defined       kCharSetDifferentiable
+ @abstract      The value NSMutableCharacterSet's hasMutability reports.
+ @discussion    NO, because the NSCharacterSet class cluster does not reliably distinguish an
+                immutable set from a mutable one at runtime.
+ */
 #define kCharSetDifferentiable		NO
+
+/*!
+ @defined       kIncludeImmutableClassesWithMutableImplementation
+ @abstract      Compile-time switch that adds the instance-level hasMutability to immutable
+                classes whose Apple implementation is mutable-backed (NSString).
+ @discussion    NO by default; the class-level check is always compiled.
+ */
 #define kIncludeImmutableClassesWithMutableImplementation NO
 
 #import <Foundation/Foundation.h>
@@ -39,7 +51,7 @@
 
 /*!
  @category      NSObject(BEMutableProtocol)
- @brief         Provides mutability checking capabilities to all NSObject instances.
+ @abstract      Provides mutability checking capabilities to all NSObject instances.
  @discussion    This category extends NSObject with properties and methods to determine whether
 				an object or class is mutable. It serves as the foundation for the mutability
 				checking system throughout the framework.
@@ -59,7 +71,7 @@
 
 /*!
  @property      hasMutability
- @brief         A class property that indicates whether instances of this class are mutable.
+ @abstract      A class property that indicates whether instances of this class are mutable.
  @discussion    This property returns YES if the class conforms to the BEMutable protocol,
 				indicating that instances of this class can be modified after creation.
 				For most classes, this returns NO.
@@ -69,10 +81,9 @@
 
 /*!
  @property      hasMutability
- @brief         An instance property that indicates whether this specific object is mutable.
+ @abstract      An instance property that indicates whether this specific object is mutable.
  @discussion    This property returns YES if the object's class conforms to the BEMutable protocol.
-				It provides a convenient way to check mutability at the instance level without
-				requiring knowledge of the specific class type.
+				It checks mutability at the instance level without knowledge of the specific class.
  @return        YES if this object instance is mutable, NO otherwise.
  */
 @property (readonly, nonatomic) BOOL hasMutability;
@@ -83,7 +94,7 @@
 
 /*!
  @protocol      BEHasMutable
- @brief         Identifies classes that have mutable counterparts.
+ @abstract      Identifies classes that have mutable counterparts.
  @discussion    This protocol is applied to immutable classes that have corresponding mutable
 				versions. It serves as a marker to identify classes that participate in the
 				mutable/immutable class hierarchy.
@@ -98,18 +109,18 @@
 				- NSData (mutable counterpart: NSMutableData)
 				- NSAttributedString (mutable counterpart: NSMutableAttributedString)
 				- NSURLRequest (mutable counterpart: NSMutableURLRequest)
+				- NSNumber (mutable counterpart: NSMutableNumber)
 				- BECharacterSet (mutable counterpart: BEMutableCharacterSet)
 				
-				@note NSCharacterSet and NSMutableCharacterSet are not included due to Apple's
-				implementation where both classes share the same object hierarchy and cannot be
-				programmatically distinguished.
+				@note NSCharacterSet and NSMutableCharacterSet are not included; the two classes
+				share one class cluster and cannot be told apart at runtime.
  */
 @protocol BEHasMutable
 @end
 
 /*!
  @protocol      BEMutable
- @brief         Identifies classes that are mutable.
+ @abstract      Identifies classes that are mutable.
  @discussion    This protocol is applied to classes whose instances can be modified after creation.
 				It serves as a marker to identify mutable classes throughout the framework.
 				
@@ -123,10 +134,11 @@
 				- NSMutableData
 				- NSMutableAttributedString
 				- NSMutableURLRequest
+				- NSMutableNumber
 				- BEMutableCharacterSet
 				
-				@note NSMutableCharacterSet is not included due to Apple's implementation
-				limitations. Use BEMutableCharacterSet instead for clear type distinction.
+				@note NSMutableCharacterSet is not included for the same reason. Use
+				BEMutableCharacterSet where the distinction matters.
 
 				## Usage
 
@@ -143,7 +155,7 @@
 
 /*!
  @protocol      BECollectionAbstract
- @brief         Abstract protocol defining recursive copying operations for all collection classes.
+ @abstract      Abstract protocol defining recursive copying operations for all collection classes.
  @discussion    This protocol serves as the foundation for all collection classes, both mutable
 				and immutable, by defining the interface for recursive copying operations. It
 				provides the core functionality that enables traversal of nested data structures
@@ -182,7 +194,7 @@
 
 /*!
  @method        copyRecursive
- @brief         Creates an immutable recursive copy of the collection and all its elements.
+ @abstract      Creates an immutable recursive copy of the collection and all its elements.
  @discussion    This method performs a deep copy of the entire data structure, creating
 				immutable copies of the collection itself and all nested objects. Any
 				elements that conform to BECollection are recursively copied, and all
@@ -193,27 +205,27 @@
 				already-visited node, so cyclic graphs terminate instead of recursing
 				indefinitely.
  @return        A recursively copied collection. Every nested collection is immutable and
-				every NSCopying leaf is replaced by its (typically immutable) copy.
+				every NSCopying leaf is replaced by its (typically immutable) copy, except at
+				a cycle point, which references the original (already visited) collection.
  */
 - (nonnull id)copyRecursive;
 
 /*!
  @method        copyCollectionRecursive
- @brief         Creates an immutable recursive copy of collection objects only.
+ @abstract      Creates an immutable recursive copy of collection objects only.
  @discussion    This method performs a selective deep copy, creating immutable copies
 				of collection objects while leaving non-collection elements as references
 				to the original objects. Only elements conforming to BECollection are
 				recursively copied.
 				
-				This is useful when you need to prevent structural changes to nested
-				collections while allowing modifications to individual elements.
+				Nested collections become immutable; individual elements stay shared.
  @return        An immutable copy of the collection with collection elements recursively copied.
  */
 - (nonnull id)copyCollectionRecursive;
 
 /*!
  @method        mutableCopyRecursive
- @brief         Creates a mutable recursive copy of the collection and all its elements.
+ @abstract      Creates a mutable recursive copy of the collection and all its elements.
  @discussion    This method performs a deep copy of the entire data structure, creating
 				mutable copies where possible. Collections conforming to BECollection are
 				recursively copied as mutable versions, and other elements conforming to
@@ -230,14 +242,13 @@
 
 /*!
  @method        mutableCopyCollectionRecursive
- @brief         Creates a mutable recursive copy of collection objects only.
+ @abstract      Creates a mutable recursive copy of collection objects only.
  @discussion    This method performs a selective deep copy, creating mutable copies of
 				collection objects while leaving non-collection elements as references
 				to the original objects. Only elements conforming to BECollection are
 				recursively copied as mutable versions.
 				
-				This is useful when you need to allow structural changes to nested
-				collections while preserving the original non-collection elements.
+				Nested collections become mutable; non-collection elements stay shared.
  @return        A mutable copy of the collection with collection elements recursively copied.
  */
 - (nonnull id)mutableCopyCollectionRecursive;
@@ -246,7 +257,7 @@
 
 /*!
  @protocol      BECollection
- @brief         Identifies immutable collection classes with recursive copying capabilities.
+ @abstract      Identifies immutable collection classes with recursive copying capabilities.
  @discussion    This protocol combines BECollectionAbstract and BEHasMutable to identify
 				immutable collection classes that support recursive copying operations and
 				have mutable counterparts.
@@ -273,7 +284,7 @@
 
 /*!
  @protocol      BEMutableCollection
- @brief         Identifies mutable collection classes with recursive copying capabilities.
+ @abstract      Identifies mutable collection classes with recursive copying capabilities.
  @discussion    This protocol combines BECollectionAbstract and BEMutable to identify
 				mutable collection classes that support recursive copying operations.
 				
@@ -292,7 +303,7 @@
 
 /*!
  @category      NSSet(BEMutableProtocol)
- @brief         Extends NSSet with mutability protocols and recursive copying methods.
+ @abstract      Extends NSSet with mutability protocols and recursive copying methods.
  @discussion    This category adds BECollection protocol conformance to NSSet and implements
 				all recursive copying methods. It enables NSSet to participate in the
 				mutability checking system and provides deep copying capabilities for
@@ -302,28 +313,28 @@
 
 /*!
  @method        copyRecursive
- @brief         Creates an immutable recursive copy of the set and all its elements.
+ @abstract      Creates an immutable recursive copy of the set and all its elements.
  @return        An immutable NSSet containing recursively copied elements.
  */
 - (nonnull NSSet *)copyRecursive;
 
 /*!
  @method        copyCollectionRecursive
- @brief         Creates an immutable recursive copy of collection elements only.
+ @abstract      Creates an immutable recursive copy of collection elements only.
  @return        An immutable NSSet with collection elements recursively copied.
  */
 - (nonnull NSSet *)copyCollectionRecursive;
 
 /*!
  @method        mutableCopyRecursive
- @brief         Creates a mutable recursive copy of the set and all its elements.
+ @abstract      Creates a mutable recursive copy of the set and all its elements.
  @return        An NSMutableSet containing recursively copied elements.
  */
 - (nonnull NSMutableSet *)mutableCopyRecursive;
 
 /*!
  @method        mutableCopyCollectionRecursive
- @brief         Creates a mutable recursive copy of collection elements only.
+ @abstract      Creates a mutable recursive copy of collection elements only.
  @return        An NSMutableSet with collection elements recursively copied.
  */
 - (nonnull NSMutableSet *)mutableCopyCollectionRecursive;
@@ -332,7 +343,7 @@
 
 /*!
  @category      NSOrderedSet(BEMutableProtocol)
- @brief         Extends NSOrderedSet with mutability protocols and recursive copying methods.
+ @abstract      Extends NSOrderedSet with mutability protocols and recursive copying methods.
  @discussion    This category adds BECollection protocol conformance to NSOrderedSet and
 				implements all recursive copying methods. It enables NSOrderedSet to
 				participate in the mutability checking system and provides deep copying
@@ -342,28 +353,28 @@
 
 /*!
  @method        copyRecursive
- @brief         Creates an immutable recursive copy of the ordered set and all its elements.
+ @abstract      Creates an immutable recursive copy of the ordered set and all its elements.
  @return        An immutable NSOrderedSet containing recursively copied elements.
  */
 - (nonnull NSOrderedSet *)copyRecursive;
 
 /*!
  @method        copyCollectionRecursive
- @brief         Creates an immutable recursive copy of collection elements only.
+ @abstract      Creates an immutable recursive copy of collection elements only.
  @return        An immutable NSOrderedSet with collection elements recursively copied.
  */
 - (nonnull NSOrderedSet *)copyCollectionRecursive;
 
 /*!
  @method        mutableCopyRecursive
- @brief         Creates a mutable recursive copy of the ordered set and all its elements.
+ @abstract      Creates a mutable recursive copy of the ordered set and all its elements.
  @return        An NSMutableOrderedSet containing recursively copied elements.
  */
 - (nonnull NSMutableOrderedSet *)mutableCopyRecursive;
 
 /*!
  @method        mutableCopyCollectionRecursive
- @brief         Creates a mutable recursive copy of collection elements only.
+ @abstract      Creates a mutable recursive copy of collection elements only.
  @return        An NSMutableOrderedSet with collection elements recursively copied.
  */
 - (nonnull NSMutableOrderedSet *)mutableCopyCollectionRecursive;
@@ -372,7 +383,7 @@
 
 /*!
  @category      NSArray(BEMutableProtocol)
- @brief         Extends NSArray with mutability protocols and recursive copying methods.
+ @abstract      Extends NSArray with mutability protocols and recursive copying methods.
  @discussion    This category adds BECollection protocol conformance to NSArray and
 				implements all recursive copying methods. It enables NSArray to participate
 				in the mutability checking system and provides deep copying capabilities
@@ -382,28 +393,28 @@
 
 /*!
  @method        copyRecursive
- @brief         Creates an immutable recursive copy of the array and all its elements.
+ @abstract      Creates an immutable recursive copy of the array and all its elements.
  @return        An immutable NSArray containing recursively copied elements.
  */
 - (nonnull NSArray *)copyRecursive;
 
 /*!
  @method        copyCollectionRecursive
- @brief         Creates an immutable recursive copy of collection elements only.
+ @abstract      Creates an immutable recursive copy of collection elements only.
  @return        An immutable NSArray with collection elements recursively copied.
  */
 - (nonnull NSArray *)copyCollectionRecursive;
 
 /*!
  @method        mutableCopyRecursive
- @brief         Creates a mutable recursive copy of the array and all its elements.
+ @abstract      Creates a mutable recursive copy of the array and all its elements.
  @return        An NSMutableArray containing recursively copied elements.
  */
 - (nonnull NSMutableArray *)mutableCopyRecursive;
 
 /*!
  @method        mutableCopyCollectionRecursive
- @brief         Creates a mutable recursive copy of collection elements only.
+ @abstract      Creates a mutable recursive copy of collection elements only.
  @return        An NSMutableArray with collection elements recursively copied.
  */
 - (nonnull NSMutableArray *)mutableCopyCollectionRecursive;
@@ -412,7 +423,7 @@
 
 /*!
  @category      NSDictionary(BEMutableProtocol)
- @brief         Extends NSDictionary with mutability protocols and recursive copying methods.
+ @abstract      Extends NSDictionary with mutability protocols and recursive copying methods.
  @discussion    This category adds BECollection protocol conformance to NSDictionary and
 				implements all recursive copying methods. It enables NSDictionary to
 				participate in the mutability checking system and provides deep copying
@@ -425,28 +436,28 @@
 
 /*!
  @method        copyRecursive
- @brief         Creates an immutable recursive copy of the dictionary and all its values.
+ @abstract      Creates an immutable recursive copy of the dictionary and all its values.
  @return        An immutable NSDictionary containing recursively copied values.
  */
 - (nonnull NSDictionary *)copyRecursive;
 
 /*!
  @method        copyCollectionRecursive
- @brief         Creates an immutable recursive copy of collection values only.
+ @abstract      Creates an immutable recursive copy of collection values only.
  @return        An immutable NSDictionary with collection values recursively copied.
  */
 - (nonnull NSDictionary *)copyCollectionRecursive;
 
 /*!
  @method        mutableCopyRecursive
- @brief         Creates a mutable recursive copy of the dictionary and all its values.
+ @abstract      Creates a mutable recursive copy of the dictionary and all its values.
  @return        An NSMutableDictionary containing recursively copied values.
  */
 - (nonnull NSMutableDictionary *)mutableCopyRecursive;
 
 /*!
  @method        mutableCopyCollectionRecursive
- @brief         Creates a mutable recursive copy of collection values only.
+ @abstract      Creates a mutable recursive copy of collection values only.
  @return        An NSMutableDictionary with collection values recursively copied.
  */
 - (nonnull NSMutableDictionary *)mutableCopyCollectionRecursive;
@@ -460,7 +471,7 @@
 
 /*!
  @category      NSMutableSet(BEMutableProtocol)
- @brief         Extends NSMutableSet with BEMutableCollection protocol conformance and mutability checking.
+ @abstract      Extends NSMutableSet with BEMutableCollection protocol conformance and mutability checking.
  @discussion    This category adds BEMutableCollection protocol conformance to NSMutableSet, enabling
 				it to participate in the framework's mutability checking system and recursive copying
 				operations. NSMutableSet inherits all recursive copying methods from its superclass
@@ -476,7 +487,7 @@
 
 /*!
  @method        hasMutability
- @brief         Class method that indicates NSMutableSet instances are mutable.
+ @abstract      Class method that indicates NSMutableSet instances are mutable.
  @discussion    This class method always returns YES, indicating that all instances of NSMutableSet
 				are mutable and can be modified after creation.
  @return        YES, indicating that NSMutableSet instances are mutable.
@@ -485,7 +496,7 @@
 
 /*!
  @method        hasMutability
- @brief         Instance method that indicates this NSMutableSet instance is mutable.
+ @abstract      Instance method that indicates this NSMutableSet instance is mutable.
  @discussion    This instance method always returns YES, confirming that this specific NSMutableSet
 				instance can be modified after creation.
  @return        YES, indicating that this NSMutableSet instance is mutable.
@@ -496,7 +507,7 @@
 
 /*!
  @category      NSMutableOrderedSet(BEMutableProtocol)
- @brief         Extends NSMutableOrderedSet with BEMutableCollection protocol conformance and mutability checking.
+ @abstract      Extends NSMutableOrderedSet with BEMutableCollection protocol conformance and mutability checking.
  @discussion    This category adds BEMutableCollection protocol conformance to NSMutableOrderedSet,
 				enabling it to participate in the framework's mutability checking system and recursive
 				copying operations. NSMutableOrderedSet inherits all recursive copying methods from
@@ -512,7 +523,7 @@
 
 /*!
  @method        hasMutability
- @brief         Class method that indicates NSMutableOrderedSet instances are mutable.
+ @abstract      Class method that indicates NSMutableOrderedSet instances are mutable.
  @discussion    This class method always returns YES, indicating that all instances of NSMutableOrderedSet
 				are mutable and can be modified after creation.
  @return        YES, indicating that NSMutableOrderedSet instances are mutable.
@@ -521,7 +532,7 @@
 
 /*!
  @method        hasMutability
- @brief         Instance method that indicates this NSMutableOrderedSet instance is mutable.
+ @abstract      Instance method that indicates this NSMutableOrderedSet instance is mutable.
  @discussion    This instance method always returns YES, confirming that this specific NSMutableOrderedSet
 				instance can be modified after creation.
  @return        YES, indicating that this NSMutableOrderedSet instance is mutable.
@@ -532,7 +543,7 @@
 
 /*!
  @category      NSMutableArray(BEMutableProtocol)
- @brief         Extends NSMutableArray with BEMutableCollection protocol conformance and mutability checking.
+ @abstract      Extends NSMutableArray with BEMutableCollection protocol conformance and mutability checking.
  @discussion    This category adds BEMutableCollection protocol conformance to NSMutableArray,
 				enabling it to participate in the framework's mutability checking system and recursive
 				copying operations. NSMutableArray inherits all recursive copying methods from
@@ -548,7 +559,7 @@
 
 /*!
  @method        hasMutability
- @brief         Class method that indicates NSMutableArray instances are mutable.
+ @abstract      Class method that indicates NSMutableArray instances are mutable.
  @discussion    This class method always returns YES, indicating that all instances of NSMutableArray
 				are mutable and can be modified after creation.
  @return        YES, indicating that NSMutableArray instances are mutable.
@@ -557,7 +568,7 @@
 
 /*!
  @method        hasMutability
- @brief         Instance method that indicates this NSMutableArray instance is mutable.
+ @abstract      Instance method that indicates this NSMutableArray instance is mutable.
  @discussion    This instance method always returns YES, confirming that this specific NSMutableArray
 				instance can be modified after creation.
  @return        YES, indicating that this NSMutableArray instance is mutable.
@@ -568,7 +579,7 @@
 
 /*!
  @category      NSMutableDictionary(BEMutableProtocol)
- @brief         Extends NSMutableDictionary with BEMutableCollection protocol conformance and mutability checking.
+ @abstract      Extends NSMutableDictionary with BEMutableCollection protocol conformance and mutability checking.
  @discussion    This category adds BEMutableCollection protocol conformance to NSMutableDictionary,
 				enabling it to participate in the framework's mutability checking system and recursive
 				copying operations. NSMutableDictionary inherits all recursive copying methods from
@@ -584,7 +595,7 @@
 
 /*!
  @method        hasMutability
- @brief         Class method that indicates NSMutableDictionary instances are mutable.
+ @abstract      Class method that indicates NSMutableDictionary instances are mutable.
  @discussion    This class method always returns YES, indicating that all instances of NSMutableDictionary
 				are mutable and can be modified after creation.
  @return        YES, indicating that NSMutableDictionary instances are mutable.
@@ -593,7 +604,7 @@
 
 /*!
  @method        hasMutability
- @brief         Instance method that indicates this NSMutableDictionary instance is mutable.
+ @abstract      Instance method that indicates this NSMutableDictionary instance is mutable.
  @discussion    This instance method always returns YES, confirming that this specific NSMutableDictionary
 				instance can be modified after creation.
  @return        YES, indicating that this NSMutableDictionary instance is mutable.
@@ -606,7 +617,7 @@
 
 /*!
  @category      NSIndexSet(BEMutableProtocol)
- @brief         Extends NSIndexSet with BEHasMutable protocol conformance and mutability checking.
+ @abstract      Extends NSIndexSet with BEHasMutable protocol conformance and mutability checking.
  @discussion    This category adds BEHasMutable protocol conformance to NSIndexSet, indicating that
 				it has a mutable counterpart (NSMutableIndexSet) and enabling it to participate in
 				the framework's mutability checking system.
@@ -619,7 +630,7 @@
 
 /*!
  @method        hasMutability
- @brief         Class method that indicates NSIndexSet instances are immutable.
+ @abstract      Class method that indicates NSIndexSet instances are immutable.
  @discussion    This class method always returns NO, indicating that all instances of NSIndexSet
 				are immutable and cannot be modified after creation.
  @return        NO, indicating that NSIndexSet instances are immutable.
@@ -628,7 +639,7 @@
 
 /*!
  @method        hasMutability
- @brief         Instance method that indicates this NSIndexSet instance is immutable.
+ @abstract      Instance method that indicates this NSIndexSet instance is immutable.
  @discussion    This instance method always returns NO, confirming that this specific NSIndexSet
 				instance cannot be modified after creation.
  @return        NO, indicating that this NSIndexSet instance is immutable.
@@ -639,7 +650,7 @@
 
 /*!
  @category      NSNumber(BEMutableProtocol)
- @brief         Extends NSNumber with BEHasMutable protocol conformance and mutability checking.
+ @abstract      Extends NSNumber with BEHasMutable protocol conformance and mutability checking.
  @discussion    This category adds BEHasMutable protocol conformance to NSNumber, indicating that
 				it has a mutable counterpart (NSMutableNumber) and enabling it to participate in
 				the framework's mutability checking system.
@@ -654,7 +665,7 @@
 
 /*!
  @method        hasMutability
- @brief         Class method that indicates NSNumber instances are immutable.
+ @abstract      Class method that indicates NSNumber instances are immutable.
  @discussion    This class method always returns NO, indicating that all instances of NSNumber
 				are immutable and cannot be modified after creation.
  @return        NO, indicating that NSNumber instances are immutable.
@@ -663,7 +674,7 @@
 
 /*!
  @method        hasMutability
- @brief         Instance method that indicates this NSNumber instance is immutable.
+ @abstract      Instance method that indicates this NSNumber instance is immutable.
  @discussion    This instance method always returns NO, confirming that this specific NSNumber
 				instance cannot be modified after creation.
  @return        NO, indicating that this NSNumber instance is immutable.
@@ -674,7 +685,7 @@
 
 /*!
  @category      NSString(BEMutableProtocol)
- @brief         Extends NSString with BEHasMutable protocol conformance and mutability checking.
+ @abstract      Extends NSString with BEHasMutable protocol conformance and mutability checking.
  @discussion    This category adds BEHasMutable protocol conformance to NSString, indicating that
 				it has a mutable counterpart (NSMutableString) and enabling it to participate in
 				the framework's mutability checking system.
@@ -691,7 +702,7 @@
 
 /*!
  @method        hasMutability
- @brief         Class method that indicates NSString instances are immutable.
+ @abstract      Class method that indicates NSString instances are immutable.
  @discussion    This class method always returns NO, indicating that all instances of NSString
 				are designed to be immutable and should not be modified after creation.
  @return        NO, indicating that NSString instances are immutable.
@@ -701,7 +712,7 @@
 #if kIncludeImmutableClassesWithMutableImplementation
 /*!
  @method        hasMutability
- @brief         Instance method that indicates this NSString instance is immutable.
+ @abstract      Instance method that indicates this NSString instance is immutable.
  @discussion    This instance method always returns NO, confirming that this specific NSString
 				instance should not be modified after creation.
 				
@@ -716,7 +727,7 @@
 
 /*!
  @category      NSData(BEMutableProtocol)
- @brief         Extends NSData with BEHasMutable protocol conformance and mutability checking.
+ @abstract      Extends NSData with BEHasMutable protocol conformance and mutability checking.
  @discussion    This category adds BEHasMutable protocol conformance to NSData, indicating that
 				it has a mutable counterpart (NSMutableData) and enabling it to participate in
 				the framework's mutability checking system.
@@ -728,7 +739,7 @@
 
 /*!
  @method        hasMutability
- @brief         Class method that indicates NSData instances are immutable.
+ @abstract      Class method that indicates NSData instances are immutable.
  @discussion    This class method always returns NO, indicating that all instances of NSData
 				are immutable and cannot be modified after creation.
  @return        NO, indicating that NSData instances are immutable.
@@ -737,7 +748,7 @@
 
 /*!
  @method        hasMutability
- @brief         Instance method that indicates this NSData instance is immutable.
+ @abstract      Instance method that indicates this NSData instance is immutable.
  @discussion    This instance method always returns NO, confirming that this specific NSData
 				instance cannot be modified after creation.
  @return        NO, indicating that this NSData instance is immutable.
@@ -748,7 +759,7 @@
 
 /*!
  @category      NSAttributedString(BEMutableProtocol)
- @brief         Extends NSAttributedString with BEHasMutable protocol conformance and mutability checking.
+ @abstract      Extends NSAttributedString with BEHasMutable protocol conformance and mutability checking.
  @discussion    This category adds BEHasMutable protocol conformance to NSAttributedString, indicating
 				that it has a mutable counterpart (NSMutableAttributedString) and enabling it to
 				participate in the framework's mutability checking system.
@@ -761,7 +772,7 @@
 
 /*!
  @method        hasMutability
- @brief         Class method that indicates NSAttributedString instances are immutable.
+ @abstract      Class method that indicates NSAttributedString instances are immutable.
  @discussion    This class method always returns NO, indicating that all instances of NSAttributedString
 				are immutable and cannot be modified after creation.
  @return        NO, indicating that NSAttributedString instances are immutable.
@@ -770,7 +781,7 @@
 
 /*!
  @method        hasMutability
- @brief         Instance method that indicates this NSAttributedString instance is immutable.
+ @abstract      Instance method that indicates this NSAttributedString instance is immutable.
  @discussion    This instance method always returns NO, confirming that this specific NSAttributedString
 				instance cannot be modified after creation.
  @return        NO, indicating that this NSAttributedString instance is immutable.
@@ -781,7 +792,7 @@
 
 /*!
  @category      NSURLRequest(BEMutableProtocol)
- @brief         Extends NSURLRequest with BEHasMutable protocol conformance and mutability checking.
+ @abstract      Extends NSURLRequest with BEHasMutable protocol conformance and mutability checking.
  @discussion    This category adds BEHasMutable protocol conformance to NSURLRequest, indicating
 				that it has a mutable counterpart (NSMutableURLRequest) and enabling it to participate
 				in the framework's mutability checking system.
@@ -793,7 +804,7 @@
 
 /*!
  @method        hasMutability
- @brief         Class method that indicates NSURLRequest instances are immutable.
+ @abstract      Class method that indicates NSURLRequest instances are immutable.
  @discussion    This class method always returns NO, indicating that all instances of NSURLRequest
 				are immutable and cannot be modified after creation.
  @return        NO, indicating that NSURLRequest instances are immutable.
@@ -802,7 +813,7 @@
 
 /*!
  @method        hasMutability
- @brief         Instance method that indicates this NSURLRequest instance is immutable.
+ @abstract      Instance method that indicates this NSURLRequest instance is immutable.
  @discussion    This instance method always returns NO, confirming that this specific NSURLRequest
 				instance cannot be modified after creation.
  @return        NO, indicating that this NSURLRequest instance is immutable.
@@ -813,19 +824,18 @@
 
 /*!
  @category      NSCharacterSet(BEMutableProtocol)
- @brief         Extends NSCharacterSet with conditional BEHasMutable protocol conformance and mutability checking.
+ @abstract      Extends NSCharacterSet with conditional BEHasMutable protocol conformance and mutability checking.
  @discussion    This category conditionally adds BEHasMutable protocol conformance to NSCharacterSet
 				based on the kCharSetDifferentiable macro setting. When kCharSetDifferentiable is NO,
-				the category does not conform to BEHasMutable due to Apple's implementation where
-				NSCharacterSet and NSMutableCharacterSet cannot be programmatically distinguished.
+				the category does not conform to BEHasMutable because NSCharacterSet and
+				NSMutableCharacterSet cannot be told apart at runtime.
 				
 				NSCharacterSet represents an immutable set of Unicode characters. The class-level
 				mutability checking method consistently returns NO, indicating that NSCharacterSet
 				instances are designed to be immutable.
 				
-				@note Due to Apple's implementation, NSCharacterSet and NSMutableCharacterSet share
-				the same object hierarchy, making programmatic distinction impossible. Consider using
-				BECharacterSet and BEMutableCharacterSet for clearer type distinction.
+				@note NSCharacterSet and NSMutableCharacterSet share one class cluster. BECharacterSet
+				and BEMutableCharacterSet keep the distinction.
  */
 #if kCharSetDifferentiable
 @interface NSCharacterSet (BEMutableProtocol) <BEHasMutable>
@@ -835,7 +845,7 @@
 
 /*!
  @method        hasMutability
- @brief         Class method that indicates NSCharacterSet instances are immutable.
+ @abstract      Class method that indicates NSCharacterSet instances are immutable.
  @discussion    This class method always returns NO, indicating that all instances of NSCharacterSet
 				are designed to be immutable and should not be modified after creation.
  @return        NO, indicating that NSCharacterSet instances are immutable.
@@ -845,7 +855,7 @@
 #if kIncludeImmutableClassesWithMutableImplementation
 /*!
  @method        hasMutability
- @brief         Instance method that indicates this NSCharacterSet instance is immutable.
+ @abstract      Instance method that indicates this NSCharacterSet instance is immutable.
  @discussion    This instance method always returns NO, confirming that this specific NSCharacterSet
 				instance should not be modified after creation.
 				
@@ -860,23 +870,21 @@
 
 /*!
  @category      BECharacterSet(BEMutableProtocol)
- @brief         Extends BECharacterSet with BEHasMutable protocol conformance and mutability checking.
+ @abstract      Extends BECharacterSet with BEHasMutable protocol conformance and mutability checking.
  @discussion    This category adds BEHasMutable protocol conformance to BECharacterSet, indicating
 				that it has a mutable counterpart (BEMutableCharacterSet) and enabling it to participate
 				in the framework's mutability checking system.
 				
-				BECharacterSet is a custom character set class that provides clear type distinction
-				between immutable and mutable character sets, addressing the limitations of Apple's
-				NSCharacterSet and NSMutableCharacterSet implementation.
+				BECharacterSet is a character set class whose mutable counterpart is a distinct
+				class, so the two can be told apart at runtime.
 				
-				@note This class is recommended over NSCharacterSet when clear mutability distinction
-				is required, as it provides reliable programmatic differentiation.
+				@note Use BECharacterSet over NSCharacterSet when the mutability distinction is required.
  */
 @interface BECharacterSet (BEMutableProtocol) <BEHasMutable>
 
 /*!
  @method        hasMutability
- @brief         Class method that indicates BECharacterSet instances are immutable.
+ @abstract      Class method that indicates BECharacterSet instances are immutable.
  @discussion    This class method always returns NO, indicating that all instances of BECharacterSet
 				are immutable and cannot be modified after creation.
  @return        NO, indicating that BECharacterSet instances are immutable.
@@ -885,7 +893,7 @@
 
 /*!
  @method        hasMutability
- @brief         Instance method that indicates this BECharacterSet instance is immutable.
+ @abstract      Instance method that indicates this BECharacterSet instance is immutable.
  @discussion    This instance method always returns NO, confirming that this specific BECharacterSet
 				instance cannot be modified after creation.
  @return        NO, indicating that this BECharacterSet instance is immutable.
@@ -898,7 +906,7 @@
 
 /*!
  @category      NSMutableIndexSet(BEMutableProtocol)
- @brief         Extends NSMutableIndexSet with BEMutable protocol conformance and mutability checking.
+ @abstract      Extends NSMutableIndexSet with BEMutable protocol conformance and mutability checking.
  @discussion    This category adds BEMutable protocol conformance to NSMutableIndexSet, enabling
 				it to participate in the framework's mutability checking system as a mutable class.
 				
@@ -913,7 +921,7 @@
 
 /*!
  @method        hasMutability
- @brief         Class method that indicates NSMutableIndexSet instances are mutable.
+ @abstract      Class method that indicates NSMutableIndexSet instances are mutable.
  @discussion    This class method always returns YES, indicating that all instances of NSMutableIndexSet
 				are mutable and can be modified after creation.
  @return        YES, indicating that NSMutableIndexSet instances are mutable.
@@ -922,7 +930,7 @@
 
 /*!
  @method        hasMutability
- @brief         Instance method that indicates this NSMutableIndexSet instance is mutable.
+ @abstract      Instance method that indicates this NSMutableIndexSet instance is mutable.
  @discussion    This instance method always returns YES, confirming that this specific NSMutableIndexSet
 				instance can be modified after creation.
  @return        YES, indicating that this NSMutableIndexSet instance is mutable.
@@ -933,7 +941,7 @@
 
 /*!
  @category      NSMutableNumber(BEMutableProtocol)
- @brief         Extends NSMutableNumber with BEMutable protocol conformance and mutability checking.
+ @abstract      Extends NSMutableNumber with BEMutable protocol conformance and mutability checking.
  @discussion    This category adds BEMutable protocol conformance to NSMutableNumber, enabling
 				it to participate in the framework's mutability checking system as a mutable class.
 				
@@ -948,7 +956,7 @@
 
 /*!
  @method        hasMutability
- @brief         Class method that indicates NSMutableNumber instances are mutable.
+ @abstract      Class method that indicates NSMutableNumber instances are mutable.
  @discussion    This class method always returns YES, indicating that all instances of NSMutableNumber
 				are mutable and can be modified after creation.
  @return        YES, indicating that NSMutableNumber instances are mutable.
@@ -957,7 +965,7 @@
 
 /*!
  @method        hasMutability
- @brief         Instance method that indicates this NSMutableNumber instance is mutable.
+ @abstract      Instance method that indicates this NSMutableNumber instance is mutable.
  @discussion    This instance method always returns YES, confirming that this specific NSMutableNumber
 				instance can be modified after creation.
  @return        YES, indicating that this NSMutableNumber instance is mutable.
@@ -968,7 +976,7 @@
 
 /*!
  @category      NSMutableString(BEMutableProtocol)
- @brief         Extends NSMutableString with BEMutable protocol conformance and mutability checking.
+ @abstract      Extends NSMutableString with BEMutable protocol conformance and mutability checking.
  @discussion    This category adds BEMutable protocol conformance to NSMutableString, enabling
 				it to participate in the framework's mutability checking system.
 
@@ -983,7 +991,7 @@
 
 /*!
  @method        hasMutability
- @brief         Class method that reports whether the receiver class backs mutable string instances.
+ @abstract      Class method that reports whether the receiver class backs mutable string instances.
  @discussion    Mutability is inferred from the concrete class within the NSString class cluster.
 				Returns YES for __NSCFString (the backing class of mutable instances) and for
 				BEMutable-conforming classes such as NSMutableString itself; returns NO for
@@ -994,7 +1002,7 @@
 
 /*!
  @method        hasMutability
- @brief         Instance method that reports whether this string instance is mutable.
+ @abstract      Instance method that reports whether this string instance is mutable.
  @discussion    Mutability is inferred from the concrete backing class within the NSString class
 				cluster. Returns YES only when the instance is backed by __NSCFString; any other
 				backing class, including __NSCFConstantString, returns NO. This method does not
@@ -1008,7 +1016,7 @@
 
 /*!
  @category      NSMutableData(BEMutableProtocol)
- @brief         Extends NSMutableData with BEMutable protocol conformance and mutability checking.
+ @abstract      Extends NSMutableData with BEMutable protocol conformance and mutability checking.
  @discussion    This category adds BEMutable protocol conformance to NSMutableData, enabling
 				it to participate in the framework's mutability checking system as a mutable class.
 				
@@ -1023,7 +1031,7 @@
 
 /*!
  @method        hasMutability
- @brief         Class method that indicates NSMutableData instances are mutable.
+ @abstract      Class method that indicates NSMutableData instances are mutable.
  @discussion    This class method always returns YES, indicating that all instances of NSMutableData
 				are mutable and can be modified after creation.
  @return        YES, indicating that NSMutableData instances are mutable.
@@ -1032,7 +1040,7 @@
 
 /*!
  @method        hasMutability
- @brief         Instance method that indicates this NSMutableData instance is mutable.
+ @abstract      Instance method that indicates this NSMutableData instance is mutable.
  @discussion    This instance method always returns YES, confirming that this specific NSMutableData
 				instance can be modified after creation.
  @return        YES, indicating that this NSMutableData instance is mutable.
@@ -1043,7 +1051,7 @@
 
 /*!
  @category      NSMutableAttributedString(BEMutableProtocol)
- @brief         Extends NSMutableAttributedString with BEMutable protocol conformance and mutability checking.
+ @abstract      Extends NSMutableAttributedString with BEMutable protocol conformance and mutability checking.
  @discussion    This category adds BEMutable protocol conformance to NSMutableAttributedString, enabling
 				it to participate in the framework's mutability checking system as a mutable class.
 				
@@ -1058,7 +1066,7 @@
 
 /*!
  @method        hasMutability
- @brief         Class method that indicates NSMutableAttributedString instances are mutable.
+ @abstract      Class method that indicates NSMutableAttributedString instances are mutable.
  @discussion    This class method always returns YES, indicating that all instances of NSMutableAttributedString
 				are mutable and can be modified after creation.
  @return        YES, indicating that NSMutableAttributedString instances are mutable.
@@ -1067,7 +1075,7 @@
 
 /*!
  @method        hasMutability
- @brief         Instance method that indicates this NSMutableAttributedString instance is mutable.
+ @abstract      Instance method that indicates this NSMutableAttributedString instance is mutable.
  @discussion    This instance method always returns YES, confirming that this specific NSMutableAttributedString
 				instance can be modified after creation.
  @return        YES, indicating that this NSMutableAttributedString instance is mutable.
@@ -1078,7 +1086,7 @@
 
 /*!
  @category      NSMutableURLRequest(BEMutableProtocol)
- @brief         Extends NSMutableURLRequest with BEMutable protocol conformance and mutability checking.
+ @abstract      Extends NSMutableURLRequest with BEMutable protocol conformance and mutability checking.
  @discussion    This category adds BEMutable protocol conformance to NSMutableURLRequest, enabling
 				it to participate in the framework's mutability checking system as a mutable class.
 				
@@ -1093,7 +1101,7 @@
 
 /*!
  @method        hasMutability
- @brief         Class method that indicates NSMutableURLRequest instances are mutable.
+ @abstract      Class method that indicates NSMutableURLRequest instances are mutable.
  @discussion    This class method always returns YES, indicating that all instances of NSMutableURLRequest
 				are mutable and can be modified after creation.
  @return        YES, indicating that NSMutableURLRequest instances are mutable.
@@ -1102,7 +1110,7 @@
 
 /*!
  @method        hasMutability
- @brief         Instance method that indicates this NSMutableURLRequest instance is mutable.
+ @abstract      Instance method that indicates this NSMutableURLRequest instance is mutable.
  @discussion    This instance method always returns YES, confirming that this specific NSMutableURLRequest
 				instance can be modified after creation.
  @return        YES, indicating that this NSMutableURLRequest instance is mutable.
@@ -1113,18 +1121,17 @@
 
 /*!
  @category      NSMutableCharacterSet(BEMutableProtocol)
- @brief         Extends NSMutableCharacterSet with conditional BEMutable protocol conformance and mutability checking.
+ @abstract      Extends NSMutableCharacterSet with conditional BEMutable protocol conformance and mutability checking.
  @discussion    This category conditionally adds BEMutable protocol conformance to NSMutableCharacterSet
 				based on the kCharSetDifferentiable macro setting. When kCharSetDifferentiable is NO,
-				the category does not conform to BEMutable due to Apple's implementation where
-				NSCharacterSet and NSMutableCharacterSet cannot be programmatically distinguished.
+				the category does not conform to BEMutable because NSCharacterSet and
+				NSMutableCharacterSet cannot be told apart at runtime.
 				
 				NSMutableCharacterSet represents a mutable set of Unicode characters that can be
 				modified after creation. The mutability checking methods return values based on
 				the kCharSetDifferentiable setting.
 				
-				@note Due to Apple's implementation limitations, consider using BEMutableCharacterSet
-				for clearer type distinction and reliable mutability checking.
+				@note Use BEMutableCharacterSet where the mutability distinction is required.
  */
 #if kCharSetDifferentiable
 @interface NSMutableCharacterSet (BEMutableProtocol) <BEMutable>
@@ -1134,11 +1141,10 @@
 
 /*!
  @method        hasMutability
- @brief         Class method that indicates NSMutableCharacterSet mutability based on framework configuration.
+ @abstract      Class method that indicates NSMutableCharacterSet mutability based on framework configuration.
  @discussion    This class method returns the value of kCharSetDifferentiable, which determines whether
 				NSMutableCharacterSet instances are treated as distinguishably mutable within the framework.
-				When kCharSetDifferentiable is NO, this method returns NO due to Apple's implementation
-				limitations.
+				When kCharSetDifferentiable is NO, this method returns NO.
  @return        The value of kCharSetDifferentiable, indicating whether NSMutableCharacterSet instances
 				are treated as distinguishably mutable.
  */
@@ -1146,11 +1152,10 @@
 
 /*!
  @method        hasMutability
- @brief         Instance method that indicates this NSMutableCharacterSet mutability based on framework configuration.
+ @abstract      Instance method that indicates this NSMutableCharacterSet mutability based on framework configuration.
  @discussion    This instance method returns the value of kCharSetDifferentiable, which determines whether
 				this NSMutableCharacterSet instance is treated as distinguishably mutable within the framework.
-				When kCharSetDifferentiable is NO, this method returns NO due to Apple's implementation
-				limitations.
+				When kCharSetDifferentiable is NO, this method returns NO.
  @return        The value of kCharSetDifferentiable, indicating whether this NSMutableCharacterSet instance
 				is treated as distinguishably mutable.
  */
@@ -1164,13 +1169,9 @@
 @abstract      A category that extends BEMutableCharacterSet to conform to the BEMutable protocol.
 @discussion    This category provides runtime mutability detection for BEMutableCharacterSet instances.
 			   
-			   NSCharacterSet and NSMutableCharacterSet share the same underlying implementation, with NSMutableCharacterSet
-			   being a subclass of NSCharacterSet. This architectural design makes it impossible to differentiate between
-			   mutable and immutable character sets programmatically using standard Foundation methods.
-			   
-			   The BEMutableCharacterSet category addresses this limitation by implementing the BEMutable protocol,
-			   providing consistent mutability detection across all BE framework classes. This ensures that applications
-			   can reliably determine the mutability state of character set instances at runtime.
+			   NSCharacterSet and NSMutableCharacterSet share one class cluster, so Foundation cannot tell a mutable
+			   character set from an immutable one at runtime. BEMutableCharacterSet conforms to BEMutable, so
+			   hasMutability reports YES for its instances.
 			   
 			   ## Usage
 			   
@@ -1180,9 +1181,6 @@
 			   BEMutableCharacterSet *mutableSet = [[BEMutableCharacterSet alloc] init];
 			   BOOL canMutate = [mutableSet hasMutability]; // Returns YES
 			   ```
-			   
-			   This category maintains consistency with other mutable/immutable class pairs in the BE framework,
-			   such as NSString/NSMutableString, ensuring predictable behavior across all collection types.
 */
 @interface BEMutableCharacterSet (BEMutableProtocol) <BEMutable>
 
@@ -1204,9 +1202,6 @@
 @discussion    This instance method always returns `YES` for BEMutableCharacterSet instances, indicating
 			   that the receiver can be safely modified using mutation methods such as `addCharactersInString:`,
 			   `removeCharactersInString:`, and `formUnionWithCharacterSet:`.
-			   
-			   This method provides runtime mutability detection, allowing code to conditionally perform mutation
-			   operations based on the actual mutability state of the character set instance.
 			   
 @return        `YES` indicating that this instance supports mutation operations.
 */

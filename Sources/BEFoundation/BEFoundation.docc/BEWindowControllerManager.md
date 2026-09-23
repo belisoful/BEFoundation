@@ -8,20 +8,21 @@ A manager class that tracks all active `BEWindowController` instances.
 
 This provides a centralized way to query for windows, such as finding all windows of a certain class or the first available window. It also enables advanced behaviors, like the cascade-closing of child windows when a parent window is closed.
 
-The manager supports fast enumeration (`for...in`) and subscripting for convenient access.
+The manager supports fast enumeration (`for...in`) and subscripting.
 
 ![The shared manager tracking a tree of window controllers: a primary parent with Inspector and Settings children and a grandchild sheet, registered on windowDidLoad and cascade-closed with the parent.](window-controllers)
 
 ## Examples
 
-### Creating a Manager
+### Getting the Manager
 
 ```objc
-BEWindowControllerManager *manager = [[BEWindowControllerManager alloc] init];
+BEWindowControllerManager *manager = BEWindowControllerManager.sharedManager;
 
-// The manager automatically starts tracking BEWindowController instances
-// via notifications
+// The manager tracks BEWindowController instances via notifications
 ```
+
+Every instance observes the global load/close notifications, so use the shared instance; `-init` remains available for isolated or testing scenarios.
 
 ### Finding Window Controllers
 
@@ -74,7 +75,7 @@ This property is `copy`, so it returns an immutable snapshot of the current list
 ### firstWindowControllerOfKind:
 
 ```objc
-- (nullable NSWindowController *)firstWindowControllerOfKind:(nonnull Class)wcClass;
+- (nullable NSWindowController *)firstWindowControllerOfKind:(nullable Class)wcClass;
 ```
 
 Finds the first window controller that is an instance of a given class.
@@ -84,7 +85,7 @@ Iterates through the tracked controllers and returns the first object for which 
 ### windowControllersOfKind:
 
 ```objc
-- (NSArray<NSWindowController *> *)windowControllersOfKind:(nonnull Class)wcClass;
+- (NSArray<NSWindowController *> *)windowControllersOfKind:(nullable Class)wcClass;
 ```
 
 Finds all window controllers that are instances of a given class.
@@ -126,7 +127,7 @@ This ensures child windows never outlive their parent.
 
 ## Thread Safety
 
-The manager uses `@synchronized` internally for thread-safe access to its internal array. However, when iterating over window controllers or accessing the `windowControllers` snapshot, you should synchronize access if modifying from multiple threads.
+The manager uses `@synchronized` internally to guard its internal array. It is intended for use on the main thread: AppKit delivers the load and close notifications that drive it on the main thread.
 
 ## Relationships
 

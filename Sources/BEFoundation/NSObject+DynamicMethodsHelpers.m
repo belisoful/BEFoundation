@@ -76,10 +76,7 @@ NSOrderedSet<Protocol *> *recursiveProtocolsFromProtocol(Protocol *protocol)
 		return 0;
 	}
 	
-	// if we need to swizzle the meta-class, target the meta class
-	// this will replace the methods on the meta-class of the object rather than the Class of the object:
-	//   swizzleing + class objects will work the same way as - on the class object
-	//	but swizzling the instance method of the class object, like -(BOOL)respondsToSelector:(SEL) on the class object requires swizzleing the metaclass
+	// Class methods live on the metaclass, so a metaclass swizzle targets object_getClass(targetClass).
 	if (self.isMetaClass) {
 		targetClass = object_getClass(targetClass);
 	}
@@ -129,7 +126,6 @@ NSOrderedSet<Protocol *> *recursiveProtocolsFromProtocol(Protocol *protocol)
 		if (!swizzleMethod) {
 			return 0;
 		}
-		// Exchange implementations in the target class/meta-class
 		method_exchangeImplementations(originalMethod, swizzleMethod);
 	}
 
@@ -259,9 +255,9 @@ NSOrderedSet<Protocol *> *recursiveProtocolsFromProtocol(Protocol *protocol)
 		NSUInteger dsize = InitialArgumentSize;
 		void *data = malloc(dsize);
 		for(int i = 2; i < methodArgumentCount; i++) {
-			// Size the copy buffer by the argument's ACTUAL type size. -getArgumentSizeAtIndex:
-			// reports a promoted/pointer-sized value (e.g. sizeof(void*) for ANY by-value struct),
-			// which under-sizes large aggregate arguments — and -getArgument: copies the full value,
+			// Size the copy buffer by the argument's actual type size. -getArgumentSizeAtIndex:
+			// reports a promoted/pointer-sized value (e.g. sizeof(void*) for any by-value struct),
+			// which under-sizes large aggregate arguments, and -getArgument: copies the full value,
 			// so a by-value struct larger than the buffer would overflow it. NSGetSizeAndAlignment
 			// returns the true size for every @encode type.
 			NSUInteger size = 0;
@@ -282,6 +278,44 @@ NSOrderedSet<Protocol *> *recursiveProtocolsFromProtocol(Protocol *protocol)
 	}
 	
 	return mutatedInvocation;
+}
+
+
+static const char *BESkipTypeQualifiers(const char *type)
+{
+	while (type && strchr("rnNoORV", *type) && *type != '\0') {
+		type++;
+	}
+	return type;
+}
+
+static BOOL BETypeEncodingsMatch(const char *first, const char *second)
+{
+	return strcmp(BESkipTypeQualifiers(first), BESkipTypeQualifiers(second)) == 0;
+}
+
++ (BOOL)methodSignature:(nullable NSMethodSignature *)signature matchesSignature:(nullable NSMethodSignature *)other
+{
+	if (!signature || !other) {
+		return NO;
+	}
+	if (signature == other) {
+		return YES;
+	}
+	
+	NSUInteger argumentCount = signature.numberOfArguments;
+	if (argumentCount != other.numberOfArguments) {
+		return NO;
+	}
+	if (!BETypeEncodingsMatch(signature.methodReturnType, other.methodReturnType)) {
+		return NO;
+	}
+	for (NSUInteger index = 0; index < argumentCount; index++) {
+		if (!BETypeEncodingsMatch([signature getArgumentTypeAtIndex:index], [other getArgumentTypeAtIndex:index])) {
+			return NO;
+		}
+	}
+	return YES;
 }
 
 @end

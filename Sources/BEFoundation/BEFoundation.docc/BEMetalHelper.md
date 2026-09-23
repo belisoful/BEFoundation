@@ -8,7 +8,7 @@ Utilities for Metal texture processing and image conversion operations.
 
 ## Overview
 
-[BEMetalHelper](doc:BEMetalHelper) provides static methods for converting Metal textures to `BEImage` objects (`NSImage` on macOS, `UIImage` on iOS — see <doc:BEPlatformTypes>) and performing efficient grayscale to RGB color space conversions using Apple's vImage framework.
+[BEMetalHelper](doc:BEMetalHelper) provides static methods for converting Metal textures to `BEImage` objects (`NSImage` on macOS, `UIImage` on iOS; see <doc:BEPlatformTypes>) and grayscale data to RGB using Apple's vImage framework.
 
 ## Usage
 

@@ -4,9 +4,9 @@
  @date			2025-11-22
  @author		belisoful@icloud.com
  @abstract		Extends NSNotification with additional tag and identifier properties.
- @discussion	This category extends NSNotification to provide additional properties for tagging and identifying notifications. The tag and identifier properties provide a way to attach metadata to notifications, which can be useful for filtering or handling specific notification types.
+ @discussion	This category adds tag and identifier properties to NSNotification. They attach metadata to a notification for filtering.
  
-				These properties allow for better organization and categorization of notifications by providing:
+				The category provides:
 				- A numeric tag for quick identification
 				- An identifier object for logical grouping
 				- Automatic fallback to object properties when the notification's own properties are not set
@@ -36,7 +36,7 @@ NS_ASSUME_NONNULL_BEGIN
 /*!
  @category		NSNotification (ExtraProperties)
  @abstract		Extension to NSNotification to provide additional tag and identifier properties.
- @discussion	This category extends NSNotification with additional properties that allow for better identification and categorization of notifications. The tag and identifier properties provide a way to attach metadata to notifications, which can be useful for filtering or handling specific notification types.
+ @discussion	The tag and identifier properties attach metadata to a notification for filtering.
  
 				- Tag property: Returns a NSInteger value for quick identification
 				- Identifier property: Returns an object for logical grouping and categorization
@@ -51,15 +51,17 @@ NS_ASSUME_NONNULL_BEGIN
 				NSInteger tag = note.tag;       // falls back to note.object.tag, then userInfo[@"tag"], when unset
 				id ident = note.identifier;     // falls back to note.object.identifier, then userInfo[@"identifier"], when unset
 				@endcode
+ @since      1.1
  */
 @interface NSNotification (ExtraProperties)
 
 /*!
  @property		tag
  @abstract		Returns the set tag or the notification.object.tag, if the object has a tag.
- @discussion	If the tag of the notification is set, the set tag is returned,
+ @discussion	If the tag of the notification is set to a nonzero value, that tag is returned,
  				otherwise the notification object's tag if the object has a tag property,
  				otherwise the NSNumber value of userInfo[@"tag"] when present, otherwise 0.
+ 				Setting the tag to 0 clears it, so a 0 tag falls through to the object and userInfo.
  @result		NSInteger of the notification tag.
  */
 @property (nonatomic) NSInteger tag;
@@ -70,9 +72,13 @@ NS_ASSUME_NONNULL_BEGIN
  @discussion	If the identifier of the notification is set, the set identifier is returned,
 				otherwise the notification object's identifier if the object has an identifier property,
 				otherwise userInfo[@"identifier"] when present, otherwise nil.
+
+				The setter stores a copy of a value that conforms to NSCopying, so a mutable
+				identifier reads back as its immutable counterpart. A value that does not conform
+				is retained as given.
  @result		object of the notification identifier.
  */
-@property (nonatomic, nullable) id identifier;
+@property (nonatomic, nullable, copy) id identifier;
 
 @end
 

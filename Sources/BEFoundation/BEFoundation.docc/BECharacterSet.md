@@ -46,8 +46,8 @@ NSCharacterSet *nsCharset = charset.characterSet;
 
 By default a BECharacterSet does not equal an equivalent `NSCharacterSet`. The
 `isClassEqualToNSCharacterSet` class property and `isEqualToNSCharacterSet` instance property
-select the comparison behavior (`BECharacterSetEquality`); the hash follows the same setting so
-hash/equality stay consistent in collections.
+select the comparison behavior (`BECharacterSetEquality`). The hash is the underlying
+`NSCharacterSet` hash regardless of the setting, so every pair `isEqual:` can equate shares a hash.
 
 ## See Also
 

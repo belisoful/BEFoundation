@@ -10,3 +10,4 @@ This group covers categories extending Foundation collection classes with additi
 - [NSOrderedSet+BExtension](doc:NSOrderedSet_BExtension)
 - [BEMutable](doc:BEMutable)
 - [BEStackExtensions](doc:BEStackExtensions)
+- [BEPriorityExtensions](doc:BEPriorityExtensions)

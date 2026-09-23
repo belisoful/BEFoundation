@@ -49,7 +49,7 @@ NSNotificationName const BEWindowDidLoadNotification = @"BEWindowDidLoadNotifica
  @method        initWithWindow:
  @abstract      Initializes the window controller with a window.
  @param         window The `NSWindow` to manage.
- @result        An initialized `BEWindowController` instance.
+ @return        An initialized `BEWindowController` instance.
 */
 - (instancetype)initWithWindow:(nullable NSWindow *)window
 {
@@ -66,14 +66,14 @@ NSNotificationName const BEWindowDidLoadNotification = @"BEWindowDidLoadNotifica
  @method        supportsSecureCoding
  @abstract      Declares NSSecureCoding support.
  @discussion    Verified against AppKit: although NSWindowController / NSResponder / NSWindow
-				do NOT themselves adopt NSSecureCoding, NSKeyedArchiver keys its secure-coding
+				do not themselves adopt NSSecureCoding, NSKeyedArchiver keys its secure-coding
 				check on the most-derived class. Because BEWindowController adopts the protocol,
 				it round-trips correctly through requiringSecureCoding:YES + a secure decode.
 				The only state this class adds, @c isPrimaryWindowController, is a BOOL
 				(secure-coding-safe). The managed NSWindow is not part of this archive (it is
 				recreated from the nib on load), so NSWindow's lack of NSSecureCoding adoption
 				does not affect decoding.
- @result        YES.
+ @return        YES.
 */
 + (BOOL)supportsSecureCoding
 {
@@ -84,7 +84,7 @@ NSNotificationName const BEWindowDidLoadNotification = @"BEWindowDidLoadNotifica
  @method        initWithCoder:
  @abstract      Initializes the window controller from an archive (e.g., state restoration).
  @param         coder The `NSCoder` to decode from.
- @result        An initialized `BEWindowController` instance.
+ @return        An initialized `BEWindowController` instance.
 */
 - (nullable instancetype)initWithCoder:(NSCoder *)coder
 {
@@ -103,7 +103,6 @@ NSNotificationName const BEWindowDidLoadNotification = @"BEWindowDidLoadNotifica
 - (void)encodeWithCoder:(NSCoder *)coder
 {
 	[super encodeWithCoder:coder];
-	// Use the recommended secure-coding-safe pattern
 	[coder encodeBool:self.isPrimaryWindowController forKey:kBEIsPrimaryWindowControllerKey];
 }
 
@@ -119,13 +118,12 @@ NSNotificationName const BEWindowDidLoadNotification = @"BEWindowDidLoadNotifica
 	
 	NSNotification *notification = [NSNotification notificationWithName:BEWindowDidLoadNotification object:self.window];
 	
-	// Notify Delegate, NSWindowDelegate can implement windowDidLoad:(NSNotification*)notification without BEWindowDelegate
+	// A plain NSWindowDelegate that implements windowDidLoad: is called too; adopting BEWindowDelegate is not required.
 	id<BEWindowDelegate> delegate = (id<BEWindowDelegate>)self.window.delegate;
 	if ([delegate respondsToSelector:@selector(windowDidLoad:)]) {
 		[delegate windowDidLoad:notification];
 	}
 	
-	// Post Notification
 	[[NSNotificationCenter defaultCenter] postNotification:notification];
 
 }
@@ -139,8 +137,8 @@ NSNotificationName const BEWindowDidLoadNotification = @"BEWindowDidLoadNotifica
 				controller would stay untracked. Re-posting BEWindowDidLoadNotification on a
 				re-show re-registers it; the manager's handler is idempotent (it guards against
 				duplicates), and the first show is skipped here because -windowDidLoad has not
-				run yet, so it does not double-post. The BEWindowDelegate callback is not repeated
-				— only the notification is re-sent.
+				run yet, so it does not double-post. The BEWindowDelegate callback is not repeated;
+				only the notification is re-sent.
  */
 - (void)showWindow:(nullable id)sender {
 	BOOL wasLoaded = self.windowLoaded;
@@ -157,10 +155,15 @@ NSNotificationName const BEWindowDidLoadNotification = @"BEWindowDidLoadNotifica
  @discussion    If this is a primary window, it first triggers `closeDocumentWindowControllers` to close all other windows associated with its document.
 				It then automatically nils its `parentController` relationship, which causes it to be removed from its parent's list of children.
 
-				Note: closing a controller does NOT itself close or detach its own
+				Note: closing a controller does not itself close or detach its own
 				`childControllers`. Recursive closing of descendants is performed by
 				`BEWindowControllerManager` in response to `NSWindowWillCloseNotification`. If you
 				are not using the manager and need children closed, close them explicitly.
+
+				The receiver stays alive for the whole call. Closing the window posts
+				`NSWindowWillCloseNotification`, on which `BEWindowControllerManager` drops its
+				strong reference synchronously; when the manager is the sole owner, the
+				controller deallocates after this method returns, not inside `[super close]`.
 
 				AppKit window controllers are main-thread-only; call this on the main thread.
 */
@@ -173,20 +176,23 @@ NSNotificationName const BEWindowDidLoadNotification = @"BEWindowDidLoadNotifica
 	}
 	_isClosing = YES;
 
-	// If this is the main window, close all other windows for this document first.
+	// Precise lifetime: the sole owner may release self inside [super close], and the
+	// guard is reset afterward.
+	__attribute__((objc_precise_lifetime)) __strong typeof(self) keepAlive = self;
+
+	// The primary window closes the document's other windows first.
 	if(self.isPrimaryWindowController) {
 		[self closeDocumentWindowControllers];
 	}
 
-	// Use the public setter to nil out the parent, which will
-	// automatically remove self from the parent's child set.
+	// The public setter also removes self from the parent's child set.
 	[self setParentController:nil];
 
 	[super close];
 	// Release the guard once the close completes. Leaving it latched makes every later
 	// -close on a reopened controller a no-op. The cascade is still safe: a re-entrant
 	// -close arriving while the outer one is in flight still sees YES.
-	_isClosing = NO;
+	keepAlive->_isClosing = NO;
 }
 
 /*!
@@ -199,8 +205,7 @@ NSNotificationName const BEWindowDidLoadNotification = @"BEWindowDidLoadNotifica
 	NSDocument *document = self.document;
 	
 	if (document) {
-		// Copy the array to avoid mutation-during-enumeration issues
-		// as closing controllers will modify the document's array.
+		// Closing a controller mutates document.windowControllers, so enumerate a copy.
 		NSArray *controllers = [document.windowControllers copy];
 		
 		for(NSWindowController *wc in controllers) {
@@ -217,7 +222,7 @@ NSNotificationName const BEWindowDidLoadNotification = @"BEWindowDidLoadNotifica
 /*!
  @method        parentController
  @abstract      Gets the parent window controller.
- @result        The parent, or `nil`.
+ @return        The parent, or `nil`.
 */
 - (nullable NSWindowController *)parentController
 {
@@ -282,11 +287,10 @@ NSNotificationName const BEWindowDidLoadNotification = @"BEWindowDidLoadNotifica
 /*!
  @method        childControllers
  @abstract      Gets all child window controllers.
- @result        An array of children. Returns an empty array if no children.
+ @return        An array of children. Returns an empty array if no children.
 */
 - (NSArray*)childControllers
 {
-	// Return a copy of all objects, or an empty array if the set is nil.
 	return _childControllers.allObjects ?: @[];
 }
 
@@ -345,7 +349,7 @@ NSNotificationName const BEWindowDidLoadNotification = @"BEWindowDidLoadNotifica
  @abstract      Removes a window controller from the child set.
  @discussion    If removing the last child, the `_childControllers` set is nilled out to release its memory.
  @param         childController The controller to remove.
- @result        `YES` if the controller was found and removed.
+ @return        `YES` if the controller was found and removed.
 */
 - (BOOL)removeChildWindowController:(NSWindowController *)childController
 {
@@ -375,7 +379,6 @@ NSNotificationName const BEWindowDidLoadNotification = @"BEWindowDidLoadNotifica
 		}
 	}
 	
-	// If the set is now empty, nil it out.
 	if (!_childControllers.count) {
 		_childControllers = nil;
 	}

@@ -18,7 +18,7 @@
 /*!
 	@property   isSingleton
 	@abstract   Determines if the object is a singleton implementation
-	@discussion	This is checked by @c __BESingleton to ensure that it can do singleton things
+	@discussion	@c __BESingleton checks this before it creates or returns the shared instance.
 	@result     The method returns NO by default unless the subclass override returns YES.
  */
 + (BOOL)isSingleton
@@ -52,7 +52,6 @@
 
 + (void)setSingletonInitInfo:(NSDictionary*)info
 {
-	// Only execute this code if the class actually conforms to BESingleton
 	if (![self conformsToProtocol:@protocol(BESingleton)] || !self.isSingleton) {
 		return;
 	}
@@ -63,7 +62,6 @@
 	
 	id<BESingleton> singletonInstance = objc_getAssociatedObject(self, @selector(__BESingleton));
 	
-	// If already instanced, skip the set
 	if (singletonInstance) {
 		return;
 	}
@@ -73,15 +71,6 @@
 }
 
  
-/*!
-	@method		@c __BESingleton
-	@abstract   Provides the main backing function for @c BESingleton protocol.
-	@discussion	This constructs a self object with @c -init  or with @c -initForSingleton: if
-				optionally available.  This method is thread safe.  The BESingleton protocol must be
-				implemented and @c -isSingleton return YES for this method to work.
-	@result     Returns the instance type of the implementing class.
- */
-
 /*!
  * @abstract  Returns the topmost ancestor of @p cls that still conforms to BESingleton.
  *
@@ -105,36 +94,38 @@ static Class BESingletonChainRoot(Class cls)
 	return root;
 }
 
+/*!
+	@method		__BESingleton
+	@abstract   Provides the main backing function for @c BESingleton protocol.
+	@discussion	This constructs a self object with @c -init  or with @c -initForSingleton: if
+				optionally available.  This method is thread safe.  The BESingleton protocol must be
+				implemented and @c -isSingleton return YES for this method to work.
+	@result     The shared instance, or nil when the receiver is not a singleton.
+ */
 + (instancetype)__BESingleton NS_RETURNS_RETAINED
 {
-	// Only execute this code if the class actually conforms to BESingleton
 	if (![self conformsToProtocol:@protocol(BESingleton)] || ![self isSingleton]) {
 		return nil;
 	}
 	
-	// First, try to retrieve the singleton instance (no need for synchronization yet)
 	id<BESingleton> singletonInstance = objc_getAssociatedObject(self, @selector(__BESingleton));
 
-	// If the singleton is not found, synchronize to ensure only one thread creates it
 	if (!singletonInstance) {
 		@synchronized (BESingletonChainRoot(self)) {
-			// Check again inside the synchronized block (to handle the case where another thread created it)
 			singletonInstance = objc_getAssociatedObject(self, @selector(__BESingleton));
 
-			// If still not found, create the singleton instance
 			if (!singletonInstance) {
-				// Check if the class implements the initForSingleton: method (optional in the protocol)
 				if ([self instancesRespondToSelector:@selector(initForSingleton:)]) {
 					singletonInstance = [self.alloc initForSingleton:self.singletonInitInfo];
 				} else {
-					singletonInstance = [self.alloc init]; // Fallback to regular init if initForSingleton is not implemented
+					singletonInstance = [self.alloc init];
 				}
 				
 #if !__has_feature(objc_arc)
 				[[singletonInstance retain] autorelease];
  #endif
 				
-				// children can set the parent class singleton
+				// Install the instance on every conforming ancestor that has none.
 				Class singletonChain = self;
 				id<BESingleton> singletonChainInstance = singletonInstance;
 				do {
@@ -142,7 +133,7 @@ static Class BESingletonChainRoot(Class cls)
 					if(chainInstance) {
 						singletonChainInstance = chainInstance;
 					} else {
-						objc_setAssociatedObject(singletonChain, @selector(__BESingleton), singletonChainInstance, OBJC_ASSOCIATION_RETAIN_NONATOMIC);  // <- already made "atomic" by @synchronized.
+						objc_setAssociatedObject(singletonChain, @selector(__BESingleton), singletonChainInstance, OBJC_ASSOCIATION_RETAIN_NONATOMIC);  // @synchronized serializes this store, so nonatomic is safe.
 					}
 					singletonChain = singletonChain.superclass;
 				} while([singletonChain conformsToProtocol:@protocol(BESingleton)] && ![singletonChain isMemberOfClass:NSObject.class]);
@@ -155,7 +146,7 @@ static Class BESingletonChainRoot(Class cls)
 							@synchronized(BESingletonChainRoot(_self)) {
 								Class singletonChain = _self;
 								do {
-									objc_setAssociatedObject(singletonChain, @selector(__BESingleton), nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);  // <- already made "atomic" by @synchronized.
+									objc_setAssociatedObject(singletonChain, @selector(__BESingleton), nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);  // @synchronized serializes this store, so nonatomic is safe.
 									singletonChain = singletonChain.superclass;
 								} while([singletonChain conformsToProtocol:@protocol(BESingleton)] && ![singletonChain isMemberOfClass:NSObject.class]);
 							}

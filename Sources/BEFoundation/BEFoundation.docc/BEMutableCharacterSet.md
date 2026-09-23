@@ -41,8 +41,8 @@ BEMutableCharacterSet *other = [BEMutableCharacterSet characterSetWithCharacters
 [charset formIntersectionWithCharacterSet:other];
 ```
 
-The `characterSet` property returns the backing `NSMutableCharacterSet` itself, not a copy —
-mutations made through it are reflected in the BEMutableCharacterSet.
+The `characterSet` property returns the backing `NSMutableCharacterSet`. Mutations made through
+it are reflected in the BEMutableCharacterSet.
 
 ### Converting to Immutable
 

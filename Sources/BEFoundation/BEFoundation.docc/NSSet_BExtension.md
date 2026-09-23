@@ -55,7 +55,7 @@ NSSet *doubledEvens = [numbers mapUsingBlock:^BOOL(id *obj, BOOL *stop) {
     }
     return NO;  // Exclude from result
 }];
-// Result: @{@4, @8}
+// Result: [NSSet setWithObjects:@4, @8, nil]
 ```
 
 ### Mutable Set Filtering
@@ -68,7 +68,7 @@ NSMutableSet *set = [NSMutableSet setWithArray:@[@1, @2, @3, @4, @5]];
     NSNumber *num = *obj;
     return [num intValue] > 2;
 }];
-// Result: @{@3, @4, @5}
+// Result: [NSSet setWithObjects:@3, @4, @5, nil]
 ```
 
 ## See Also

@@ -7,8 +7,7 @@
  @discussion	This category extends NSCoder to support encoding and decoding operations
 				using integer indices instead of string keys. Each index is internally
 				converted to a string representation for use with the underlying NSCoder
-				key-based methods. This provides a more convenient API when working with
-				sequential or numeric data structures.
+				key-based methods.
 */
 
 #ifndef NSCoder_AtIndex_AtTime_h
@@ -24,8 +23,7 @@ NS_ASSUME_NONNULL_BEGIN
  @discussion	This category adds methods to NSCoder that allow encoding and decoding
 				values using 64-bit unsigned integer indices instead of string keys.
 				The indices are converted to string representations internally and used
-				with the standard NSCoder key-based methods. This is particularly useful
-				for array-like data structures or when working with sequential data.
+				with the standard NSCoder key-based methods.
 
 				Because indices map to decimal string keys ("0", "1", …), do not mix
 				index-based and string-key encoding that could collide in the same coder.
@@ -78,8 +76,7 @@ NS_ASSUME_NONNULL_BEGIN
  @discussion	This method conditionally encodes the specified object, preserving
 				common references to it only if it has been unconditionally encoded
 				elsewhere. If the object was never encoded unconditionally, decoding
-				will return nil. This is useful for handling object graphs with
-				shared references while avoiding retain cycles.
+				returns nil.
  */
 - (void)encodeConditionalObject:(nullable id)object atIndex:(uint64_t)index;
 
@@ -193,8 +190,8 @@ NS_ASSUME_NONNULL_BEGIN
  @param			index	The 64-bit unsigned integer index that identifies the object to decode.
  @param			error	On return, contains an NSError object if decoding fails, or nil if decoding succeeds.
  @return		The decoded object, or nil if decoding fails.
- @discussion	This method is used for decoding top-level objects from archives with
-				error handling. It's particularly useful when working with secure coding.
+ @discussion	This method decodes a top-level object from an archive and reports
+				failure through the error parameter.
  */
 - (nullable id)decodeTopLevelObjectAtIndex:(uint64_t)index error:(NSError * _Nullable * _Nullable)error API_AVAILABLE(macos(10.11), ios(9.0), watchos(2.0), tvos(9.0)) NS_SWIFT_UNAVAILABLE("Use 'decodeObject(of:, atIndex:)' instead");
 
@@ -236,9 +233,10 @@ NS_ASSUME_NONNULL_BEGIN
  @method		decodeHalfAtIndex:
  @abstract		Decodes and returns a 16-bit floating-point value that was previously encoded at the given integer index.
  @param			index	The 64-bit unsigned integer index that identifies the value to decode.
- @return		The decoded _Float16 value.
+ @return		The decoded _Float16 value, or 0 when the index is absent or its value is malformed.
  @discussion	This method decodes a half-precision floating-point value that was
-				previously encoded using encodeHalf:atIndex:.
+				previously encoded using encodeHalf:atIndex:. Use containsValueAtIndex: to
+				distinguish an absent value from a stored zero.
  */
 - (_Float16)decodeHalfAtIndex:(uint64_t)index;
 

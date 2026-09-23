@@ -6,22 +6,21 @@
  @abstract		A category extension for NSNumber that provides prime number operations within the 16-bit range.
  @discussion	This category extends NSNumber with methods for finding, rounding, and working with prime numbers
  up to 65521 (the largest prime that fits in a 16-bit unsigned integer). It uses a precomputed lookup table
- of all 6542 primes in the 16-bit range for efficient operations.
+ of all 6542 primes in the 16-bit range.
  
  The implementation provides three main types of operations:
  - Index-based methods that return array indices into the prime lookup table
  - Value-based methods that return prime numbers directly
  - Instance methods that operate on NSNumber objects
  
- All methods handle edge cases and return appropriate values (NSNotFound, 0, or nil) for invalid inputs.
+ All methods return a sentinel (NSNotFound, 0, or nil) when no prime satisfies the request. The
+ value 1 is never reported as a prime: ceil of 1 resolves to 2; floor and round of 1 return the sentinel.
  */
 
 #ifndef NSNumber_Primes16b_h
 #define NSNumber_Primes16b_h
 
 #import <Foundation/Foundation.h>
-
-// https://numbergenerator.org/numberlist/prime-numbers/1-100000#!low=1&high=65536&csv=csv
 
 /*!
  @constant NSPrimeNumbers16BitCount
@@ -57,18 +56,18 @@
  @var NSPrimeNumbers16Bit
  @abstract A lookup table containing all prime numbers in the 16-bit range.
  @discussion This array contains 6544 elements total:
- - Index 0: Contains 1 (not prime, but included for algorithmic convenience)
+ - Index 0: Contains 1, a guard value. It is not prime and no method of the category returns it.
  - Indices 1-6542: Contains all primes from 2 to 65521
  - Index 6543: Contains 0 (sentinel value)
  
- The array is sorted in ascending order for efficient binary search operations.
+ The array is sorted in ascending order for binary search.
  */
 extern uint16_t const NSPrimeNumbers16Bit[1 + NSPrimeNumbers16BitCount + 1];
 
 /*!
  @category NSNumber(BEPrimeNumbers16)
  @abstract A category that extends NSNumber with 16-bit prime number operations.
- @discussion This category provides efficient prime number operations using a precomputed lookup table.
+ @discussion This category provides prime number operations using a precomputed lookup table.
  All methods are designed to work with values up to 65521 (the largest 16-bit prime).
 
  @code
@@ -89,6 +88,7 @@ extern uint16_t const NSPrimeNumbers16Bit[1 + NSPrimeNumbers16BitCount + 1];
  @param value The input value to find the ceiling prime index for.
  @return The index in NSPrimeNumbers16Bit of the ceiling prime, or NSNotFound if no valid prime exists.
  @discussion This method performs a binary search to find the smallest prime ≥ value.
+ Values 1 and 2 resolve to index 1 (the prime 2).
  Returns NSNotFound if value is less than 1 or greater than UInt16LargestPrime.
  */
 + (NSInteger)ceilPrimeIndex16:(NSUInteger)value;
@@ -99,7 +99,8 @@ extern uint16_t const NSPrimeNumbers16Bit[1 + NSPrimeNumbers16BitCount + 1];
  @param value The input value to find the floor prime index for.
  @return The index in NSPrimeNumbers16Bit of the floor prime, or NSNotFound if no valid prime exists.
  @discussion This method performs a binary search to find the largest prime ≤ value.
- Returns NSNotFound if value is less than 1 or greater than or equal to UInt17NextLargestPrime.
+ Returns NSNotFound if value is less than UInt16SmallestPrime (no prime is ≤ 1) or greater than or
+ equal to UInt17NextLargestPrime.
  */
 + (NSInteger)floorPrimeIndex16:(NSUInteger)value;
 
@@ -109,8 +110,8 @@ extern uint16_t const NSPrimeNumbers16Bit[1 + NSPrimeNumbers16BitCount + 1];
  @param value The input value to find the nearest prime index for.
  @return The index in NSPrimeNumbers16Bit of the nearest prime, or NSNotFound if no valid prime exists.
  @discussion This method uses standard rounding behavior (round up if exactly halfway).
- Returns NSNotFound if value is less than 1 or at-or-greater-than the midpoint between
- UInt16LargestPrime and UInt17NextLargestPrime (65529). The exact midpoint is excluded because
+ Returns NSNotFound if value is less than UInt16SmallestPrime or at-or-greater-than the midpoint
+ between UInt16LargestPrime and UInt17NextLargestPrime (65529). The exact midpoint is excluded because
  rounding it up would escape the 16-bit prime range.
  */
 + (NSInteger)roundPrimeIndex16:(NSUInteger)value;
@@ -124,6 +125,7 @@ extern uint16_t const NSPrimeNumbers16Bit[1 + NSPrimeNumbers16BitCount + 1];
  @return The nearest prime number, or 0 if no valid prime exists.
  @discussion This method finds the prime with the minimum distance from the input value.
  Uses standard rounding behavior (round up if exactly halfway between two primes).
+ Returns 0 where roundPrimeIndex16: returns NSNotFound.
  */
 + (NSUInteger)roundPrimeValue16:(NSUInteger)value;
 
@@ -132,7 +134,8 @@ extern uint16_t const NSPrimeNumbers16Bit[1 + NSPrimeNumbers16BitCount + 1];
  @abstract Returns an NSNumber containing the prime closest to the given value.
  @param value The input value to find the nearest prime for.
  @return An NSNumber containing the nearest prime, or nil if no valid prime exists.
- @discussion This is the NSNumber wrapper for roundPrimeValue16:. Returns nil for invalid inputs.
+ @discussion This is the NSNumber wrapper for roundPrimeValue16:. Returns nil where
+ roundPrimeIndex16: returns NSNotFound.
  */
 + (NSNumber * _Nullable)roundPrime16:(NSUInteger)value;
 
@@ -146,7 +149,8 @@ extern uint16_t const NSPrimeNumbers16Bit[1 + NSPrimeNumbers16BitCount + 1];
  @return The floor prime (possibly offset), or 0 if no valid prime exists.
  @discussion This method first finds the floor prime, then moves by offset positions in the lookup table.
  Positive offset moves toward larger primes, negative offset moves toward smaller primes.
- Returns 0 if the offset results in an invalid array index.
+ Returns 0 if no floor prime exists or if the offset index falls outside 1...NSPrimeNumbers16BitCount
+ (index 0 holds the guard value 1 and is never returned).
  */
 + (NSUInteger)floorPrimeValue16:(NSUInteger)value offset:(int)offset;
 
@@ -156,6 +160,7 @@ extern uint16_t const NSPrimeNumbers16Bit[1 + NSPrimeNumbers16BitCount + 1];
  @param value The input value to find the floor prime for.
  @return The largest prime ≤ value, or 0 if no valid prime exists.
  @discussion This is equivalent to calling floorPrimeValue16:offset: with offset 0.
+ Returns 0 for values below UInt16SmallestPrime.
  */
 + (NSUInteger)floorPrimeValue16:(NSUInteger)value;
 
@@ -164,7 +169,8 @@ extern uint16_t const NSPrimeNumbers16Bit[1 + NSPrimeNumbers16BitCount + 1];
  @abstract Returns an NSNumber containing the largest prime ≤ value.
  @param value The input value to find the floor prime for.
  @return An NSNumber containing the floor prime, or nil if no valid prime exists.
- @discussion This is the NSNumber wrapper for floorPrimeValue16:. Returns nil for invalid inputs.
+ @discussion This is the NSNumber wrapper for floorPrimeValue16:. Returns nil where
+ floorPrimeIndex16: returns NSNotFound.
  */
 + (NSNumber * _Nullable)floorPrime16:(NSUInteger)value;
 
@@ -178,7 +184,8 @@ extern uint16_t const NSPrimeNumbers16Bit[1 + NSPrimeNumbers16BitCount + 1];
  @return The ceiling prime (possibly offset), or 0 if no valid prime exists.
  @discussion This method first finds the ceiling prime, then moves by offset positions in the lookup table.
  Positive offset moves toward larger primes, negative offset moves toward smaller primes.
- Returns 0 if the offset results in an invalid array index.
+ Returns 0 if no ceiling prime exists or if the offset index falls outside 1...NSPrimeNumbers16BitCount
+ (index 0 holds the guard value 1 and is never returned).
  */
 + (NSUInteger)ceilPrimeValue16:(NSUInteger)value offset:(int)offset;
 
@@ -188,6 +195,7 @@ extern uint16_t const NSPrimeNumbers16Bit[1 + NSPrimeNumbers16BitCount + 1];
  @param value The input value to find the ceiling prime for.
  @return The smallest prime ≥ value, or 0 if no valid prime exists.
  @discussion This is equivalent to calling ceilPrimeValue16:offset: with offset 0.
+ Values 1 and 2 return 2.
  */
 + (NSUInteger)ceilPrimeValue16:(NSUInteger)value;
 
@@ -196,7 +204,8 @@ extern uint16_t const NSPrimeNumbers16Bit[1 + NSPrimeNumbers16BitCount + 1];
  @abstract Returns an NSNumber containing the smallest prime ≥ value.
  @param value The input value to find the ceiling prime for.
  @return An NSNumber containing the ceiling prime, or nil if no valid prime exists.
- @discussion This is the NSNumber wrapper for ceilPrimeValue16:. Returns nil for invalid inputs.
+ @discussion This is the NSNumber wrapper for ceilPrimeValue16:. Returns nil where
+ ceilPrimeIndex16: returns NSNotFound.
  */
 + (NSNumber * _Nullable)ceilPrime16:(NSUInteger)value;
 

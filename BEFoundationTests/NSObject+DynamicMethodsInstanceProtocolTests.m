@@ -282,8 +282,10 @@
 }
 @end
 
+// NSProtocolImpClass requires the original object be held weakly: the original object retains
+// the target, so a strong back-reference forms a cycle.
 @interface IMPWithOriginalObjectMethod : NSObject <NSProtocolImpClass>
-@property (nonatomic) id originalObject;
+@property (nonatomic, weak) id originalObject;
 - (void)setOriginalObject:(id _Nonnull)object;
 @end
 @implementation IMPWithOriginalObjectMethod
@@ -315,11 +317,9 @@
 @implementation NSDynamicMethodsInstanceProtocolTests
 
 - (void)setUp {
-    // Put setup code here. This method is called before the invocation of each test method in the class.
 }
 
 - (void)tearDown {
-    // Put teardown code here. This method is called after the invocation of each test method in the class.
 }
 
 
@@ -10346,6 +10346,31 @@
 	
 	XCTAssertNotNil(target, @"Target for MyDMInstanceNoMethodProtocol should be found.");
 	XCTAssertEqual(target.originalObject, object, @"originalObject should have been set.");
+	
+	[InstanceBaseProtocolTargetObject removeInstanceProtocol:@protocol(MyDMInstanceNoMethodProtocol)];
+	[InstanceBaseProtocolTargetObject resetDynamicMethods];
+}
+
+- (void)test_InstanceClass_originalObjectDeallocatesWithTargetAttached
+{
+	[InstanceBaseProtocolTargetObject addInstanceProtocol:@protocol(MyDMInstanceNoMethodProtocol) withClass:IMPWithOriginalObjectMethod.class];
+	[InstanceBaseProtocolTargetObject enableDynamicMethods];
+	
+	__weak InstanceBaseProtocolTargetObject *weakObject = nil;
+	__weak IMPWithOriginalObjectMethod *weakTarget = nil;
+	@autoreleasepool {
+		InstanceBaseProtocolTargetObject *object = InstanceBaseProtocolTargetObject.new;
+		weakObject = object;
+		IMPWithOriginalObjectMethod *target = [object targetForProtocol:@protocol(MyDMInstanceNoMethodProtocol)];
+		weakTarget = target;
+		XCTAssertNotNil(target);
+		XCTAssertEqual(target.originalObject, object);
+		object = nil;
+		target = nil;
+	}
+	
+	XCTAssertNil(weakObject, @"The original object must deallocate once released; the target holds it weakly.");
+	XCTAssertNil(weakTarget, @"The target is released with the original object's associated storage.");
 	
 	[InstanceBaseProtocolTargetObject removeInstanceProtocol:@protocol(MyDMInstanceNoMethodProtocol)];
 	[InstanceBaseProtocolTargetObject resetDynamicMethods];

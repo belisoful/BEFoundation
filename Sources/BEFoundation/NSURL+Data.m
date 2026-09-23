@@ -4,7 +4,7 @@
  @date       2025-11-11
  @author     belisoful@icloud.com
  @abstract   Implementation of data URL creation and parsing functionality.
- @discussion This implementation provides comprehensive support for RFC 2397 data URLs,
+ @discussion This implementation supports RFC 2397 data URLs,
 			 including encoding binary data into data URLs and parsing existing data URLs
 			 to extract their content and metadata. Uses associated objects for caching
 			 parsed metadata to improve performance on repeated access.
@@ -126,6 +126,56 @@ static NSData *BEPercentDecodedData(NSString *string)
 }
 
 /*!
+ @function   BEUnquotedParameterValue
+ @abstract   Returns the content of an RFC 2045 quoted-string parameter value.
+ @discussion A value enclosed in double quotes loses the quotes and its backslash escapes.
+			 Any other value is returned unchanged.
+*/
+static NSString *BEUnquotedParameterValue(NSString *value)
+{
+	if (value.length < 2 || ![value hasPrefix:@"\""] || ![value hasSuffix:@"\""]) {
+		return value;
+	}
+	NSString *quoted = [value substringWithRange:NSMakeRange(1, value.length - 2)];
+	if (![quoted containsString:@"\\"]) {
+		return quoted;
+	}
+	NSMutableString *unescaped = [NSMutableString stringWithCapacity:quoted.length];
+	BOOL escaped = NO;
+	for (NSUInteger index = 0; index < quoted.length; index++) {
+		unichar character = [quoted characterAtIndex:index];
+		if (!escaped && character == '\\') {
+			escaped = YES;
+			continue;
+		}
+		[unescaped appendFormat:@"%C", character];
+		escaped = NO;
+	}
+	return unescaped;
+}
+
+/*!
+ @function   BEParseMediaTypeParameter
+ @abstract   Splits one semicolon-delimited media type parameter into a name and a value.
+ @discussion The name is trimmed of whitespace and lowercased (RFC 2045 parameter names are
+			 case-insensitive). The value is trimmed and unquoted. A parameter without "="
+			 yields the whole token as the name and a nil value.
+*/
+static void BEParseMediaTypeParameter(NSString *parameter, NSString * _Nonnull * _Nonnull outName, NSString * _Nullable * _Nonnull outValue)
+{
+	NSCharacterSet *whitespace = NSCharacterSet.whitespaceAndNewlineCharacterSet;
+	NSRange equals = [parameter rangeOfString:@"="];
+	NSString *name = parameter;
+	NSString *value = nil;
+	if (equals.location != NSNotFound) {
+		name = [parameter substringToIndex:equals.location];
+		value = BEUnquotedParameterValue([[parameter substringFromIndex:NSMaxRange(equals)] stringByTrimmingCharactersInSet:whitespace]);
+	}
+	*outName = [name stringByTrimmingCharactersInSet:whitespace].lowercaseString;
+	*outValue = value;
+}
+
+/*!
  @category      NSURL (DataConstructors)
  @abstract   This category provides multiple convenience methods for creating data URLs.
  @discussion Offers both class methods (dataURLWithData:...) and instance methods
@@ -206,7 +256,7 @@ static NSData *BEPercentDecodedData(NSString *string)
 			 - If no charset, MIME type defaults to "application/octet-stream"
 			 - Text-based MIME types get charset and prefer percent-encoding
 			 - Binary MIME types prefer base64 encoding
-			 - Auto mode intelligently selects encoding based on content type
+			 - Auto mode selects encoding based on content type
  @return     An initialized NSURL object, or nil if encoding fails.
 */
 - (NSURL *)initDataURLWithData:(NSData *)data mimeType:(NSString *)mimeType charset:(NSString *)charset isBase64:(NSURLBase64Type)base64Type
@@ -223,7 +273,6 @@ static NSData *BEPercentDecodedData(NSString *string)
 		}
 	}
 	if (mimeType == nil) {
-		// Initialize mimeType
 		if (charset) {
 			mimeType = BEURL_DefaultTextMimeType;
 		} else {
@@ -415,9 +464,15 @@ static NSData *BEPercentDecodedData(NSString *string)
 			 2. Locates the comma separator between metadata and data
 			 3. Parses semicolon-separated metadata components
 			 4. Extracts MIME type (defaults to "text/plain")
-			 5. Extracts charset parameter (defaults to "US-ASCII")
-			 6. Detects ";base64" flag
+			 5. Extracts the charset parameter; when absent, a text-based MIME type
+			    (see @c hasCharSetForMIMEType:) defaults to "US-ASCII" and any other type
+			    has no charset
+			 6. Detects the ";base64" flag
 			 7. Caches all parsed values using associated objects
+
+			 Each parameter is percent-decoded before matching. Parameter names and the
+			 base64 token are case-insensitive and trimmed of whitespace; a quoted value is
+			 unquoted.
 
 			 A malformed URL (no comma) clears the out-params and returns NO.
 			 @c isDataURL keeps reporting the scheme, so it stays YES.
@@ -431,7 +486,6 @@ static NSData *BEPercentDecodedData(NSString *string)
 		if (base64)		*base64 = NO;
 		return NO;
 	}
-	// 2. Locate the comma separating metadata from data
 	NSRange commaRange = [resourceSpecifier rangeOfString:@","];
 	if (commaRange.location == NSNotFound) {
 		// Malformed data URL.  isDataURL reports the scheme, so a failed parse
@@ -444,28 +498,27 @@ static NSData *BEPercentDecodedData(NSString *string)
 		return NO;
 	}
 	
-	// 3. Extract meta info and payload
 	NSString *meta = [resourceSpecifier substringToIndex:commaRange.location];
 	
-	// 5. Split meta into parts
 	NSArray<NSString *> *parts = [meta componentsSeparatedByString:@";"];
 	
-	// 6. Default values
 	NSString *dataMimeType = @"text/plain";
 	NSString *dataCharset = nil;
 	BOOL isBase64 = NO;
 	
-	// 7. Parse MIME type and parameters
 	if (parts.count > 0) {
 		if (parts[0].length > 0) {
 			dataMimeType = parts[0]; // first part is MIME type if present
 		}
 		for (NSUInteger i = 1; i < parts.count; i++) {
-			NSString *p = parts[i];
-			if ([p isEqualToString:@"base64"]) {
+			NSString *parameter = parts[i].stringByRemovingPercentEncoding ?: parts[i];
+			NSString *name = nil;
+			NSString *value = nil;
+			BEParseMediaTypeParameter(parameter, &name, &value);
+			if ([name isEqualToString:@"base64"] && !value) {
 				isBase64 = YES;
-			} else if ([p hasPrefix:@"charset="]) {
-				dataCharset = [p substringFromIndex:8];
+			} else if ([name isEqualToString:@"charset"] && value) {
+				dataCharset = value;
 			}
 		}
 	}
@@ -554,9 +607,9 @@ static NSData *BEPercentDecodedData(NSString *string)
 /*!
  @method     dataCharset
  @abstract   Returns the charset from the data URL.
- @discussion Lazily parses and caches the charset. Defaults to "US-ASCII"
-			 if not explicitly specified in the data URL.
- @return     The charset string, or nil for non-data URLs.
+ @discussion Lazily parses and caches the charset. When the URL declares none, a text-based
+			 MIME type defaults to "US-ASCII" and any other type has no charset.
+ @return     The charset string, or nil for non-data URLs and for types without a charset.
 */
 - (NSString *)dataCharset
 {
@@ -655,7 +708,9 @@ static NSData *BEPercentDecodedData(NSString *string)
  @method     decodedData
  @abstract   Returns the decoded binary data from the data URL.
  @discussion Decodes the data URL content based on its encoding:
-			 - For base64: Uses base64 decoding
+			 - For base64: Removes percent escapes, then base64-decodes ignoring characters
+			   outside the base64 alphabet, so whitespace and line breaks (which NSURL
+			   stores as "%0A") are tolerated
 			 - For percent-encoding: Decodes the percent escapes byte-wise, yielding the
 			   payload bytes in the URL's declared charset
 
@@ -674,7 +729,8 @@ static NSData *BEPercentDecodedData(NSString *string)
 	}
 
 	if (self.isBase64) {
-		return [[NSData alloc] initWithBase64EncodedString:dataString options:0];
+		NSString *base64String = dataString.stringByRemovingPercentEncoding ?: dataString;
+		return [[NSData alloc] initWithBase64EncodedString:base64String options:NSDataBase64DecodingIgnoreUnknownCharacters];
 	}
 	return BEPercentDecodedData(dataString);
 }
@@ -701,6 +757,29 @@ static NSData *BEPercentDecodedData(NSString *string)
 		decodedString = [NSString.alloc initWithData:decodedData encoding:NSUTF8StringEncoding];
 	}
 	return decodedString;
+}
+
+
+/*!
+ @method     charsetFromMediaType:
+ @abstract   Returns the charset parameter of a media type string.
+ @param      mediaType A media type with optional parameters, e.g. "text/html; charset=utf-8".
+ @discussion Applies the data URL parameter rules: the name is matched case-insensitively
+			 after trimming whitespace, and a quoted value is unquoted.
+ @return     The charset value, or nil when the parameter is absent or empty.
+*/
++ (NSString *)charsetFromMediaType:(NSString *)mediaType
+{
+	NSArray<NSString *> *parts = [mediaType componentsSeparatedByString:@";"];
+	for (NSUInteger i = 1; i < parts.count; i++) {
+		NSString *name = nil;
+		NSString *value = nil;
+		BEParseMediaTypeParameter(parts[i], &name, &value);
+		if ([name isEqualToString:@"charset"] && value.length > 0) {
+			return value;
+		}
+	}
+	return nil;
 }
 
 

@@ -52,18 +52,18 @@ NS_ASSUME_NONNULL_BEGIN
  @param      color The color of the text.
  @param      blur The radius of the Gaussian blur to apply to the text image, in pixels.
  @param      position The translation offset (x, y) to apply to the text image.
- @discussion This method provides a convenient way to create a complex text-based image
-			 by chaining together multiple Core Image filters for text generation,
-			 transformation, and blurring.
+ @discussion This method chains Core Image filters for text generation, transformation,
+			 and blurring.
 
 			 Geometry note: rotation is applied about the image origin (0,0), not the text
-			 center, and `position` is then applied as a translation in image space AFTER the
+			 center, and `position` is then applied as a translation in image space after the
 			 rotation. For a non-zero `angle`, the final placement is therefore the rotated
-			 bounding box offset by `position` — it is not "text centered at position". For
-			 predictable placement with rotation, rotate about the text center yourself before
-			 calling, or use `angle:0` and position the result.
+			 bounding box offset by `position`. For predictable placement with rotation, rotate
+			 about the text center yourself before calling, or use `angle:0` and position the
+			 result.
  @return     A new `CIImage` object containing the rendered and styled text, or nil if
-			 `text` or `color` is nil or text image generation fails. If `fontName` is nil
+			 text image generation fails. `text` and `color` are nonnull; a nil value passed
+			 anyway returns nil. If `fontName` is nil
 			 or unrecognized, the system font of `fontSize` is used.
 */
 + (nullable CIImage *)createImageText:(NSString *)text
@@ -83,13 +83,14 @@ NS_ASSUME_NONNULL_BEGIN
  @discussion This method uses the `CISourceOverCompositing` filter to blend the two
 			 images. The alpha of the `topImage` is adjusted before compositing.
 
-			 Note: the top image's alpha channel is REPLACED with `topAlpha` (via a
-			 CIColorMatrix whose A-vector is `(0,0,0,topAlpha)`), not multiplied. This is
-			 intended for opaque source images (the common effect-compositing case). If
-			 `topImage` is already translucent, its per-pixel alpha is discarded and the
+			 The top image's alpha channel is replaced with `topAlpha` (via a
+			 CIColorMatrix whose A-vector is `(0,0,0,topAlpha)`). This is intended for opaque
+			 source images (the common effect-compositing case). If `topImage` is already
+			 translucent, its per-pixel alpha is discarded and the
 			 whole image is composited at the uniform `topAlpha`.
- @return     A new `CIImage` object representing the result of the composition, or nil if
-			 either image is nil. `topAlpha` is clamped to the range 0.0–1.0.
+ @return     A new `CIImage` object representing the result of the composition. The image
+			 parameters are nonnull; a nil value passed anyway returns nil. `topAlpha` is
+			 clamped to the range 0.0 to 1.0.
 */
 + (nullable CIImage *)combineImage:(CIImage *)topImage
 							alpha:(CGFloat)topAlpha

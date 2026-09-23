@@ -3,14 +3,13 @@
  @copyright		-© 2025 Delicense - @belisoful. All rights released.
  @date			2025-01-01
  @author		belisoful@icloud.com
- @abstract
- @discussion
+ @abstract		Implements the NSArray and NSMutableArray BExtension categories.
+ @discussion	Provides collection conversion, class introspection, insertion, mapping, and filtering.
 */
 
 #import <objc/runtime.h>
 #import "BEMutable.h"
 #import "NSArray+BExtension.h"
-//#import "NSDictionary+BExtension.h"
 
 @implementation NSArray (BExtension)
 
@@ -27,7 +26,7 @@
 	@method		-objectsClasses
 	@abstract	Returns the `class` of each element in the array.
 	@discussion Iterates the receiver and collects `[obj class]` for every element. Duplicates
-				are preserved — the result has one entry per element, in order.
+				are preserved; the result has one entry per element, in order.
 	@result		A new `NSArray` of `Class` objects, one per element.
  */
 - (nonnull NSArray<Class> *)objectsClasses
@@ -42,9 +41,9 @@
 
 /*!
 	@method		-objectsClassNames
-	@abstract	Returns the `className` of each element in the array.
-	@discussion Iterates the receiver and collects `[obj className]` for every element. Duplicates
-				are preserved — the result has one entry per element, in order.
+	@abstract	Returns the class name of each element in the array.
+	@discussion Iterates the receiver and collects `NSStringFromClass([obj class])` for every element. Duplicates
+				are preserved; the result has one entry per element, in order.
 	@result		A new `NSArray` of `NSString` class names, one per element.
  */
 - (nonnull NSArray<NSString*> *)objectsClassNames
@@ -76,8 +75,8 @@
 
 /*!
 	@method		-objectsUniqueClassNames
-	@abstract	Returns a counted set of the `className` of each element.
-	@discussion Iterates the receiver, collecting `[obj className]` into an NSCountedSet that
+	@abstract	Returns a counted set of the class name of each element.
+	@discussion Iterates the receiver, collecting `NSStringFromClass([obj class])` into an NSCountedSet that
 				tracks both uniqueness and the number of occurrences of each class name.
 	@result		A new `NSCountedSet` of unique class-name strings with their occurrence counts.
  */
@@ -111,7 +110,6 @@
 
 
 - (nonnull NSArray *)arrayByInsertingObjectsFromArray:(nonnull NSArray *)otherArray atIndex:(NSUInteger)index {
-	// Validate parameters
 	if (otherArray == nil) {
 		[NSException raise:NSInvalidArgumentException
 					format:@"*** -[%@ %@]: nil array argument", NSStringFromClass(NSArray.class), NSStringFromSelector(_cmd)];
@@ -122,24 +120,19 @@
 		[NSException raise:NSInvalidArgumentException
 					format:@"*** -[%@ %@]: index more than %@", NSStringFromClass(NSArray.class), NSStringFromSelector(_cmd), @(self.count)];
 	}
-	
-	// Handle empty array case
+
 	if (otherArray.count == 0) {
 		return [self copy];
 	}
-	
-	// Create mutable copy for building the result
+
 	NSMutableArray *result = [NSMutableArray arrayWithCapacity:self.count + otherArray.count];
-	
-	// Add objects before insertion point
+
 	if (index > 0) {
 		[result addObjectsFromArray:[self subarrayWithRange:NSMakeRange(0, index)]];
 	}
-	
-	// Add objects from other array
+
 	[result addObjectsFromArray:otherArray];
-	
-	// Add remaining objects after insertion point
+
 	if (index < self.count) {
 		[result addObjectsFromArray:[self subarrayWithRange:NSMakeRange(index, self.count - index)]];
 	}
@@ -174,7 +167,7 @@
 
 /*!
 	@category   BExtension
-	@discussion	adds basic filter function
+	@abstract	Implements the NSMutableArray (BExtension) category.
  */
 @implementation NSMutableArray (BExtension)
 
@@ -187,7 +180,6 @@
 
 - (void)insertElementsOfArray:(nonnull NSArray *)objects atIndex:(NSUInteger)index
 {
-	// Validate parameters
 	if (objects == nil) {
 		[NSException raise:NSInvalidArgumentException
 					format:@"*** -[%@ %@]: nil array argument", NSStringFromClass(NSArray.class), NSStringFromSelector(_cmd)];
@@ -199,15 +191,12 @@
 					format:@"*** -[%@ %@]: index more than %@", NSStringFromClass(NSArray.class), NSStringFromSelector(_cmd), @(self.count)];
 	}
 
-	// Handle empty array case
 	if (objects.count == 0) {
 		return;
 	}
 
-	// Create an index set for the insertion range
 	NSIndexSet *indexSet = [NSIndexSet indexSetWithIndexesInRange:NSMakeRange(index, objects.count)];
 
-	// Insert the objects at the specified indexes
 	[self insertObjects:objects atIndexes:indexSet];
 }
 

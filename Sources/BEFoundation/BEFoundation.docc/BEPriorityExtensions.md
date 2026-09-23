@@ -8,7 +8,7 @@ Priority ordering extensions for collections.
 
 ## Overview
 
-This header provides priority ordering support for collections, allowing items to be sorted and accessed by priority.
+This header provides priority ordering support for collections, allowing items to be sorted by priority.
 
 ## Usage
 

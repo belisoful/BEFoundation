@@ -86,7 +86,7 @@
 - (BOOL)isPushOnTop {
 	NSNumber *value = objc_getAssociatedObject(self, @selector(isPushOnTop));
 	if (value == nil) {
-		return YES;   // default
+		return YES;
 	}
 	return value.boolValue;
 }
@@ -135,7 +135,6 @@
 
 - (nullable id)popObject
 {
-	// nil if [self count] == 0
 #if __has_feature(objc_arc)
 	id lastObject = [self lastObject];
 #else

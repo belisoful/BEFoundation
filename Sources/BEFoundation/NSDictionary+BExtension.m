@@ -3,8 +3,8 @@
  @copyright		-© 2025 Delicense - @belisoful. All rights released.
  @date			2025-01-01
  @author		belisoful@icloud.com
- @abstract
- @discussion
+ @abstract		Implements the NSDictionary and NSMutableDictionary BExtension categories.
+ @discussion	Provides indexed subscripting, class inspection, mapping, filtering, swapping, and recursive merging.
 */
 
 #import <objc/runtime.h>
@@ -44,9 +44,9 @@
 
 /*!
 	@method		-objectsClassNames
-	@abstract	Returns a dictionary mapping each key to the `className` of its value.
-	@discussion Iterates the receiver and replaces each value with `[value className]`, preserving the keys.
-	@result		A new `NSDictionary` with the same keys, each mapped to the class-name string of its value.
+	@abstract	Returns a dictionary mapping each key to the class name of its value.
+	@discussion Iterates the receiver and replaces each value with `NSStringFromClass([value class])`, preserving the keys.
+	@result		A new `NSDictionary` with the same keys, each mapped to the class-name string (NSStringFromClass) of its value.
  */
 - (nonnull NSDictionary<id, NSString*> *)objectsClassNames
 {
@@ -77,8 +77,8 @@
 
 /*!
 	@method		-objectsUniqueClassNames
-	@abstract	Returns a counted set of the `className` of each value.
-	@discussion Iterates the receiver's values, collecting `[value className]` into an NSCountedSet
+	@abstract	Returns a counted set of the class name of each value.
+	@discussion Iterates the receiver's values, collecting `NSStringFromClass([value class])` into an NSCountedSet
 				that tracks how many values share each class name.
 	@result		A new `NSCountedSet` of the values' class-name strings with their occurrence counts.
  */
@@ -170,11 +170,9 @@
 	}
 	
 	if (!otherDictionary.count) {
-		// Match the mutability the full path returns; an early exit that always hands
-		// back an immutable copy makes the result type depend on the argument.
 		return [self isKindOfClass:NSMutableDictionary.class] ? [self mutableCopy] : [self copy];
 	}
-	
+
 	NSMutableDictionary *mergedDict = [self mutableCopy];
 	[mergedDict addEntriesFromDictionary:otherDictionary];
 	
@@ -188,8 +186,6 @@
 - (id)dictionaryByMergingDictionary:(NSDictionary *)otherDictionary
 {
 	if (!otherDictionary) {
-		// Match the mutability the full path returns; an early exit that always hands
-		// back an immutable copy makes the result type depend on the argument.
 		return [self isKindOfClass:NSMutableDictionary.class] ? [self mutableCopy] : [self copy];
 	}
 	
@@ -201,11 +197,9 @@
 	}
 	
 	if (!otherDictionary.count) {
-		// Match the mutability the full path returns; an early exit that always hands
-		// back an immutable copy makes the result type depend on the argument.
 		return [self isKindOfClass:NSMutableDictionary.class] ? [self mutableCopy] : [self copy];
 	}
-	
+
 	NSMutableDictionary *mergedDict = [self mutableCopy];
 	[mergedDict mergeEntriesFromDictionary:otherDictionary];
 	
@@ -227,7 +221,6 @@
 	objc_setAssociatedObject(self, @selector(isIndexedSubscriptNumeric), @(isNumeric), OBJC_ASSOCIATION_RETAIN);
 }
 
-// or String if NO
 - (BOOL)isIndexedSubscriptNumeric {
 	NSNumber *value = objc_getAssociatedObject(self, @selector(isIndexedSubscriptNumeric));
 	__block BOOL useNumeric = NO;
@@ -247,7 +240,6 @@
 				}
 			}
 		}];
-		// If nothing is available then default to using Numeric
 		if (!useNumeric && !useString) {
 			useNumeric = YES;
 		}
@@ -309,7 +301,7 @@
 
 
 /*!
-	@method     -mergeEntriesFromDictionary
+	@method     -mergeEntriesFromDictionary:
 	@abstract   This merges entries of one dictionary into another without overwriting existing entries.
 	@param      otherDictionary		The dictionary to merge.
 	@discussion Unlike `addEntriesFromDictionary` this does not overwrite existing entries in
@@ -337,8 +329,9 @@
 	@abstract   Recursively merges another dictionary in, descending into matching nested dictionaries.
 	@param      otherDictionary		The dictionary to merge.
 	@discussion Like `mergeEntriesFromDictionary` (existing keys are kept, not overwritten), but where
-				both sides hold a dictionary for the same key it recurses into it. Uses the default
-				combine flags; pass `flags:` to control mutable-copying of nested collections.
+				both sides hold a dictionary for the same key it recurses into it. An immutable nested
+				dictionary in the receiver is replaced by its mutable copy before the descent. Uses the
+				default combine flags; pass `flags:` to control mutable-copying of added values.
  */
 - (void)mergeEntriesFromDictionaryRecursive:(NSDictionary *)otherDictionary
 {
@@ -351,8 +344,8 @@
 	@param      otherDictionary		The dictionary to merge.
 	@param		combineFlags		Controls mutable-copying of nested collections (see BEDictionaryCombineFlags).
 	@discussion Existing keys are kept; matching nested dictionaries are merged recursively. The
-				`BEDictionary…MutableCopy`/`…MutableCollectionCopy` flags govern whether nested
-				collections are mutable-copied rather than shared by reference.
+				`BEDictionary…MutableCopy`/`…MutableCollectionCopy` flags govern whether added values
+				are mutable-copied rather than shared by reference.
  */
 - (void)mergeEntriesFromDictionaryRecursive:(NSDictionary *)otherDictionary flags:(BEDictionaryCombineFlags)combineFlags
 {
@@ -364,9 +357,11 @@
 	@method     -addEntriesFromDictionaryRecursive:
 	@abstract   Recursively adds another dictionary in (existing keys overwritten), descending into nested dictionaries.
 	@param      otherDictionary		The dictionary to add.
-	@discussion Like `addEntriesFromDictionary` (existing keys ARE overwritten), but where both sides
-				hold a dictionary for the same key it recurses instead of replacing wholesale. Uses the
-				default combine flags; pass `flags:` to control mutable-copying of nested collections.
+	@discussion Like `addEntriesFromDictionary` (existing keys are overwritten), but where both sides
+				hold a dictionary for the same key it recurses instead of replacing wholesale. An
+				immutable nested dictionary in the receiver is replaced by its mutable copy before the
+				descent. Uses the default combine flags; pass `flags:` to control mutable-copying of
+				added values.
  */
 - (void)addEntriesFromDictionaryRecursive:(NSDictionary *)otherDictionary
 {
@@ -379,8 +374,8 @@
 	@param      otherDictionary		The dictionary to add.
  	@param		combineFlags		Controls mutable-copying of nested collections (see BEDictionaryCombineFlags).
 	@discussion Existing keys are overwritten; matching nested dictionaries are merged recursively. The
-				`BEDictionary…MutableCopy`/`…MutableCollectionCopy` flags govern whether nested
-				collections are mutable-copied rather than shared by reference.
+				`BEDictionary…MutableCopy`/`…MutableCollectionCopy` flags govern whether added values
+				are mutable-copied rather than shared by reference.
  */
 - (void)addEntriesFromDictionaryRecursive:(NSDictionary *)otherDictionary flags:(BEDictionaryCombineFlags)combineFlags
 {
@@ -390,27 +385,26 @@
 - (void)combineEntriesFromDictionaryRecursive:(NSDictionary *)otherDictionary flags:(BEDictionaryCombineFlags)combineFlags
 {
 	BOOL overwrite = !(combineFlags & BEDictionaryMergeEntriesFlag);
-	BOOL selfMutableCollection = combineFlags & BEDictionarySelfMutableCollectionFlag;
 	BOOL mutableCollectionCopy = combineFlags & BEDictionaryMutableCollectionCopyFlag;
 	BOOL mutableCopy = combineFlags & BEDictionaryMutableCopyFlag;
 	
 	[otherDictionary enumerateKeysAndObjectsUsingBlock:^(id key, id obj, BOOL *stop) {
 		if ([obj isKindOfClass:[NSDictionary class]]) {
 			NSDictionary *nestedDict = [self objectForKey:key];
-			if ([nestedDict isKindOfClass:NSMutableDictionary.class]) {
+			if ([nestedDict isKindOfClass:NSDictionary.class]) {
+				if (![nestedDict isKindOfClass:NSMutableDictionary.class]) {
+					nestedDict = nestedDict.mutableCopy;
+					[self setObject:nestedDict forKey:key];
+				}
 				[(NSMutableDictionary*)nestedDict combineEntriesFromDictionaryRecursive:obj flags:combineFlags];
-			} else if (selfMutableCollection && [nestedDict isKindOfClass:NSDictionary.class]) {
-				nestedDict = nestedDict.mutableCopy;
-				[self setObject:nestedDict forKey:key];
-				[(NSMutableDictionary*)nestedDict combineEntriesFromDictionaryRecursive:obj flags:combineFlags];
-			} else if (overwrite || ![self objectForKey:key]) {
+			} else if (overwrite || !nestedDict) {
 				if ((mutableCopy && [obj conformsToProtocol:@protocol(NSMutableCopying)]) ||
 				 	(mutableCollectionCopy && [obj conformsToProtocol:@protocol(BECollectionAbstract)])) {
 					obj = [obj mutableCopy];
 				}
 				[self setObject:obj forKey:key];
 			}
-		} else if(overwrite || ![self objectForKey:key]) {	//if adding/replacing or not a key in self
+		} else if(overwrite || ![self objectForKey:key]) {
 			if ((mutableCopy && [obj conformsToProtocol:@protocol(NSMutableCopying)]) ||
 				(mutableCollectionCopy && [obj conformsToProtocol:@protocol(BECollectionAbstract)])) {
 				obj = [obj mutableCopy];

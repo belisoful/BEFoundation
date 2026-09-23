@@ -1,6 +1,6 @@
 # ``FxTime``
 
-An Objective-C wrapper for CoreMedia's CMTime structure providing convenient time manipulation and arithmetic operations.
+An Objective-C wrapper for CoreMedia's CMTime structure providing time manipulation and arithmetic operations.
 
 ```objc
 #import <BEFoundation/FxTime.h>
@@ -8,7 +8,7 @@ An Objective-C wrapper for CoreMedia's CMTime structure providing convenient tim
 
 ## Overview
 
-[FxTime](doc:FxTime) encapsulates CoreMedia's `CMTime` structure in an Objective-C object, providing a more convenient and object-oriented interface for time-based operations in media applications.
+[FxTime](doc:FxTime) encapsulates CoreMedia's `CMTime` structure in an Objective-C object, providing an object-oriented interface for time-based operations in media applications.
 
 ## Usage
 
@@ -134,4 +134,4 @@ CMTime absTime = negative.absoluteValueTime;
 
 ## See Also
 
-- [NSDateFormatterRFC3339](doc:NSDateFormatterRFC3339)
+- [Time and Dates](doc:TimeAndDates)

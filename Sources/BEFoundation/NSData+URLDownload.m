@@ -13,6 +13,9 @@
 
 static NSURLSessionConfiguration *s_defaultSessionConfiguration = nil;
 
+// The Content-Length header is untrusted input; the buffer grows past this hint on demand.
+static const int64_t BEDataDownloadMaximumCapacityHint = 16 * 1024 * 1024;
+
 @interface NSData (URLDownload_Internal)
 @property (nullable, nonatomic) BEDataDownloadHandler *downloadHandler;
 @end
@@ -141,7 +144,6 @@ static NSURLSessionConfiguration *s_defaultSessionConfiguration = nil;
 		[delegate downloadDataComplete:(_data ?: [NSData data]) urlResponse:task.response];
 	}
 	
-	// Handle allowBothCompletions: write data to temp file
 	if (self.allowBothCompletions) {
 		NSURL *tempDirectoryUrl = [NSURL fileURLWithPath:NSTemporaryDirectory()];
 		NSUUID *fileUUID = [NSUUID UUID];
@@ -175,7 +177,6 @@ static NSURLSessionConfiguration *s_defaultSessionConfiguration = nil;
 			}
 		}
 		
-		// Report any write errors as auxiliary errors
 		if (writeError) {
 			_hasError = YES;
 			_error = writeError;
@@ -214,17 +215,16 @@ static NSURLSessionConfiguration *s_defaultSessionConfiguration = nil;
 	BOOL unknownExpectedLength = NO;
 	int64_t expectedLength = dataTask.response.expectedContentLength;
 	
-	if (expectedLength == NSURLSessionTransferSizeUnknown) {
+	if (expectedLength < 0) {
 		unknownExpectedLength = YES;
 		expectedLength = 1024 * 10; // Initial capacity estimate
 	}
-	
+
 	if (!_receivedData) {
-		_receivedData = [[NSMutableData alloc] initWithCapacity:(NSUInteger)expectedLength];
+		_receivedData = [[NSMutableData alloc] initWithCapacity:(NSUInteger)MIN(expectedLength, BEDataDownloadMaximumCapacityHint)];
 	}
 	[_receivedData appendData:data];
 	
-	// Report progress
 	if (_receivedData.length > 0) {
 		if (unknownExpectedLength) {
 			expectedLength = -1; // Signal unknown length to callbacks
@@ -266,7 +266,6 @@ static NSURLSessionConfiguration *s_defaultSessionConfiguration = nil;
 		_data = [NSData dataWithContentsOfURL:location];
 	}
 
-	// File download success callback
 	if (self.tempCompletionBlock) {
 		self.tempCompletionBlock(location, downloadTask.response);
 	}
@@ -275,7 +274,6 @@ static NSURLSessionConfiguration *s_defaultSessionConfiguration = nil;
 		[delegate downloadFileComplete:location urlResponse:downloadTask.response];
 	}
 
-	// Handle allowBothCompletions: deliver the bytes read above
 	if (self.allowBothCompletions) {
 		if (deliversData) {
 			if (_data) {
@@ -423,8 +421,7 @@ static NSURLSessionConfiguration *s_defaultSessionConfiguration = nil;
 	NSURLSessionDataTask *task = [session dataTaskWithURL:url];
 	handler.task = task;
 
-	// Note: receivedData will be created lazily when data arrives
-	// We don't need to set the handler association here since receivedData doesn't exist yet
+	// receivedData is created lazily when data arrives, so there is no handler association to set yet.
 
 	if (!handler.delayResume) {
 		[task resume];
@@ -496,7 +493,6 @@ static NSURLSessionConfiguration *s_defaultSessionConfiguration = nil;
 	NSURLSessionDownloadTask *task = [session downloadTaskWithURL:url];
 	handler.task = task;
 
-	// Note: receivedData is not used for download tasks
 
 	if (!handler.delayResume) {
 		[task resume];

@@ -3,7 +3,7 @@
  @copyright	 -© 2025 Delicense - @belisoful. All rights released.
  @date       2025-11-11
  @author     belisoful@icloud.com
- @abstract   NSData category for convenient asynchronous downloading from URLs.
+ @abstract   NSData category for asynchronous downloading from URLs.
  @discussion This category provides class methods for initiating asynchronous network data
 			 and file downloads using `NSURLSession`. Instead of returning the downloaded data
 			 (which is impossible for an async method), these methods return a public
@@ -150,9 +150,9 @@ typedef void(^NSDataErrorBlock)(NSError * _Nonnull error, BOOL auxiliary);
 
 /*!
  @property   allowBothCompletions
- @abstract   When YES, both data and file completion handlers will be called.
- @discussion For data tasks, the data will be written to a temp file and the file completion handler called.
-			 For download tasks, the file will be read into memory and the data completion handler called.
+ @abstract   When YES, both data and file completion handlers are called.
+ @discussion For data tasks, the data is written to a temp file and the file completion handler called.
+			 For download tasks, the file is read into memory and the data completion handler called.
 			 Default is NO.
 
 			 The temp file synthesized for a data task follows the same lifetime contract as a
@@ -223,7 +223,7 @@ typedef void(^NSDataErrorBlock)(NSError * _Nonnull error, BOOL auxiliary);
 /*!
  @method     pause
  @abstract   Suspends the associated session task. The download can be resumed later.
- @discussion Only effective if the task is currently running. Has no effect on completed or cancelled tasks.
+ @discussion Only effective if the task is currently running. Has no effect on completed or canceled tasks.
  */
 - (void)pause;
 
@@ -263,7 +263,7 @@ typedef void(^NSDataErrorBlock)(NSError * _Nonnull error, BOOL auxiliary);
 		NSLog(@"download failed: %@", error);
 	}];
 
-	// File download to a temp location (valid only inside the callback — move it to keep it):
+	// File download to a temp location (valid only inside the callback; move it to keep it):
 	[NSData downloadFileWithURL:url completion:^(NSURL *tempFileLocation, NSURLResponse *response) {
 		[NSFileManager.defaultManager moveItemAtURL:tempFileLocation toURL:finalURL error:NULL];
 	} error:nil];
@@ -299,8 +299,8 @@ typedef void(^NSDataErrorBlock)(NSError * _Nonnull error, BOOL auxiliary);
  @param      errorBlock The block to be executed on failure. May be nil.
  @return     A reference to the @c BEDataDownloadHandler managing the task,
 			 or @c nil if the URL is invalid. The handler can be used to cancel, pause, or resume the task.
- @discussion The download begins immediately unless delayResume is set on the returned handler
-			 before the method returns.
+ @discussion The download starts before this method returns. To control when it starts, create
+			 a BEDataDownloadHandler with delayResume set and pass it to the handler: variant.
  */
 + (nullable BEDataDownloadHandler *)dataDownloadWithContentsOfURL:(nonnull NSURL *)url
 													   completion:(nonnull NSDataCompletionBlock)completionBlock
@@ -316,7 +316,7 @@ typedef void(^NSDataErrorBlock)(NSError * _Nonnull error, BOOL auxiliary);
  @return     A reference to the @c BEDataDownloadHandler managing the task,
 			 or @c nil if the URL is invalid.
  @discussion The progress block is called periodically as data is received. For unknown content lengths,
-			 totalBytesExpected will be -1.
+			 totalBytesExpected is -1.
  */
 + (nullable BEDataDownloadHandler *)dataDownloadWithContentsOfURL:(nonnull NSURL *)url
 													   completion:(nonnull NSDataCompletionBlock)completionBlock
@@ -327,7 +327,7 @@ typedef void(^NSDataErrorBlock)(NSError * _Nonnull error, BOOL auxiliary);
  @method     dataDownloadWithContentsOfURL:delegate:
  @abstract   Asynchronously downloads content from a URL as NSData, using a delegate.
  @param      url The URL to download data from.
- @param      delegate The object that will receive the download events. May be nil.
+ @param      delegate The object that receives the download events. May be nil.
  @return     A reference to the @c BEDataDownloadHandler managing the task,
 			 or @c nil if the URL is invalid.
  @discussion Use this method when you prefer delegate callbacks over blocks.
@@ -339,7 +339,7 @@ typedef void(^NSDataErrorBlock)(NSError * _Nonnull error, BOOL auxiliary);
  @method     dataDownloadWithContentsOfURL:handler:
  @abstract   Starts an `NSURLSessionDataTask` using a pre-configured handler.
  @param      url The URL to download data from.
- @param      handler The pre-configured @c BEDataDownloadHandler instance. May be nil.
+ @param      handler The pre-configured @c BEDataDownloadHandler instance. A nil handler returns @c nil.
  @return     The created @c NSURLSessionDataTask, which is also set on the handler,
 			 or @c nil if the URL or handler is invalid.
  @discussion This is a lower-level method for advanced use cases where you want to configure
@@ -386,7 +386,7 @@ typedef void(^NSDataErrorBlock)(NSError * _Nonnull error, BOOL auxiliary);
  @method     downloadFileWithURL:delegate:
  @abstract   Asynchronously downloads content from a URL to a temporary file, using a delegate.
  @param      url The URL to download the file from.
- @param      delegate The object that will receive the download events. May be nil.
+ @param      delegate The object that receives the download events. May be nil.
  @return     A reference to the @c BEDataDownloadHandler managing the task,
 			 or @c nil if the URL is invalid.
  @discussion Use this method when you prefer delegate callbacks over blocks.
@@ -398,7 +398,7 @@ typedef void(^NSDataErrorBlock)(NSError * _Nonnull error, BOOL auxiliary);
  @method     downloadFileWithURL:handler:
  @abstract   Starts an `NSURLSessionDownloadTask` using a pre-configured handler.
  @param      url The URL to download data from.
- @param      handler The pre-configured @c BEDataDownloadHandler instance. May be nil.
+ @param      handler The pre-configured @c BEDataDownloadHandler instance. A nil handler returns @c nil.
  @return     The created @c NSURLSessionDownloadTask, which is also set on the handler,
 			 or @c nil if the URL or handler is invalid.
  @discussion This is a lower-level method for advanced use cases where you want to configure

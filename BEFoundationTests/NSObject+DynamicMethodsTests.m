@@ -7,6 +7,7 @@
 
 #import <XCTest/XCTest.h>
 #import <BEFoundation/NSObject+DynamicMethods.h>
+#import <objc/message.h>
 #import <simd/simd.h>
 #if defined(__arm64__) || defined(__aarch64__)
 #import <arm_neon.h>		// arm-only; x86_64 slice cannot import the NEON builtin module
@@ -320,10 +321,31 @@ typedef struct { uint8_t b[320]; } DMBig320;
 @implementation NSDynamicMethodsTestObject
 @end
 
+// A separate NS-prefixed fixture so the blocked-enable test does not share state with
+// testAllowNSDynamicMethods_Validation.
+@interface NSBlockedDynamicMethodsTestObject : NSObject
+@end
+@implementation NSBlockedDynamicMethodsTestObject
+@end
+
+// A subclass beneath an enabled parent whose respondsToSelector: override never reaches the
+// inherited hook. class_respondsToSelector consults the method lists only.
+@interface BEHookParent : NSObject @end
+@implementation BEHookParent
++ (void)load { [self enableDynamicMethods]; }
+@end
+@interface BEHookOverridingChild : BEHookParent @end
+@implementation BEHookOverridingChild
+- (BOOL)respondsToSelector:(SEL)aSelector
+{
+	return class_respondsToSelector(object_getClass(self), aSelector);
+}
+@end
+
 
 
 // ---------------------------------------------------------------------------
-// Regression fixtures: object-added registrations must survive a class sync
+// Fixtures: object-added registrations must survive a class sync
 // ---------------------------------------------------------------------------
 @protocol BESyncObjProto <NSObject>
 @optional
@@ -370,6 +392,46 @@ typedef struct { uint8_t b[320]; } DMBig320;
 @end
 
 
+// ---------------------------------------------------------------------------
+// Fixtures: protocol re-registration with another class; concurrent chain dispatch; dispatch arity
+// ---------------------------------------------------------------------------
+@protocol BEReplaceImplProto <NSObject>
+- (NSString *)whichImpl;
+@end
+@interface BEReplaceImplOne : NSObject <BEReplaceImplProto> @end
+@implementation BEReplaceImplOne
+- (NSString *)whichImpl { return @"one"; }
+@end
+@interface BEReplaceImplTwo : NSObject <BEReplaceImplProto> @end
+@implementation BEReplaceImplTwo
+- (NSString *)whichImpl { return @"two"; }
+@end
+@interface BEReplaceHost : NSObject @end
+@implementation BEReplaceHost
++ (void)load { [self enableDynamicMethods]; }
+@end
+
+@protocol BEStressProto <NSObject>
+@optional
+- (NSInteger)stressProtocolValue;
+@end
+@interface BEStressHandler : NSObject <BEStressProto> @end
+@implementation BEStressHandler
+- (NSInteger)stressProtocolValue { return 7; }
+@end
+@interface BEStressParent : NSObject @end
+@implementation BEStressParent
++ (void)load { [self enableDynamicMethods]; }
+@end
+@interface BEStressChild : BEStressParent @end
+@implementation BEStressChild @end
+
+@interface BEArityHost : NSObject @end
+@implementation BEArityHost
++ (void)load { [self enableDynamicMethods]; }
+@end
+
+
 @interface NSDynamicMethodsTests : XCTestCase
 
 @end
@@ -378,11 +440,9 @@ typedef struct { uint8_t b[320]; } DMBig320;
 @implementation NSDynamicMethodsTests
 
 - (void)setUp {
-    // Put setup code here. This method is called before the invocation of each test method in the class.
 }
 
 - (void)tearDown {
-    // Put teardown code here. This method is called after the invocation of each test method in the class.
 	[BasicNonDynamicObject resetDynamicMethods];
 }
 
@@ -497,36 +557,29 @@ typedef struct { uint8_t b[320]; } DMBig320;
 {
 	[BasicNonDynamicObject reset];
 	
-	//Default
 	XCTAssertEqual(BasicNonDynamicObject.isDynamicMethodsEnabled, DMInheritNone);
 	XCTAssertEqual(SubBasicNonDynamicObject.isDynamicMethodsEnabled, DMInheritNone);
 	
-	//Enabled
 	[BasicNonDynamicObject enableDynamicMethods];
 	XCTAssertEqual(BasicNonDynamicObject.isDynamicMethodsEnabled, DMSelfEnabled);
 	XCTAssertEqual(SubBasicNonDynamicObject.isDynamicMethodsEnabled, DMInheritEnabled);
 	
-	//Disabled
 	[BasicNonDynamicObject disableDynamicMethods];
 	XCTAssertEqual(BasicNonDynamicObject.isDynamicMethodsEnabled, DMSelfDisabled);
 	XCTAssertEqual(SubBasicNonDynamicObject.isDynamicMethodsEnabled, DMInheritDisabled);
 	
-	//Reset
 	[BasicNonDynamicObject resetDynamicMethods];
 	XCTAssertEqual(BasicNonDynamicObject.isDynamicMethodsEnabled, DMInheritNone);
 	XCTAssertEqual(SubBasicNonDynamicObject.isDynamicMethodsEnabled, DMInheritNone);
 	
-	//Disabled
 	[BasicNonDynamicObject disableDynamicMethods];
 	XCTAssertEqual(BasicNonDynamicObject.isDynamicMethodsEnabled, DMSelfDisabled);
 	XCTAssertEqual(SubBasicNonDynamicObject.isDynamicMethodsEnabled, DMInheritDisabled);
 	
-	//Enabled
 	[BasicNonDynamicObject enableDynamicMethods];
 	XCTAssertEqual(BasicNonDynamicObject.isDynamicMethodsEnabled, DMSelfEnabled);
 	XCTAssertEqual(SubBasicNonDynamicObject.isDynamicMethodsEnabled, DMInheritEnabled);
 	
-	//Reset
 	[BasicNonDynamicObject resetDynamicMethods];
 	XCTAssertEqual(BasicNonDynamicObject.isDynamicMethodsEnabled, DMInheritNone);
 	XCTAssertEqual(SubBasicNonDynamicObject.isDynamicMethodsEnabled, DMInheritNone);
@@ -570,11 +623,11 @@ typedef struct { uint8_t b[320]; } DMBig320;
 	
 	XCTAssertFalse(NSDynamicMethodsTestObject.allowNSDynamicMethods, @"Default allow NS Dynamic Methods is false.");
 	XCTAssertEqual(NSDynamicMethodsTestObject.isDynamicMethodsEnabled, DMInheritNone, @"Default allow NS Dynamic Methods is false.");
-	XCTAssertTrue([NSDynamicMethodsTestObject.class enableDynamicMethods], @"NS Classes cannot enable dynamic methods");
+	XCTAssertFalse([NSDynamicMethodsTestObject.class enableDynamicMethods], @"NS Classes cannot enable dynamic methods");
 	XCTAssertEqual(NSDynamicMethodsTestObject.isDynamicMethodsEnabled, DMInheritNone, @"Default allow NS Dynamic Methods is false.");
-	
+
 	NSDynamicMethodsTestObject.allowNSDynamicMethods = YES;
-	XCTAssertFalse([NSDynamicMethodsTestObject.class enableDynamicMethods], @"NS Classes can enable dynamic methods, when allowed");
+	XCTAssertTrue([NSDynamicMethodsTestObject.class enableDynamicMethods], @"NS Classes can enable dynamic methods, when allowed");
 	XCTAssertEqual(NSDynamicMethodsTestObject.isDynamicMethodsEnabled, DMSelfEnabled, @"NS allowed classes can enable dynamic methods.");
 	
 	NSDynamicMethodsTestObject.allowNSDynamicMethods = NO;
@@ -583,7 +636,6 @@ typedef struct { uint8_t b[320]; } DMBig320;
 	NSDynamicMethodsTestObject.allowNSDynamicMethods = YES;
 	XCTAssertEqual(NSDynamicMethodsTestObject.isDynamicMethodsEnabled, DMSelfEnabled, @"NS allowed classes can enable dynamic methods.");
 
-	//Reset
 	[NSDynamicMethodsTestObject resetDynamicMethods];
 	NSDynamicMethodsTestObject.allowNSDynamicMethods = NO;
 	XCTAssertEqual(NSDynamicMethodsTestObject.isDynamicMethodsEnabled, DMInheritNone);
@@ -593,6 +645,39 @@ typedef struct { uint8_t b[320]; } DMBig320;
 {
 	XCTAssertFalse([NSObject enableDynamicMethods], @"Cannot enable dynamicMethods on NSObject.");
 	XCTAssertFalse([object_getClass(BasicNonDynamicObject.class) enableDynamicMethods], @"Meta Class cannot enable dynamic Methods");
+
+	XCTAssertFalse(NSBlockedDynamicMethodsTestObject.allowNSDynamicMethods);
+	XCTAssertFalse([NSBlockedDynamicMethodsTestObject enableDynamicMethods], @"A disallowed NS class reports the blocked enable.");
+	XCTAssertEqual(NSBlockedDynamicMethodsTestObject.isDynamicMethodsEnabled, DMInheritNone);
+	XCTAssertFalse([NSBlockedDynamicMethodsTestObject isSelfDynamicMethodsEnabled]);
+
+	NSBlockedDynamicMethodsTestObject.allowNSDynamicMethods = YES;
+	XCTAssertEqual(NSBlockedDynamicMethodsTestObject.isDynamicMethodsEnabled, DMInheritNone, @"A blocked enable stores no state.");
+	XCTAssertTrue([NSBlockedDynamicMethodsTestObject enableDynamicMethods]);
+	XCTAssertEqual(NSBlockedDynamicMethodsTestObject.isDynamicMethodsEnabled, DMSelfEnabled);
+
+	[NSBlockedDynamicMethodsTestObject resetDynamicMethods];
+	NSBlockedDynamicMethodsTestObject.allowNSDynamicMethods = NO;
+}
+
+- (void)testEnableDynamicMethods_SubclassOverridingHookBeneathEnabledParent
+{
+	SEL selector = NSSelectorFromString(@"hookOverrideDynamicValue");
+	XCTAssertTrue([BEHookParent addClassMethod:selector block:^NSInteger(id _self) { return 21; }]);
+	BEHookOverridingChild *child = BEHookOverridingChild.new;
+
+	XCTAssertEqual(BEHookOverridingChild.isDynamicMethodsEnabled, DMInheritEnabled);
+	XCTAssertTrue([BEHookParent.new respondsToSelector:selector]);
+	XCTAssertFalse([child respondsToSelector:selector], @"The override bypasses the inherited hook.");
+
+	XCTAssertTrue([BEHookOverridingChild enableDynamicMethods]);
+	XCTAssertTrue([child respondsToSelector:selector]);
+	XCTAssertTrue([child respondsToSelector:@selector(description)], @"The override still answers for ordinary methods.");
+	XCTAssertFalse([child respondsToSelector:NSSelectorFromString(@"hookOverrideMissing")]);
+	XCTAssertEqual(((NSInteger (*)(id, SEL))objc_msgSend)(child, selector), 21);
+
+	[BEHookParent removeClassMethod:selector];
+	XCTAssertFalse([child respondsToSelector:selector]);
 }
 
 - (void)testDisableDynamicMethods_InvalidCases
@@ -658,7 +743,6 @@ typedef struct { uint8_t b[320]; } DMBig320;
 	XCTAssertNil([SubBasicNonDynamicObject.class instanceMethodSignatureForSelector:classSelector]);
 	
 	
-	//Set the Object, Instance, and class methods.
 	__block NSInteger objectReturnValue = 10;
 	__block NSInteger instanceReturnValue = 100;
 	__block NSInteger classReturnValue = 1000;
@@ -668,7 +752,6 @@ typedef struct { uint8_t b[320]; } DMBig320;
 	[ndObject.class addObjectMethod:classSelector block:^NSInteger(id _self) {return classReturnValue;}];
 	
 	
-	//Check the methods
 	XCTAssertTrue([ndObject respondsToSelector:objectSelector]);
 	XCTAssertTrue([ndObject respondsToSelector:instanceSelector]);
 	XCTAssertTrue([ndObject.class respondsToSelector:classSelector]);
@@ -699,7 +782,6 @@ typedef struct { uint8_t b[320]; } DMBig320;
 	XCTAssertEqual(classResult, classReturnValue);
 	
 	
-	//Test Sub Object for Superclass dynamic methods
 	objectReturnValue = 11;
 	instanceReturnValue = 101;
 	classReturnValue = 1001;
@@ -722,8 +804,6 @@ typedef struct { uint8_t b[320]; } DMBig320;
 	XCTAssertEqual(classSubResult, classSubResult);
 	
 	
-	//Turn off Dynamic Methods for our regular object
-	//	test regular object and subclass object
 	[BasicNonDynamicObject disableDynamicMethods];
 	
 	XCTAssertThrowsSpecificNamed([ndObject objectProperty], NSException, NSInvalidArgumentException);
@@ -750,8 +830,6 @@ typedef struct { uint8_t b[320]; } DMBig320;
 	XCTAssertNotNil([BasicNonDynamicObject instanceMethodSignatureForSelector:objectSelector]);
 	
 	
-	//Turn on dynamic methods for our regular object
-	//	test regular object and subclass object
 	[BasicNonDynamicObject enableDynamicMethods];
 	
 	objectReturnValue = 12;
@@ -807,7 +885,6 @@ typedef struct { uint8_t b[320]; } DMBig320;
 	XCTAssertFalse([SubBasicNonDynamicObject instancesRespondToSelector:instanceSelector]);
 	XCTAssertFalse([SubBasicNonDynamicObject respondsToSelector:classSelector]);
 	
-	//reset
 	[BasicNonDynamicObject resetDynamicMethods];
 }
 
@@ -822,7 +899,6 @@ typedef struct { uint8_t b[320]; } DMBig320;
 	XCTAssertTrue([ndObject addObjectMethod:objectSelector block:^NSInteger(id _self) { return 11; }]);
 	XCTAssertEqual([ndObject objectProperty], 11);
 
-	// Replace the implementation on the same selector.
 	XCTAssertTrue([ndObject addObjectMethod:objectSelector block:^NSInteger(id _self) { return 22; }]);
 	XCTAssertEqual([ndObject objectProperty], 22, @"the replacement block wins");
 
@@ -922,7 +998,6 @@ typedef struct { uint8_t b[320]; } DMBig320;
 	XCTAssertEqual(SubBasicNonDynamicObject.isDynamicMethodsEnabled, DMInheritEnabled);
 	
 	
-	//Set the Object, Instance, and class methods.
 	__block NSInteger objectReturnValue = 1;
 	__block NSInteger instanceReturnValue = 100;
 	__block NSInteger classReturnValue = 1000;
@@ -931,7 +1006,6 @@ typedef struct { uint8_t b[320]; } DMBig320;
 	XCTAssertTrue([ndObject.class addClassMethod:instanceSelector block:^NSInteger(id _self) {return instanceReturnValue;}]);
 	XCTAssertTrue([ndObject.class addObjectMethod:classSelector block:^NSInteger(id _self) {return classReturnValue;}]);
 	
-	// Add the same methods to subclass to override
 	XCTAssertTrue([ndSubObject.class addClassMethod:instanceSelector block:^NSInteger(id _self) {return instanceReturnValue * 2;}]);
 	XCTAssertTrue([ndSubObject.class addObjectMethod:classSelector block:^NSInteger(id _self) {return classReturnValue * 2;}]);
 	
@@ -961,7 +1035,6 @@ typedef struct { uint8_t b[320]; } DMBig320;
 	XCTAssertTrue([SubBasicNonDynamicObject respondsToSelector:classSelector]);
 	
 	
-	// objectSelector to subclass
 	[ndSubObject addObjectMethod:objectSelector block:^NSInteger(id _self) {return objectReturnValue * 2;}];
 	
 	XCTAssertEqual([ndSubObject objectProperty], objectReturnValue * 2);
@@ -971,7 +1044,6 @@ typedef struct { uint8_t b[320]; } DMBig320;
 	XCTAssertFalse([SubBasicNonDynamicObject instancesRespondToSelector:objectSelector]);
 	XCTAssertNotNil([SubBasicNonDynamicObject instanceMethodSignatureForSelector:objectSelector], @"Protocols return their methods.");
 	
-	// Turn on subclass dynamic methods with super class dynamic methods
 	[SubBasicNonDynamicObject enableDynamicMethods];
 	XCTAssertEqual(BasicNonDynamicObject.isDynamicMethodsEnabled, DMSelfEnabled);
 	XCTAssertEqual(SubBasicNonDynamicObject.isDynamicMethodsEnabled, DMSelfEnabled);
@@ -1002,7 +1074,6 @@ typedef struct { uint8_t b[320]; } DMBig320;
 	XCTAssertTrue([SubBasicNonDynamicObject respondsToSelector:classSelector]);
 	
 	
-	// turn off subclass dynamic methods with super class dynamic methods
 	[SubBasicNonDynamicObject disableDynamicMethods];
 	XCTAssertEqual(SubBasicNonDynamicObject.isDynamicMethodsEnabled, DMSelfDisabled);
 	objectReturnValue = 3;
@@ -1030,7 +1101,6 @@ typedef struct { uint8_t b[320]; } DMBig320;
 	XCTAssertTrue([SubBasicNonDynamicObject respondsToSelector:classSelector]);
 	
 	
-	// Turn on subclass dynamic methods with super class dynamic methods
 	[SubBasicNonDynamicObject enableDynamicMethods];
 	XCTAssertEqual(SubBasicNonDynamicObject.isDynamicMethodsEnabled, DMSelfEnabled);
 	objectReturnValue = 4;
@@ -1058,7 +1128,6 @@ typedef struct { uint8_t b[320]; } DMBig320;
 	XCTAssertTrue([SubBasicNonDynamicObject respondsToSelector:classSelector]);
 	
 	
-	// subclass DMSelfEnabled to DMInheritEnabled
 	[SubBasicNonDynamicObject resetDynamicMethods];
 	XCTAssertEqual(SubBasicNonDynamicObject.isDynamicMethodsEnabled, DMInheritEnabled);
 	objectReturnValue = 5;
@@ -1086,7 +1155,6 @@ typedef struct { uint8_t b[320]; } DMBig320;
 	XCTAssertTrue([SubBasicNonDynamicObject instancesRespondToSelector:instanceSelector]);
 	XCTAssertTrue([SubBasicNonDynamicObject respondsToSelector:classSelector]);
 	
-	// Turn off subclass dynamic methods with super class dynamic methods
 	[SubBasicNonDynamicObject disableDynamicMethods];
 	objectReturnValue = 6;
 	instanceReturnValue = 106;
@@ -1114,7 +1182,6 @@ typedef struct { uint8_t b[320]; } DMBig320;
 	XCTAssertTrue([SubBasicNonDynamicObject respondsToSelector:classSelector]);
 	
 	
-	// subclass DMSelfDisabled to DMInheritEnabled
 	[SubBasicNonDynamicObject resetDynamicMethods];
 	objectReturnValue = 7;
 	instanceReturnValue = 107;
@@ -1167,7 +1234,6 @@ typedef struct { uint8_t b[320]; } DMBig320;
 	XCTAssertEqual(SubBasicNonDynamicObject.isDynamicMethodsEnabled, DMInheritDisabled);
 	
 	
-	//Set the Object, Instance, and class methods.
 	__block NSInteger objectReturnValue = 1;
 	__block NSInteger instanceReturnValue = 100;
 	__block NSInteger classReturnValue = 1000;
@@ -1176,7 +1242,6 @@ typedef struct { uint8_t b[320]; } DMBig320;
 	[ndObject.class addClassMethod:instanceSelector block:^NSInteger(id _self) {return instanceReturnValue;}];
 	[ndObject.class addObjectMethod:classSelector block:^NSInteger(id _self) {return classReturnValue;}];
 	
-	// Add the same methods to subclass to override
 	[ndSubObject addObjectMethod:objectSelector block:^NSInteger(id _self) {return objectReturnValue * 2;}];
 	[ndSubObject.class addClassMethod:instanceSelector block:^NSInteger(id _self) {return instanceReturnValue * 2;}];
 	[ndSubObject.class addObjectMethod:classSelector block:^NSInteger(id _self) {return classReturnValue * 2;}];
@@ -1193,7 +1258,6 @@ typedef struct { uint8_t b[320]; } DMBig320;
 	XCTAssertThrowsSpecificNamed([ndSubObject.class classProperty], NSException, NSInvalidArgumentException);
 	
 	
-	// Turn on subclass dynamic methods with super class dynamic methods
 	[SubBasicNonDynamicObject enableDynamicMethods];
 	XCTAssertEqual(BasicNonDynamicObject.isDynamicMethodsEnabled, DMSelfDisabled);
 	XCTAssertEqual(SubBasicNonDynamicObject.isDynamicMethodsEnabled, DMSelfEnabled);
@@ -1224,7 +1288,6 @@ typedef struct { uint8_t b[320]; } DMBig320;
 	XCTAssertEqual([ndSubObject.class classProperty], classReturnValue * 2);
 	
 	
-	// turn off subclass dynamic methods with super class dynamic methods
 	[SubBasicNonDynamicObject disableDynamicMethods];
 	XCTAssertEqual(SubBasicNonDynamicObject.isDynamicMethodsEnabled, DMSelfDisabled);
 	objectReturnValue = 3;
@@ -1252,7 +1315,6 @@ typedef struct { uint8_t b[320]; } DMBig320;
 	XCTAssertFalse([SubBasicNonDynamicObject respondsToSelector:classSelector]);
 	
 	
-	// Turn on subclass dynamic methods with super class dynamic methods
 	[SubBasicNonDynamicObject enableDynamicMethods];
 	XCTAssertEqual(SubBasicNonDynamicObject.isDynamicMethodsEnabled, DMSelfEnabled);
 	objectReturnValue = 4;
@@ -1280,7 +1342,6 @@ typedef struct { uint8_t b[320]; } DMBig320;
 	
 	
 	
-	// subclass DMSelfEnabled to DMInheritEnabled
 	[SubBasicNonDynamicObject resetDynamicMethods];
 	XCTAssertEqual(SubBasicNonDynamicObject.isDynamicMethodsEnabled, DMInheritDisabled);
 	objectReturnValue = 5;
@@ -1308,7 +1369,6 @@ typedef struct { uint8_t b[320]; } DMBig320;
 	XCTAssertFalse([SubBasicNonDynamicObject respondsToSelector:classSelector]);
 	
 	
-	// Turn off subclass dynamic methods with super class dynamic methods
 	[SubBasicNonDynamicObject disableDynamicMethods];
 	objectReturnValue = 6;
 	instanceReturnValue = 106;
@@ -1335,7 +1395,6 @@ typedef struct { uint8_t b[320]; } DMBig320;
 	XCTAssertFalse([SubBasicNonDynamicObject respondsToSelector:classSelector]);
 	
 	
-	// subclass DMSelfDisabled to DMInheritEnabled
 	[SubBasicNonDynamicObject resetDynamicMethods];
 	objectReturnValue = 7;
 	instanceReturnValue = 107;
@@ -2191,7 +2250,7 @@ typedef union myUnion {
 	[object performSelector:longerSelector withObject:@100 withObject:@100];
 #pragma clang diagnostic pop
 	
-	// Check for lack of signature, shouldn't happen buuuuuut....  (for coverage)
+	// Missing signature: unreachable in practice, covered for completeness.
 	Block_literal blockLiteral = {
 		.isa = &_NSConcreteGlobalBlock,
 		.flags = BLOCK_IS_GLOBAL,  // BLOCK_HAS_SIGNATURE is intentionally omitted
@@ -2898,7 +2957,6 @@ typedef union myUnion {
 	XCTAssertFalse([dObject removeObjectMethod:instanceSelector]);
 	XCTAssertFalse([dObject removeObjectMethod:classSelector]);
 	
-	// remove class object method
 	XCTAssertTrue([dObject.class removeObjectMethod:classSelector]);
 	
 	{	// Object Selector
@@ -2938,7 +2996,6 @@ typedef union myUnion {
 	}
 	
 	
-	// remove instance method
 	XCTAssertTrue([dObject.class removeClassMethod:instanceSelector]);
 	
 	{	// Object Selector
@@ -2980,7 +3037,6 @@ typedef union myUnion {
 	
 	
 	
-	// remove instance method
 	XCTAssertTrue([dObject removeObjectMethod:objectSelector]);
 	
 	{	// Object Selector
@@ -3397,7 +3453,6 @@ typedef union myUnion {
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Warc-performSelector-leaks"
 	
-	// Check an instance
 	NewDynamicObject *dObject = NewDynamicObject.new;
 	[dObject performSelector:selector]; // should error
 	
@@ -3478,17 +3533,192 @@ typedef union myUnion {
 	XCTAssertTrue([BESyncHostLUT addInstanceProtocol:@protocol(BELUTProtoP) withClass:[BELUTImplC class]]);
 	XCTAssertTrue([BESyncHostLUT removeInstanceProtocol:@protocol(BELUTProtoP)]);
 
-	// Re-register the SAME class as a plain forward target (no protocol).
+	// Re-register the same class as a plain forward target (no protocol).
 	XCTAssertTrue([BESyncHostLUT addInstanceForwardClass:[BELUTImplC class]]);
 	BESyncHostLUT *obj = [BESyncHostLUT new];
 	XCTAssertTrue([obj dynamicRespondsToSelector:sel], @"Forward target is active.");
 
-	// This is the operation the stale LUT entry used to block.
 	XCTAssertTrue([BESyncHostLUT removeInstanceForwardClass:[BELUTImplC class]],
 				  @"The forward target must be removable.");
 	BESyncHostLUT *obj2 = [BESyncHostLUT new];
 	XCTAssertFalse([obj2 dynamicRespondsToSelector:sel],
 				   @"After removal the forward target must no longer respond.");
+}
+
+#pragma mark - Regression: replacing a protocol's class must reach already-synced objects
+
+- (void)testInstanceProtocol_replacingImplClassRedirectsSyncedObjects {
+	BEReplaceHost *obj = [BEReplaceHost new];
+	id<BEReplaceImplProto> forwarding = (id<BEReplaceImplProto>)obj;
+
+	XCTAssertTrue([BEReplaceHost addInstanceProtocol:@protocol(BEReplaceImplProto) withClass:[BEReplaceImplOne class]]);
+	XCTAssertEqualObjects([forwarding whichImpl], @"one");
+
+	XCTAssertTrue([BEReplaceHost removeInstanceProtocol:@protocol(BEReplaceImplProto)]);
+	XCTAssertTrue([BEReplaceHost addInstanceProtocol:@protocol(BEReplaceImplProto) withClass:[BEReplaceImplTwo class]]);
+
+	XCTAssertEqualObjects([forwarding whichImpl], @"two",
+						  @"An object synced against the first class must forward to the replacement.");
+
+	XCTAssertTrue([BEReplaceHost removeInstanceProtocol:@protocol(BEReplaceImplProto)]);
+	XCTAssertFalse([obj respondsToSelector:@selector(whichImpl)]);
+}
+
+#pragma mark - Stress: superclass registration concurrent with subclass dispatch
+
+/*!
+ * A registration that lands on the parent between a child's respondsToSelector: and its send is
+ * legitimately reported as an unrecognized selector (NSInvalidArgumentException). Any other
+ * exception, in particular NSGenericException from a collection mutated during enumeration, and
+ * any timeout, is a failure.
+ */
+- (void)testConcurrentParentRegistration_childDispatchNeitherRaisesNorDeadlocks {
+	SEL methodSel = NSSelectorFromString(@"beStressDynamicValue");
+	SEL protoSel = @selector(stressProtocolValue);
+	const NSUInteger iterations = 300;
+	dispatch_group_t group = dispatch_group_create();
+	dispatch_queue_t queue = dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0);
+	NSLock *failureLock = [NSLock new];
+	NSMutableArray<NSString *> *failures = [NSMutableArray array];
+	void (^record)(NSException *) = ^(NSException *exception) {
+		if ([exception.name isEqualToString:NSInvalidArgumentException]) {
+			return;
+		}
+		[failureLock lock];
+		[failures addObject:[NSString stringWithFormat:@"%@: %@", exception.name, exception.reason]];
+		[failureLock unlock];
+	};
+
+	dispatch_group_async(group, queue, ^{
+		for (NSUInteger i = 0; i < iterations; i++) {
+			@try {
+				[BEStressParent addClassMethod:methodSel block:^NSInteger(id _self) { return 1; }];
+				[BEStressParent addInstanceProtocol:@protocol(BEStressProto) withClass:[BEStressHandler class]];
+				[BEStressParent addInstanceForwardClass:[BEReplaceImplOne class]];
+				[BEStressParent removeInstanceForwardClass:[BEReplaceImplOne class]];
+				[BEStressParent removeInstanceProtocol:@protocol(BEStressProto)];
+				[BEStressParent removeClassMethod:methodSel];
+			} @catch (NSException *exception) {
+				record(exception);
+			}
+		}
+	});
+
+	for (int thread = 0; thread < 4; thread++) {
+		dispatch_group_async(group, queue, ^{
+			BEStressChild *child = [BEStressChild new];
+			for (NSUInteger i = 0; i < iterations; i++) {
+				@try {
+					[child respondsToSelector:methodSel];
+					[child methodSignatureForSelector:protoSel];
+					[BEStressChild instancesRespondToSelector:protoSel];
+					[BEStressChild instanceMethodSignatureForSelector:methodSel];
+					[child conformsToProtocol:@protocol(BEStressProto)];
+					[child respondsToSelector:@selector(whichImpl)];
+					if ([child respondsToSelector:protoSel]) {
+						[(id<BEStressProto>)child stressProtocolValue];
+					}
+					NSMethodSignature *signature = [child methodSignatureForSelector:methodSel];
+					if (signature) {
+						NSInvocation *invocation = [NSInvocation invocationWithMethodSignature:signature];
+						invocation.target = child;
+						invocation.selector = methodSel;
+						[invocation invoke];
+					}
+				} @catch (NSException *exception) {
+					record(exception);
+				}
+			}
+		});
+	}
+
+	long timedOut = dispatch_group_wait(group, dispatch_time(DISPATCH_TIME_NOW, 60 * NSEC_PER_SEC));
+	XCTAssertEqual(timedOut, 0, @"Concurrent registration and dispatch did not finish; a lock-order deadlock is likely.");
+	XCTAssertEqual(failures.count, 0, @"Unexpected exceptions: %@", failures);
+
+	if (!timedOut) {
+		[BEStressParent removeClassMethod:methodSel];
+		[BEStressParent removeInstanceProtocol:@protocol(BEStressProto)];
+		[BEStressParent removeInstanceForwardClass:[BEReplaceImplOne class]];
+	}
+}
+
+#pragma mark - Dispatch validates the invocation against the current method record
+
+- (void)testDynamicForwardInvocation_replacedArityIsNotHandled {
+	BEArityHost *obj = [BEArityHost new];
+	SEL sel = NSSelectorFromString(@"beArityProbe:");
+
+	XCTAssertTrue([obj addObjectMethod:sel block:^NSInteger(id _self, SEL _cmd, NSInteger value) { return value + 1; }]);
+	NSMethodSignature *staleSignature = [obj methodSignatureForSelector:sel];
+	XCTAssertNotNil(staleSignature);
+
+	// The record changes arity after the invocation's signature was produced.
+	XCTAssertTrue([obj addObjectMethod:sel block:^NSInteger(id _self, SEL _cmd) { return 99; }]);
+
+	NSInvocation *stale = [NSInvocation invocationWithMethodSignature:staleSignature];
+	stale.target = obj;
+	stale.selector = sel;
+	NSInteger argument = 5;
+	[stale setArgument:&argument atIndex:2];
+	XCTAssertFalse([obj dynamicForwardInvocation:stale], @"A mismatched invocation must not be handled.");
+
+	NSMethodSignature *currentSignature = [obj methodSignatureForSelector:sel];
+	NSInvocation *current = [NSInvocation invocationWithMethodSignature:currentSignature];
+	current.target = obj;
+	current.selector = sel;
+	XCTAssertTrue([obj dynamicForwardInvocation:current]);
+	NSInteger result = 0;
+	[current getReturnValue:&result];
+	XCTAssertEqual(result, 99);
+
+	[obj removeObjectMethod:sel];
+}
+
+- (void)testDynamicForwardInvocation_replacedTypesWithoutCmdIsNotHandled {
+	BEArityHost *obj = [BEArityHost new];
+	SEL sel = NSSelectorFromString(@"beTypeProbe:");
+
+	XCTAssertTrue([obj addObjectMethod:sel block:^NSInteger(id _self, NSInteger value) { return value; }]);
+	NSMethodSignature *staleSignature = [obj methodSignatureForSelector:sel];
+
+	XCTAssertTrue([obj addObjectMethod:sel block:^id(id _self, id value) { return value; }]);
+
+	NSInvocation *stale = [NSInvocation invocationWithMethodSignature:staleSignature];
+	stale.target = obj;
+	stale.selector = sel;
+	NSInteger argument = 5;
+	[stale setArgument:&argument atIndex:2];
+	XCTAssertFalse([obj dynamicForwardInvocation:stale]);
+
+	[obj removeObjectMethod:sel];
+}
+
+- (void)testDynamicClassForwardInvocation_replacedArityIsNotHandled {
+	SEL sel = NSSelectorFromString(@"beClassArityProbe:");
+
+	XCTAssertTrue([BEArityHost addObjectMethod:sel block:^NSInteger(id _self, SEL _cmd, NSInteger value) { return value + 1; }]);
+	NSMethodSignature *staleSignature = [BEArityHost methodSignatureForSelector:sel];
+	XCTAssertNotNil(staleSignature);
+
+	XCTAssertTrue([BEArityHost addObjectMethod:sel block:^NSInteger(id _self, SEL _cmd) { return 42; }]);
+
+	NSInvocation *stale = [NSInvocation invocationWithMethodSignature:staleSignature];
+	stale.target = BEArityHost.class;
+	stale.selector = sel;
+	NSInteger argument = 5;
+	[stale setArgument:&argument atIndex:2];
+	XCTAssertFalse([BEArityHost dynamicClassForwardInvocation:stale]);
+
+	NSInvocation *current = [NSInvocation invocationWithMethodSignature:[BEArityHost methodSignatureForSelector:sel]];
+	current.target = BEArityHost.class;
+	current.selector = sel;
+	XCTAssertTrue([BEArityHost dynamicClassForwardInvocation:current]);
+	NSInteger result = 0;
+	[current getReturnValue:&result];
+	XCTAssertEqual(result, 42);
+
+	[BEArityHost removeObjectMethod:sel];
 }
 
 @end

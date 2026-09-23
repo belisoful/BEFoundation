@@ -15,11 +15,9 @@
 @implementation BECharacterSetTests
 
 - (void)setUp {
-    // Put setup code here. This method is called before the invocation of each test method in the class.
 }
 
 - (void)tearDown {
-    // Put teardown code here. This method is called after the invocation of each test method in the class.
 }
 - (void)testBECharacterSet_isClassEqualToNSCharacterSet
 {
@@ -907,9 +905,8 @@
 }
 
 - (void)testBEMutableCharacterSet_InitWithSetNil_BackingSetIsMutable {
-	// initWithSet:nil previously left _characterSet unset, so the superclass's init filled it
-	// with an IMMUTABLE set and the first mutation trapped (CFCharacterSet "Immutable character
-	// set passed to mutable function").
+	// initWithSet:nil must leave the backing set mutable; an immutable backing set traps on the
+	// first mutation (CFCharacterSet "Immutable character set passed to mutable function").
 	id nilSet = nil;
 	BEMutableCharacterSet *set = [[BEMutableCharacterSet alloc] initWithSet:nilSet];
 	XCTAssertNoThrow([set addCharactersInString:@"abc"]);
@@ -917,8 +914,7 @@
 }
 
 - (void)testCharacterSetWithContentsOfFile_MissingFile_ReturnsNil {
-	// The factories are declared nullable with a documented nil-on-failure contract; they
-	// previously wrapped the failure in initWithSet:nil and returned an empty set instead.
+	// The factories are declared nullable with a documented nil-on-failure contract.
 	XCTAssertNil([BECharacterSet characterSetWithContentsOfFile:@"/nonexistent/bogus.bitmap"]);
 	XCTAssertNil([BEMutableCharacterSet characterSetWithContentsOfFile:@"/nonexistent/bogus.bitmap"]);
 }
@@ -929,6 +925,133 @@
 	BEMutableCharacterSet *set = [BEMutableCharacterSet characterSetWithCharactersInString:@"x"];
 	[set.characterSet addCharactersInString:@"y"];
 	XCTAssertTrue([set characterIsMember:'y']);
+}
+
+
+#pragma mark - Secure coding key layout
+
+/*! A keyed archive whose root is an instance of className carrying the given keyed values. */
+- (NSData *)archiveOfClass:(NSString *)className superclass:(NSString *)superclassName values:(NSDictionary *)values
+{
+	NSMutableDictionary *object = [values mutableCopy];
+	object[@"$class"] = @{@"CF$UID": @2};
+	NSArray *classes = [superclassName isEqualToString:@"NSObject"] ? @[className, @"NSObject"] : @[className, superclassName, @"NSObject"];
+	NSDictionary *plist = @{
+		@"$archiver": @"NSKeyedArchiver",
+		@"$version": @100000,
+		@"$top": @{@"root": @{@"CF$UID": @1}},
+		@"$objects": @[@"$null", object, @{@"$classname": className, @"$classes": classes}],
+	};
+	// XML: the parser turns CF$UID dictionaries into archive references; the binary writer does not.
+	return [NSPropertyListSerialization dataWithPropertyList:plist format:NSPropertyListXMLFormat_v1_0 options:0 error:nil];
+}
+
+/*! The object dictionary of the archive's root, as written by encodeWithCoder:. */
+- (NSDictionary *)rootObjectOfArchive:(NSData *)archive
+{
+	NSDictionary *plist = [NSPropertyListSerialization propertyListWithData:archive options:0 format:NULL error:nil];
+	for (id object in plist[@"$objects"]) {
+		if ([object isKindOfClass:NSDictionary.class] && object[@"$class"] != nil) {
+			return object;
+		}
+	}
+	return nil;
+}
+
+- (void)testBECharacterSet_SecureCodingRoundTripUsesClassKeys
+{
+	BECharacterSet *reference = [[BECharacterSet alloc] initWithSet:NSCharacterSet.decimalDigitCharacterSet];
+	reference.isEqualToNSCharacterSet = NSCharacterSetUnequal;
+
+	NSError *error = nil;
+	NSData *archivedData = [NSKeyedArchiver archivedDataWithRootObject:reference requiringSecureCoding:YES error:&error];
+	XCTAssertNil(error);
+	NSDictionary *root = [self rootObjectOfArchive:archivedData];
+	XCTAssertNotNil(root[@"BE.equality"]);
+	XCTAssertNotNil(root[@"BE.bitmap"]);
+	XCTAssertNil(root[@"NS.number"], @"no dependence on NSNumber's private key");
+	XCTAssertNil(root[@"NS.data"], @"no dependence on NSData's private key");
+
+	BECharacterSet *result = [NSKeyedUnarchiver unarchivedObjectOfClass:BECharacterSet.class fromData:archivedData error:&error];
+	XCTAssertNil(error);
+	XCTAssertNotNil(result);
+	XCTAssertTrue([result isMemberOfClass:BECharacterSet.class]);
+	XCTAssertTrue([result isEqual:reference]);
+	XCTAssertEqual(result.isEqualToNSCharacterSet, NSCharacterSetUnequal);
+}
+
+- (void)testBEMutableCharacterSet_SecureCodingRoundTripUsesClassKeys
+{
+	BEMutableCharacterSet *reference = [[BEMutableCharacterSet alloc] initWithSet:NSCharacterSet.decimalDigitCharacterSet];
+	reference.isEqualToNSCharacterSet = NSCharacterSetEqual;
+
+	NSError *error = nil;
+	NSData *archivedData = [NSKeyedArchiver archivedDataWithRootObject:reference requiringSecureCoding:YES error:&error];
+	XCTAssertNil(error);
+	BEMutableCharacterSet *result = [NSKeyedUnarchiver unarchivedObjectOfClass:BEMutableCharacterSet.class fromData:archivedData error:&error];
+	XCTAssertNil(error);
+	XCTAssertTrue([result isMemberOfClass:BEMutableCharacterSet.class]);
+	XCTAssertTrue([result isEqual:reference]);
+	XCTAssertEqual(result.isEqualToNSCharacterSet, NSCharacterSetEqual);
+	[result addCharactersInString:@"a"];
+	XCTAssertTrue([result.characterSet characterIsMember:'a']);
+}
+
+- (void)testBECharacterSet_DecodesLegacyKeyLayout
+{
+	// The layout written before 1.2.0: an inline NSNumber and inline NSData in the receiver's namespace.
+	NSData *bitmap = NSCharacterSet.uppercaseLetterCharacterSet.bitmapRepresentation;
+	NSData *legacyArchive = [self archiveOfClass:@"BECharacterSet" superclass:@"NSObject"
+										  values:@{@"NS.number": @(NSCharacterSetEqual), @"NS.data": bitmap}];
+
+	NSError *error = nil;
+	BECharacterSet *result = [NSKeyedUnarchiver unarchivedObjectOfClass:BECharacterSet.class fromData:legacyArchive error:&error];
+	XCTAssertNil(error);
+	XCTAssertNotNil(result);
+	XCTAssertTrue([result isMemberOfClass:BECharacterSet.class]);
+	XCTAssertEqualObjects(result.characterSet.bitmapRepresentation, bitmap);
+	XCTAssertEqual(result.isEqualToNSCharacterSet, NSCharacterSetEqual);
+}
+
+- (void)testBEMutableCharacterSet_DecodesLegacyKeyLayout
+{
+	NSData *bitmap = NSCharacterSet.lowercaseLetterCharacterSet.bitmapRepresentation;
+	NSData *legacyArchive = [self archiveOfClass:@"BEMutableCharacterSet" superclass:@"BECharacterSet"
+										  values:@{@"NS.number": @(NSCharacterSetClassStyle), @"NS.data": bitmap}];
+
+	NSError *error = nil;
+	BEMutableCharacterSet *result = [NSKeyedUnarchiver unarchivedObjectOfClass:BEMutableCharacterSet.class fromData:legacyArchive error:&error];
+	XCTAssertNil(error);
+	XCTAssertTrue([result isMemberOfClass:BEMutableCharacterSet.class]);
+	XCTAssertEqualObjects(result.characterSet.bitmapRepresentation, bitmap);
+	XCTAssertEqual(result.isEqualToNSCharacterSet, NSCharacterSetClassStyle);
+	[result addCharactersInString:@"A"];
+	XCTAssertTrue([result.characterSet characterIsMember:'A']);
+}
+
+- (void)testBECharacterSet_InitWithCoderClampsEqualityToRange
+{
+	BECharacterSet *reference = [[BECharacterSet alloc] initWithSet:NSCharacterSet.decimalDigitCharacterSet];
+	reference.isEqualToNSCharacterSet = (BECharacterSetEquality)99;
+	NSData *archivedData = [NSKeyedArchiver archivedDataWithRootObject:reference requiringSecureCoding:YES error:nil];
+	BECharacterSet *result = [NSKeyedUnarchiver unarchivedObjectOfClass:BECharacterSet.class fromData:archivedData error:nil];
+	XCTAssertEqual(result.isEqualToNSCharacterSet, NSCharacterSetAllEqual);
+
+	reference.isEqualToNSCharacterSet = (BECharacterSetEquality)-99;
+	archivedData = [NSKeyedArchiver archivedDataWithRootObject:reference requiringSecureCoding:YES error:nil];
+	result = [NSKeyedUnarchiver unarchivedObjectOfClass:BECharacterSet.class fromData:archivedData error:nil];
+	XCTAssertEqual(result.isEqualToNSCharacterSet, NSCharacterSetAllUnequal);
+}
+
+- (void)testBECharacterSet_InitWithCoderFailsWithoutBitmap
+{
+	NSData *archive = [self archiveOfClass:@"BECharacterSet" superclass:@"NSObject" values:@{@"BE.equality": @(NSCharacterSetEqual)}];
+
+	NSError *error = nil;
+	BECharacterSet *result = [NSKeyedUnarchiver unarchivedObjectOfClass:BECharacterSet.class fromData:archive error:&error];
+	XCTAssertNil(result);
+	XCTAssertNotNil(error);
+	XCTAssertEqual(error.code, NSCoderReadCorruptError);
 }
 
 @end

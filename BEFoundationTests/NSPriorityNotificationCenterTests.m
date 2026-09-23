@@ -185,6 +185,12 @@
 	[self.notificationCenter removeObserver:self.observer3];
 	[self.notificationCenter removeObserver:self.observerItem1];
 	[self.notificationCenter removeObserver:self.observerCapture1];
+	NSPriorityNotificationCenter *shared = NSPriorityNotificationCenter.defaultCenter;
+	[shared removeObserver:self.observer1];
+	[shared removeObserver:self.observer2];
+	[shared removeObserver:self.observer3];
+	[shared removeObserver:self.observerItem1];
+	[shared removeObserver:self.observerCapture1];
 	[self.notificationCenter cleanup];
 	self.notificationCenter = nil;
 	self.observer1 = nil;
@@ -252,7 +258,6 @@
 }
 
 - (void)testAddObserverWithSelectorPriority {
-	// Add observers with different priorities
 	[self.notificationCenter addObserver:self.observer1
 								selector:@selector(handleNotification:)
 									name:@"TestNotification"
@@ -273,14 +278,12 @@
 	
 	NSMutableDictionary *mutableUserInfo = NSMutableDictionary.new;
 	
-	// Observer2 should be called first (higher priority)
 	XCTAssertEqual(self.observer1.receivedCount, 0);
 	XCTAssertEqual(self.observer2.receivedCount, 0);
 	XCTAssertEqual(self.observerItem1.receivedCount, 0);
 	
 	[self.notificationCenter postNotificationName:@"TestNotification" object:nil userInfo:mutableUserInfo];
 	
-	// Observer2 should be called first (higher priority)
 	XCTAssertEqual(self.observer1.receivedCount, 1);
 	XCTAssertEqual(self.observer2.receivedCount, 1);
 	XCTAssertEqual(self.observerItem1.receivedCount, 1);
@@ -352,7 +355,6 @@
 }
 
 - (void)testAddObserverWithPriorityReverse {
-	// Add observers with different priorities
 	[self.notificationCenter addObserver:self.observer1
 								selector:@selector(handleNotification:)
 									name:@"TestNotification"
@@ -373,14 +375,12 @@
 	
 	NSMutableDictionary *mutableUserInfo = NSMutableDictionary.new;
 	
-	// Observer2 should be called first (higher priority)
 	XCTAssertEqual(self.observer1.receivedCount, 0);
 	XCTAssertEqual(self.observer2.receivedCount, 0);
 	XCTAssertEqual(self.observerItem1.receivedCount, 0);
 	
 	[self.notificationCenter postNotificationName:@"TestNotification" object:nil userInfo:mutableUserInfo reverse:YES];
 	
-	// Observer2 should be called first (higher priority)
 	XCTAssertEqual(self.observer1.receivedCount, 1);
 	XCTAssertEqual(self.observer2.receivedCount, 1);
 	XCTAssertEqual(self.observerItem1.receivedCount, 1);
@@ -562,7 +562,6 @@
 								  object:nil];
 #pragma clang diagnostic pop
 	
-	// Posting should not crash
 	[self.notificationCenter postNotificationName:@"TestNotification" object:nil];
 }
 
@@ -634,7 +633,6 @@
 									name:@"TestNotification2"
 								  object:nil];
 	
-	// Remove only the first observer
 	[self.notificationCenter removeObserver:self.observer1
 									   name:@"TestNotification1"
 									 object:testObject];
@@ -642,7 +640,6 @@
 	[self.notificationCenter postNotificationName:@"TestNotification1" object:testObject];
 	[self.notificationCenter postNotificationName:@"TestNotification2" object:nil];
 	
-	// Should only receive the second notification
 	XCTAssertEqual(self.observer1.receivedCount, 1);
 }
 
@@ -686,7 +683,6 @@
 	[self.notificationCenter postNotificationName:@"TestNotification" object:nil];
 	XCTAssertEqual(weakObserver.receivedCount, 1);
 	
-	// Deallocate the observer
 	weakObserver = nil;
 	
 	// Posting should not crash even though observer was deallocated
@@ -753,13 +749,11 @@
 									name:@"TestNotification"
 								  object:testObject];
 	
-	// Post with matching object
 	[self.notificationCenter postNotificationName:@"TestNotification" object:testObject];
 	XCTAssertEqual(self.observer1.receivedCount, 1);
 	
 	[self.observer1 reset];
 	
-	// Post with different object - should not receive
 	[self.notificationCenter postNotificationName:@"TestNotification" object:[[NSObject alloc] init]];
 	XCTAssertEqual(self.observer1.receivedCount, 0);
 }
@@ -791,7 +785,6 @@
 	
 	__block int count = 0;
 	
-	// Post with matching object
 	[self.notificationCenter postNotificationName:@"TestNotification" object:testObject postBlock:^(NSNotification * _Nonnull notification) {
 		count++;
 	}];
@@ -801,7 +794,6 @@
 	[self.observer1 reset];
 	count = 0;
 
-	// Post with different object - should not receive
 	[self.notificationCenter postNotificationName:@"TestNotification" object:[[NSObject alloc] init] postBlock:^(NSNotification * _Nonnull notification) {
 		count++;
 	}];
@@ -840,13 +832,11 @@
 									name:@"TestNotification"
 								  object:testObject];
 	
-	// Post with matching object
 	[self.notificationCenter postNotificationName:@"TestNotification" object:testObject reverse:YES];
 	XCTAssertEqual(self.observer1.receivedCount, 1);
 	
 	[self.observer1 reset];
 	
-	// Post with different object - should not receive
 	[self.notificationCenter postNotificationName:@"TestNotification" object:[[NSObject alloc] init] reverse:YES];
 	XCTAssertEqual(self.observer1.receivedCount, 0);
 }
@@ -879,7 +869,6 @@
 	
 	__block int count = 0;
 	
-	// Post with matching object
 	[self.notificationCenter postNotificationName:@"TestNotification" object:testObject reverse:YES postBlock:^(NSNotification * _Nonnull notification) {
 		count++;
 	}];
@@ -889,7 +878,6 @@
 	[self.observer1 reset];
 	count = 0;
 
-	// Post with different object - should not receive
 	[self.notificationCenter postNotificationName:@"TestNotification" object:[[NSObject alloc] init] postBlock:^(NSNotification * _Nonnull notification) {
 		count++;
 	}];
@@ -1006,7 +994,6 @@
 
 	[self.notificationCenter postNotificationName:@"TestNotification" object:nil userInfo:mutableUserInfo];
 
-	// All should have been called
 	XCTAssertEqual(self.observer1.receivedCount, 1);
 	XCTAssertEqual(self.observer2.receivedCount, 1);
 	XCTAssertEqual(self.observer3.receivedCount, 1);
@@ -1117,7 +1104,6 @@
 	
 	[self waitForExpectationsWithTimeout:5.0 handler:nil];
 	
-	// Should receive all 10 notifications
 	XCTAssertEqual(self.observer1.receivedCount, 10);
 }
 
@@ -1223,7 +1209,6 @@
 		NSPriorityNotificationCenter *obj = [[NSPriorityNotificationCenter alloc] init];
 		weakRef = obj;
 		[obj cleanup];
-		// use obj
 	}
 	// The object deallocates synchronously when the autoreleasepool drains, so the weak reference
 	// reads back nil immediately. No wait needed.
@@ -1233,7 +1218,9 @@
 #pragma mark - Regressions
 
 - (void)testCleanupStopsSystemInterception {
-	NSPriorityNotificationCenter *center = [[NSPriorityNotificationCenter alloc] init];
+	// initForSingleton: yields a bridged center that is not the process singleton, so cleanup
+	// can run without dismantling defaultCenter for the rest of the suite.
+	NSPriorityNotificationCenter *center = [[NSPriorityNotificationCenter alloc] initForSingleton:nil];
 	__block NSInteger count = 0;
 	id token = [center addObserverForName:@"SysProbe" object:nil queue:nil usingBlock:^(NSNotification *note) {
 		count++;
@@ -1252,7 +1239,8 @@
 
 // SceneKit and other CF clients post through CFNotificationCenterPostNotification with a C
 // struct as the object. Reading it as a retained id crashes, so every path that touches the
-// object of a super-center notification must leave it unretained.
+// object of a super-center notification must leave it unretained. Only the bridged shared
+// center receives system posts, so these tests run against defaultCenter.
 
 static void BEPostOpaqueObjectProbe(NSString *name, const void *object)
 {
@@ -1260,11 +1248,12 @@ static void BEPostOpaqueObjectProbe(NSString *name, const void *object)
 }
 
 - (void)testSystemPostWithOpaqueObjectReachesBlockObserverUnretained {
+	NSPriorityNotificationCenter *shared = NSPriorityNotificationCenter.defaultCenter;
 	uint64_t storage[8] = {0};
 	const void *opaque = storage;
 	__block NSInteger count = 0;
 	__block const void *seen = NULL;
-	id token = [self.notificationCenter addObserverForName:@"BEOpaqueProbe" object:nil queue:nil usingBlock:^(NSNotification *note) {
+	id token = [shared addObserverForName:@"BEOpaqueProbe" object:nil queue:nil usingBlock:^(NSNotification *note) {
 		__unsafe_unretained id object = note.object;
 		seen = (__bridge const void *)object;
 		count++;
@@ -1274,12 +1263,12 @@ static void BEPostOpaqueObjectProbe(NSString *name, const void *object)
 
 	XCTAssertEqual(count, 1);
 	XCTAssertEqual(seen, opaque, @"the opaque pointer must pass through by identity");
-	[self.notificationCenter removeObserver:token];
+	[shared removeObserver:token];
 }
 
 - (void)testSystemPostWithOpaqueObjectReachesSelectorObserver {
 	uint64_t storage[8] = {0};
-	[self.notificationCenter addObserver:self.observer1 selector:@selector(handleNotificationWithoutParameter) name:@"BEOpaqueProbe" object:nil];
+	[NSPriorityNotificationCenter.defaultCenter addObserver:self.observer1 selector:@selector(handleNotificationWithoutParameter) name:@"BEOpaqueProbe" object:nil];
 
 	BEPostOpaqueObjectProbe(@"BEOpaqueProbe", storage);
 
@@ -1289,7 +1278,7 @@ static void BEPostOpaqueObjectProbe(NSString *name, const void *object)
 - (void)testSystemPostWithOpaqueObjectSkipsObjectFilteredObservers {
 	uint64_t storage[8] = {0};
 	NSObject *filter = [[NSObject alloc] init];
-	[self.notificationCenter addObserver:self.observer1 selector:@selector(handleNotificationWithoutParameter) name:@"BEOpaqueProbe" object:filter];
+	[NSPriorityNotificationCenter.defaultCenter addObserver:self.observer1 selector:@selector(handleNotificationWithoutParameter) name:@"BEOpaqueProbe" object:filter];
 
 	BEPostOpaqueObjectProbe(@"BEOpaqueProbe", storage);
 
@@ -1297,12 +1286,13 @@ static void BEPostOpaqueObjectProbe(NSString *name, const void *object)
 }
 
 - (void)testSystemPostWithOpaqueObjectReachesQueuedBlockObserverUnretained {
+	NSPriorityNotificationCenter *shared = NSPriorityNotificationCenter.defaultCenter;
 	uint64_t storage[8] = {0};
 	const void *opaque = storage;
 	NSOperationQueue *queue = [[NSOperationQueue alloc] init];
 	XCTestExpectation *delivered = [self expectationWithDescription:@"queued delivery"];
 	__block const void *seen = NULL;
-	id token = [self.notificationCenter addObserverForName:@"BEOpaqueProbe" object:nil queue:queue usingBlock:^(NSNotification *note) {
+	id token = [shared addObserverForName:@"BEOpaqueProbe" object:nil queue:queue usingBlock:^(NSNotification *note) {
 		__unsafe_unretained id object = note.object;
 		seen = (__bridge const void *)object;
 		[delivered fulfill];
@@ -1312,18 +1302,97 @@ static void BEPostOpaqueObjectProbe(NSString *name, const void *object)
 
 	[self waitForExpectations:@[delivered] timeout:2.0];
 	XCTAssertEqual(seen, opaque);
-	[self.notificationCenter removeObserver:token];
+	[shared removeObserver:token];
 }
 
 - (void)testSystemPostWithOpaqueObjectReachesQueuedSelectorObserver {
 	uint64_t storage[8] = {0};
 	NSOperationQueue *queue = [[NSOperationQueue alloc] init];
-	[self.notificationCenter addObserver:self.observer1 selector:@selector(handleNotificationWithoutParameter) name:@"BEOpaqueProbe" object:nil queue:queue];
+	[NSPriorityNotificationCenter.defaultCenter addObserver:self.observer1 selector:@selector(handleNotificationWithoutParameter) name:@"BEOpaqueProbe" object:nil queue:queue];
 
 	BEPostOpaqueObjectProbe(@"BEOpaqueProbe", storage);
 
 	[queue waitUntilAllOperationsAreFinished];
 	XCTAssertEqual(self.observer1.receivedCount, 1);
+}
+
+#pragma mark - Default-center bridge scope
+
+- (void)testPrivateCenterPostDoesNotReachSystemDefaultCenterObserver {
+	__block NSInteger count = 0;
+	id token = [NSNotificationCenter.defaultCenter addObserverForName:@"BEPrivateProbe" object:nil queue:nil usingBlock:^(NSNotification *note) {
+		count++;
+	}];
+
+	[self.notificationCenter postNotificationName:@"BEPrivateProbe" object:nil];
+
+	XCTAssertEqual(count, 0, @"a center created with init must not forward to NSNotificationCenter.defaultCenter");
+	[NSNotificationCenter.defaultCenter removeObserver:token];
+}
+
+- (void)testDefaultCenterPostReachesSystemDefaultCenterObserver {
+	__block NSInteger count = 0;
+	id token = [NSNotificationCenter.defaultCenter addObserverForName:@"BESharedProbe" object:nil queue:nil usingBlock:^(NSNotification *note) {
+		count++;
+	}];
+
+	[NSPriorityNotificationCenter.defaultCenter postNotificationName:@"BESharedProbe" object:nil];
+
+	XCTAssertEqual(count, 1, @"the shared center forwards its posts to NSNotificationCenter.defaultCenter");
+	[NSNotificationCenter.defaultCenter removeObserver:token];
+}
+
+- (void)testPrivateCenterDoesNotReceiveSystemDefaultCenterPosts {
+	[self.notificationCenter addObserver:self.observer1 selector:@selector(handleNotification:) name:@"BESystemProbe" object:nil];
+
+	[NSNotificationCenter.defaultCenter postNotificationName:@"BESystemProbe" object:nil];
+
+	XCTAssertEqual(self.observer1.receivedCount, 0, @"a center created with init must not observe NSNotificationCenter.defaultCenter");
+}
+
+- (void)testDefaultCenterReceivesSystemDefaultCenterPosts {
+	[NSPriorityNotificationCenter.defaultCenter addObserver:self.observer1 selector:@selector(handleNotification:) name:@"BESystemProbe" object:nil];
+
+	[NSNotificationCenter.defaultCenter postNotificationName:@"BESystemProbe" object:nil];
+
+	XCTAssertEqual(self.observer1.receivedCount, 1);
+}
+
+#pragma mark - Delivery locking
+
+// A queued observer is still running when a second notification that shares its userInfo is
+// posted synchronously. A delivery lock keyed on userInfo blocks the synchronous post until the
+// queued observer returns, and the queued observer returns only after the synchronous post
+// delivers: a deadlock. Both waits are bounded so the failure is a timeout, not a hang.
+- (void)testSynchronousPostIsNotBlockedByRunningQueuedObserverSharingUserInfo {
+	NSDictionary *sharedUserInfo = @{@"shared": @YES};
+	NSOperationQueue *queue = [[NSOperationQueue alloc] init];
+	dispatch_semaphore_t queuedStarted = dispatch_semaphore_create(0);
+	dispatch_semaphore_t syncDelivered = dispatch_semaphore_create(0);
+	int64_t limitNanoseconds = (int64_t)(5 * NSEC_PER_SEC);
+	__block long queuedWaitResult = -1;
+
+	id queuedToken = [self.notificationCenter addObserverForName:@"BEQueuedProbe" object:nil queue:queue usingBlock:^(NSNotification *note) {
+		dispatch_semaphore_signal(queuedStarted);
+		queuedWaitResult = dispatch_semaphore_wait(syncDelivered, dispatch_time(DISPATCH_TIME_NOW, limitNanoseconds));
+	}];
+	__block NSInteger syncCount = 0;
+	id syncToken = [self.notificationCenter addObserverForName:@"BESyncProbe" object:nil queue:nil usingBlock:^(NSNotification *note) {
+		syncCount++;
+		dispatch_semaphore_signal(syncDelivered);
+	}];
+
+	[self.notificationCenter postNotificationName:@"BEQueuedProbe" object:nil userInfo:sharedUserInfo];
+	XCTAssertEqual(dispatch_semaphore_wait(queuedStarted, dispatch_time(DISPATCH_TIME_NOW, limitNanoseconds)), 0L, @"the queued observer must start");
+
+	[self.notificationCenter postNotificationName:@"BESyncProbe" object:nil userInfo:sharedUserInfo];
+	XCTAssertEqual(syncCount, 1);
+
+	[queue waitUntilAllOperationsAreFinished];
+	XCTAssertEqual(queuedWaitResult, 0L, @"the queued observer must see the synchronous delivery before its wait expires");
+
+	[self.notificationCenter removeObserver:queuedToken];
+	[self.notificationCenter removeObserver:syncToken];
 }
 
 - (void)testCenterDoesNotRetainObserver {

@@ -39,86 +39,68 @@
 
 
 - (void)setUp {
-    // Put setup code here. This method is called before the invocation of each test method in the class.
 }
 
 - (void)tearDown {
-    // Put teardown code here. This method is called after the invocation of each test method in the class.
 }
 
 
 #pragma mark - NSDictionary: Indexed Key Subscript
 
 - (void)testNSDictionary_ObjectAtIndexedSubscript_WithIntegerKey {
-	// Create a dictionary with integer keys (NSNumber objects)
 	NSDictionary *dict = @{ @(1) : self.expectedValueOne, @(2) : self.expectedValueTwo, @(3) : self.expectedValueThree };
 	
-	// Test accessing using the objectAtIndexedSubscript
 	XCTAssertEqualObjects([dict objectAtIndexedSubscript:1], self.expectedValueOne, @"The object for key 1 should be %@", self.expectedValueOne);
 	XCTAssertEqualObjects([dict objectAtIndexedSubscript:2], self.expectedValueTwo, @"The object for key 2 should be %@", self.expectedValueTwo);
 	XCTAssertEqualObjects([dict objectAtIndexedSubscript:3], self.expectedValueThree, @"The object for key 3 should be %@", self.expectedValueThree);
 }
 
 - (void)testNSDictionary_ObjectAtIndexedSubscript_WithStringKey {
-	// Create a dictionary with string keys
 	NSDictionary *dict = @{ @"1" : self.expectedValueOne, @"2" : self.expectedValueTwo, @"3" : self.expectedValueThree };
 	
-	// Test accessing using the objectAtIndexedSubscript
 	XCTAssertEqualObjects([dict objectAtIndexedSubscript:1], self.expectedValueOne, @"The object for key 1 (as NSNumber) should be %@", self.expectedValueOne);
 	XCTAssertEqualObjects([dict objectAtIndexedSubscript:2], self.expectedValueTwo, @"The object for key 2 (as NSNumber) should be %@", self.expectedValueTwo);
 	XCTAssertEqualObjects([dict objectAtIndexedSubscript:3], self.expectedValueThree, @"The object for key 3 (as NSNumber) should be %@", self.expectedValueThree);
 }
 
 - (void)testNSDictionary_ObjectAtIndexedSubscript_WithInvalidIndex {
-	// Create a dictionary with numeric keys
 	NSDictionary *dict = @{ @(1) : self.expectedValueOne, @(2) : self.expectedValueTwo, @(3) : self.expectedValueThree };
 	
-	// Test an invalid index (key not present)
 	XCTAssertNil([dict objectAtIndexedSubscript:4], @"There should be no object for key 4.");
 	XCTAssertNil([dict objectAtIndexedSubscript:999], @"There should be no object for key 999.");
 }
 
 - (void)testNSDictionary_ObjectAtIndexedSubscript_WithEmptyDictionary {
-	// Create an empty dictionary
 	NSDictionary *dict = @{};
 	
-	// Test with an empty dictionary
 	XCTAssertNil([dict objectAtIndexedSubscript:0], @"An empty dictionary should return nil.");
 }
 
 - (void)testNSDictionary_ObjectAtIndexedSubscript_WithMixedTypeKeys {
-	// Create a dictionary with both NSNumber and NSString keys
 	NSDictionary *dict = @{ @(1) : self.expectedValueOne, @"2" : self.expectedValueTwo, @(3) : self.expectedValueThree, @"4" : self.expectedValueFour };
 	
-	// Test accessing NSNumber keys
 	XCTAssertEqualObjects([dict objectAtIndexedSubscript:1], self.expectedValueOne, @"The object for key 1 (NSNumber) should be %@", self.expectedValueOne);
 	XCTAssertEqualObjects([dict objectAtIndexedSubscript:3], self.expectedValueThree, @"The object for key 3 (NSNumber) should be %@", self.expectedValueThree);
 	
-	// Test accessing NSString keys (as numeric strings)
 	XCTAssertEqualObjects([dict objectAtIndexedSubscript:2], self.expectedValueTwo, @"The object for key 2 (NSNumber) should be %@", self.expectedValueTwo);
 	XCTAssertEqualObjects([dict objectAtIndexedSubscript:4], self.expectedValueFour, @"The object for key 4 (NSNumber) should be %@", self.expectedValueFour);
 }
 
 - (void)testNSDictionary_ObjectAtIndexedSubscript_WithNonNumericStringKey {
-	// Create a dictionary with non-numeric string keys
 	NSDictionary *dict = @{ @"alpha" : @"A", @"beta" : @"B" };
 	
-	// Test with non-numeric string keys (should not match via numeric index)
 	XCTAssertNil([dict objectAtIndexedSubscript:0], @"No object should be found for key 0.");
 	XCTAssertNil([dict objectAtIndexedSubscript:1], @"No object should be found for key 1.");
 }
 
 - (void)testNSDictionary_ObjectAtIndexedSubscript_Performance {
-	// Performance test for large dataset
 	NSMutableDictionary *dict = [NSMutableDictionary dictionary];
 	
-	// Add a large number of items
 	for (NSUInteger i = 0; i < 100000; i++) {
 		dict[@(i)] = [NSString stringWithFormat:@"Object %lu", (unsigned long)i];
 	}
 	
 	[self measureBlock:^{
-		// Access several items from the dictionary
 		for (NSUInteger i = 0; i < 100000; i++) {
 			[dict objectAtIndexedSubscript:i];
 		}
@@ -150,7 +132,6 @@
 - (void)testNSDictionary_MapWithBlock_HandlesEmptySet {
 	NSDictionary *input = [NSDictionary dictionary];
 	
-	// Both synchronous and concurrent tests for empty set
 	NSDictionary *result = [input mapUsingBlock:^BOOL(id * _Nonnull key, id  _Nullable __autoreleasing * _Nonnull obj, BOOL * _Nonnull stop) {
 		*obj = @([*obj integerValue] * 2);
 		return YES;
@@ -162,7 +143,6 @@
 - (void)testNSDictionary_MapWithBlock_HandlesNilElementsGracefully_Synchronous {
 	NSDictionary *input = @{@"A": @"1", @"B": [NSNull null], @"C": @"3", @"D": @"test"};
 	
-	// Test synchronous behavior (no NSEnumerationConcurrent)
 	NSDictionary *result = [input mapUsingBlock:^BOOL(id * _Nonnull key, id  _Nullable __autoreleasing * _Nonnull obj, BOOL * _Nonnull stop) {
 		if (*obj == [NSNull null]) {
 			return YES;  // keep the NSNull element unchanged
@@ -183,7 +163,6 @@
 - (void)testNSDictionary_MapWithBlock_WithNilBlock {
 	NSDictionary *input = @{@"A": @1, @"B": @2, @"C": @3};
 	
-	// Test both synchronous and concurrent with a nil block
 	NSDictionary *result = [input mapUsingBlock:nil];
 	XCTAssertTrue([result isKindOfClass:[NSDictionary class]]);
 	XCTAssertNotNil(result);
@@ -199,7 +178,6 @@
 	}
 	
 	NSDictionary *input = largeInput.copy;
-	// Measure performance for large input with synchronous processing
 	[self measureBlock:^{
 		[input mapUsingBlock:^BOOL(id * _Nonnull key, id  _Nullable __autoreleasing * _Nonnull obj, BOOL * _Nonnull stop) {
 			*obj = @([*obj integerValue] * 2);
@@ -218,7 +196,6 @@
 	{ // object classes
 		NSDictionary *input = @{@0: @"NSObject", @1: @"NSNumber", @2: @11, @3: @[@1, @2], @4: [NSNull null], @5: @{@"A": @1, @"B": @2}};
 		
-		// Map to Class objects
 		NSDictionary *result = [input objectsClasses];
 		
 		
@@ -232,7 +209,6 @@
 		NSDictionary *result = [input objectsClasses];
 		
 		NSDictionary *reference = @{};
-		// An empty set should return an empty set
 		XCTAssertEqualObjects(result, reference);
 	}
 }
@@ -244,12 +220,10 @@
 	{ // object classes
 		NSDictionary *input = @{@0: @"NSObject", @1: @"NSNumber", @2: @11, @3: @[@1, @2], @4: [NSNull null], @5: @{@"A": @1, @"B": @2}};
 		
-		// Map to Class objects
 		NSDictionary *result = [input objectsClassNames];
 		
 		
 		NSDictionary *reference = @{@0: NSStringFromClass(@"NSObject".class), @1: NSStringFromClass(@"NSNumber".class), @2: NSStringFromClass(@(11).class), @3: NSStringFromClass(@[@1, @2].class), @4: NSStringFromClass([NSNull null].class), @5: NSStringFromClass(@{@"A": @1, @"B": @2}.class)};
-		// Verify that each element has been converted to the correct Class object
 		XCTAssertEqualObjects(result, reference);
 	}
 	{ // empty set
@@ -259,7 +233,6 @@
 		
 		NSDictionary *reference = @{};
 		
-		// An empty set should return an empty set
 		XCTAssertEqual(result.count, reference.count);
 	}
 }
@@ -271,12 +244,10 @@
 	{ // object classes
 		NSDictionary *input = @{@0: @"NSObject", @1: @"NSNumber", @2: @11, @3: @[@1, @2], @4: [NSNull null], @5: @{@"A": @1, @"B": @2}};
 		
-		// Map to Class objects
 		NSCountedSet *result = [input objectsUniqueClasses];
 		
 		
 		NSCountedSet *reference = [NSCountedSet setWithObjects:@"NSObject".class, @"NSNumber".class, @(11).class, @[@1, @2].class, [NSNull null].class, @{@"A": @1, @"B": @2}.class, nil];
-		// Verify that each element has been converted to the correct Class object
 		XCTAssertEqualObjects(result, reference);
 	}
 	{ // empty set
@@ -285,7 +256,6 @@
 		NSCountedSet *result = [input objectsUniqueClasses];
 		
 		NSCountedSet *reference = [NSCountedSet set];
-		// An empty set should return an empty set
 		XCTAssertTrue([result isKindOfClass:reference.class]);
 		XCTAssertEqual(result.count, 0);
 	}
@@ -297,12 +267,10 @@
 	{ // object classes
 		NSDictionary *input = @{@0: @"NSObject", @1: @"NSNumber", @2: @11, @3: @[@1, @2], @4: [NSNull null], @5: @{@"A": @1, @"B": @2}};
 		
-		// Map to Class objects
 		NSCountedSet *result = [input objectsUniqueClassNames];
 		
 		
 		NSCountedSet *reference = [NSCountedSet setWithObjects:NSStringFromClass(@"NSObject".class), NSStringFromClass(@"NSNumber".class), NSStringFromClass(@(11).class), NSStringFromClass(@[@1, @2].class), NSStringFromClass([NSNull null].class), NSStringFromClass(@{@"A": @1, @"B": @2}.class), nil];
-		// Verify that each element has been converted to the correct Class object
 		XCTAssertTrue([result isKindOfClass:reference.class]);
 		XCTAssertEqualObjects(result, reference);
 	}
@@ -312,7 +280,6 @@
 		NSCountedSet *result = [input objectsUniqueClassNames];
 		
 		NSCountedSet *reference = [NSCountedSet set];
-		// An empty set should return an empty set
 		XCTAssertTrue([result isKindOfClass:reference.class]);
 		XCTAssertEqual(result.count, 0);
 	}
@@ -326,10 +293,8 @@
 - (void)testNSDictionary_ToClassesFromStrings_ValidClassNames {
 	NSDictionary *input = @{@"A": @"NSString", @"B": @"NSNumber", @"C":@"NSArray"};
 	
-	// Map to Class objects
 	NSDictionary *result = [input toClassesFromStrings];
 	
-	// Verify that each element has been converted to the correct Class object
 	NSDictionary *reference = @{@"A": NSString.class, @"B": NSNumber.class, @"C": NSArray.class};
 	XCTAssertEqualObjects(result, reference);
 	XCTAssertEqual(result.count, 3);
@@ -338,17 +303,14 @@
 - (void)testNSDictionary_ToClassesFromStrings_InvalidClassNames {
 	NSDictionary *input = @{@"A": @"InvalidClass", @"B": @"AnotherInvalidClass"};
 	
-	// Map to Class objects
 	NSDictionary *result = [input toClassesFromStrings];
 	
-	// Verify that invalid class names return [NSNull class]
 	XCTAssertEqual(result.count, 0);
 }
 
 - (void)testNSDictionary_ToClassesFromStrings_MixedValidAndInvalidClassNames {
 	NSDictionary *input = @{@"A": @"NSString", @"B": @"InvalidClass", @"C":@"NSArray"};
 	
-	// Map to Class objects
 	NSDictionary *result = [input toClassesFromStrings];
 	
 	NSDictionary *reference = @{@"A": NSString.class, @"C": NSArray.class};
@@ -359,10 +321,8 @@
 - (void)testNSDictionary_ToClassesFromStrings_HandlesEmptySet {
 	NSDictionary *input = [NSDictionary dictionary];
 	
-	// Map to Class objects
 	NSDictionary *result = [input toClassesFromStrings];
 	
-	// An empty set should return an empty set
 	XCTAssertTrue([result isKindOfClass:[NSDictionary class]]);
 	XCTAssertNotNil(result);
 	XCTAssertEqual(result.count, 0);
@@ -371,7 +331,6 @@
 - (void)testNSDictionary_ToClassesFromStrings_HandlesNilElement {
 	NSDictionary *input = @{@"A": @"NSString", @"B": [NSNull null], @"C":@"NSArray"};
 	
-	// Map to Class objects
 	NSDictionary *result = [input toClassesFromStrings];
 	
 	NSDictionary *reference = @{@"A": NSString.class, @"C": NSArray.class};
@@ -601,7 +560,6 @@
 #pragma mark FilterWithBlock
 
 - (void)testNSMutableDictionary_FilterWithBlock {
-	// Test the filter operation with no concurrency (map I -> I*2)
 	NSMutableDictionary *input = @{@"A": @1, @"B": @2, @"C": @3, @"D": @4, @"E": @5, @6: [NSNull null]}.mutableCopy;
 	NSDictionary *result = [input filterUsingBlock:^BOOL(id * _Nonnull key, id  _Nullable __autoreleasing * _Nonnull obj, BOOL * _Nonnull stop) {
 		if ([*obj isKindOfClass:NSNull.class]) {
@@ -619,7 +577,6 @@
 
 
 - (void)testNSMutableDictionary_FilterWithBlock_EmptySet {
-	// Test the filter operation with an empty set (map I -> I*2)
 	NSMutableDictionary *input = [NSMutableDictionary dictionary];
 	NSDictionary *result = [input filterUsingBlock:^BOOL(id * _Nonnull key, id  _Nullable __autoreleasing * _Nonnull obj, BOOL * _Nonnull stop) {
 		*obj = @([*obj integerValue] * 2);
@@ -633,7 +590,6 @@
 
 
 - (void)testNSMutableDictionary_FilterWithBlock_WithNilReturn {
-	// Test the filter operation where the block returns nil for certain elements (some elements will be excluded)
 	NSMutableDictionary *input = @{@"A": @1, @"B": @2, @"C": @3, @"D": @4, @"E": @5}.mutableCopy;
 	NSDictionary *result = [input filterUsingBlock:^BOOL(id * _Nonnull key, id  _Nullable __autoreleasing * _Nonnull obj, BOOL * _Nonnull stop) {
 		if ([*obj integerValue] % 2) {
@@ -650,14 +606,12 @@
 
 
 - (void)testNSMutableDictionary_FilterWithBlock_Performance {
-	// Performance test to check how well the filter works with a large set (map I -> I*2)
 	NSMutableDictionary *input = [NSMutableDictionary dictionary];
 	for (NSInteger i = 0; i < 100000; i++) {
 		NSNumber *n = @(i);
 		input[n] = n;
 	}
 	
-	// Measure performance of mapping each element to I*2
 	[self measureBlock:^{
 		[input filterUsingBlock:^BOOL(id * _Nonnull key, id  _Nullable __autoreleasing * _Nonnull obj, BOOL * _Nonnull stop) {
 			*obj = @([*obj integerValue] * 2);
@@ -790,9 +744,9 @@
 	//Fills in non-existing keys, when merging
 	[mutableDict mergeEntriesFromDictionaryRecursive:otherDict];
 	NSDictionary *referenceMerge = @{@1: @"A", @2: @"B", @3: @"D",
-									 @4:@{@10:@"EA", @11:@"EB"},
-									 @5:@{@20:@"FA", @21:@"FB"},
-									 @6:@{@30:@"GA", @31:@"GB", @32:@"KB", @33:@{@35:@"GC", @36:@"GD"}},
+									 @4:@{@10:@"EA", @11:@"EB", @12:@"IB"},
+									 @5:@{@20:@"FA", @21:@"FB", @22:@"JB"},
+									 @6:@{@30:@"GA", @31:@"GB", @32:@"KB", @33:@{@35:@"GC", @36:@"GD", @37:@"KD"}},
 									 @7:@{@40:@"HA", @41:@"HB", @42:@"LB", @43:@{@45:@"HC", @46:@"HD", @47:@"LD"}},
 									 @8: @{@51: @"MA", @52: @"MB"},
 									 @9: @{@61: @"NA", @62: @"NB"}};
@@ -800,9 +754,12 @@
 	XCTAssertEqual(mutableDict[@1], original[@1]);
 	XCTAssertEqual(mutableDict[@2], original[@2]);
 	XCTAssertEqual(mutableDict[@3], otherDict[@3]);
-	XCTAssertEqual(mutableDict[@4], original[@4]);
-	XCTAssertEqual(mutableDict[@5], original[@5]);
+	XCTAssertNotEqual(mutableDict[@4], original[@4]);
+	XCTAssertTrue([mutableDict[@4] isKindOfClass:NSMutableDictionary.class]);
+	XCTAssertNotEqual(mutableDict[@5], original[@5]);
+	XCTAssertTrue([mutableDict[@5] isKindOfClass:NSMutableDictionary.class]);
 	XCTAssertEqual(mutableDict[@6], original[@6]);
+	XCTAssertTrue([mutableDict[@6][@33] isKindOfClass:NSMutableDictionary.class]);
 	XCTAssertEqual(mutableDict[@7], original[@7]);
 	XCTAssertEqual(mutableDict[@8], otherDict[@8]);
 	XCTAssertEqual(mutableDict[@9], otherDict[@9]);
@@ -870,8 +827,8 @@
 	//Fills in non-existing keys, when merging
 	[mutableDict mergeEntriesFromDictionaryRecursive:otherDict flags:BEDictionaryMutableCollectionCopyFlag];
 	NSDictionary *referenceMerge = @{@1: @"A", @2: @"B", @3: @"D",
-									 @4:@{@10:@"EA", @11:@"EB"},
-									 @5:@{@20:@"FA", @21:@"FB"},
+									 @4:@{@10:@"EA", @11:@"EB", @12: @"IB"},
+									 @5:@{@20:@"FA", @21:@"FB", @22: @"JB"},
 									 @6:@{@30:@"GA", @31:@"GB", @32: @"KB"},
 									 @7:@{@40:@"HA", @41:@"HB", @42:@"LB"},
 									 @8: @{@51: @"MA", @52: @"MB"},
@@ -880,8 +837,10 @@
 	XCTAssertEqual(mutableDict[@1], original[@1]);
 	XCTAssertEqual(mutableDict[@2], original[@2]);
 	XCTAssertEqual(mutableDict[@3], otherDict[@3]);
-	XCTAssertEqual(mutableDict[@4], original[@4]);
-	XCTAssertEqual(mutableDict[@5], original[@5]);
+	XCTAssertNotEqual(mutableDict[@4], original[@4]);
+	XCTAssertTrue([mutableDict[@4] isKindOfClass:NSMutableDictionary.class]);
+	XCTAssertNotEqual(mutableDict[@5], original[@5]);
+	XCTAssertTrue([mutableDict[@5] isKindOfClass:NSMutableDictionary.class]);
 	XCTAssertEqual(mutableDict[@6], original[@6]);
 	XCTAssertEqual(mutableDict[@6][@32], original[@6][@32]);
 	XCTAssertEqual(mutableDict[@7], original[@7]);
@@ -914,8 +873,8 @@
 	//Fills in non-existing keys, when merging
 	[mutableDict mergeEntriesFromDictionaryRecursive:otherDict flags:BEDictionaryMutableCopyFlag];
 	NSDictionary *referenceMerge = @{@1: @"A", @2: @"B", @3: @"D",
-									 @4:@{@10:@"EA", @11:@"EB"},
-									 @5:@{@20:@"FA", @21:@"FB"},
+									 @4:@{@10:@"EA", @11:@"EB", @12: @"IB"},
+									 @5:@{@20:@"FA", @21:@"FB", @22: @"JB"},
 									 @6:@{@30:@"GA", @31:@"GB", @32: @"KB"},
 									 @7:@{@40:@"HA", @41:@"HB", @42:@"LB"},
 									 @8: @{@51: @"MA", @52: @"MB"},
@@ -925,8 +884,11 @@
 	XCTAssertEqual(mutableDict[@2], original[@2]);
 	XCTAssertNotEqual(mutableDict[@3], otherDict[@3]);
 	XCTAssertTrue([mutableDict[@3] isKindOfClass:NSMutableString.class]);
-	XCTAssertEqual(mutableDict[@4], original[@4]);
-	XCTAssertEqual(mutableDict[@5], original[@5]);
+	XCTAssertNotEqual(mutableDict[@4], original[@4]);
+	XCTAssertTrue([mutableDict[@4] isKindOfClass:NSMutableDictionary.class]);
+	XCTAssertTrue([mutableDict[@4][@12] isKindOfClass:NSMutableString.class]);
+	XCTAssertNotEqual(mutableDict[@5], original[@5]);
+	XCTAssertTrue([mutableDict[@5] isKindOfClass:NSMutableDictionary.class]);
 	XCTAssertEqual(mutableDict[@6], original[@6]);
 	XCTAssertNotEqual(mutableDict[@6][@32], otherDict[@6][@32]);
 	XCTAssertTrue([mutableDict[@6][@32] isKindOfClass:NSMutableString.class]);
@@ -987,9 +949,9 @@
 	//Fills in non-existing keys, when merging
 	[mutableDict addEntriesFromDictionaryRecursive:otherDict];
 	NSDictionary *referenceMerge = @{@1: @"A", @2: @"C", @3: @"D",
-									 @4:@{@11:@"IA", @12:@"IB"},
-									 @5:@{@21:@"JA", @22:@"JB"},
-									 @6:@{@30:@"GA", @31:@"KA", @32:@"KB", @33:@{@36:@"KC", @37:@"KD"}},
+									 @4:@{@10:@"EA", @11:@"IA", @12:@"IB"},
+									 @5:@{@20:@"FA", @21:@"JA", @22:@"JB"},
+									 @6:@{@30:@"GA", @31:@"KA", @32:@"KB", @33:@{@35:@"GC", @36:@"KC", @37:@"KD"}},
 									 @7:@{@40:@"HA", @41:@"LA", @42:@"LB", @43:@{@45:@"HC", @46:@"LC", @47:@"LD"}},
 									 @8: @{@51: @"MA", @52: @"MB"},
 									 @9: @{@61: @"NA", @62: @"NB"}};
@@ -997,9 +959,14 @@
 	XCTAssertEqual(mutableDict[@1], original[@1]);
 	XCTAssertEqual(mutableDict[@2], otherDict[@2]);
 	XCTAssertEqual(mutableDict[@3], otherDict[@3]);
-	XCTAssertEqual(mutableDict[@4], otherDict[@4]);
-	XCTAssertEqual(mutableDict[@5], otherDict[@5]);
+	XCTAssertNotEqual(mutableDict[@4], original[@4]);
+	XCTAssertNotEqual(mutableDict[@4], otherDict[@4]);
+	XCTAssertTrue([mutableDict[@4] isKindOfClass:NSMutableDictionary.class]);
+	XCTAssertNotEqual(mutableDict[@5], original[@5]);
+	XCTAssertNotEqual(mutableDict[@5], otherDict[@5]);
+	XCTAssertTrue([mutableDict[@5] isKindOfClass:NSMutableDictionary.class]);
 	XCTAssertEqual(mutableDict[@6], original[@6]);
+	XCTAssertTrue([mutableDict[@6][@33] isKindOfClass:NSMutableDictionary.class]);
 	XCTAssertEqual(mutableDict[@7], original[@7]);
 	XCTAssertEqual(mutableDict[@8], otherDict[@8]);
 	XCTAssertEqual(mutableDict[@9], otherDict[@9]);
@@ -1078,9 +1045,9 @@
 	//Fills in non-existing keys, when merging
 	[mutableDict addEntriesFromDictionaryRecursive:otherDict flags:BEDictionaryMutableCollectionCopyFlag];
 	NSDictionary *referenceMerge = @{@1: @"A", @2: @"C", @3: @"D",
-									 @4: @{@11: @"IA", @12: @"IB"},
-									 @5: @{@21: @"JA", @22: @"JB"},
-									 @6:@{@30:@"GA", @31:@"KA", @32:@"KB", @33:@{@36:@"KC", @37:@"KD"}},
+									 @4: @{@10: @"EA", @11: @"IA", @12: @"IB"},
+									 @5: @{@20: @"FA", @21: @"JA", @22: @"JB"},
+									 @6:@{@30:@"GA", @31:@"KA", @32:@"KB", @33:@{@35:@"GC", @36:@"KC", @37:@"KD"}},
 									 @7:@{@40:@"HA", @41:@"LA", @42:@"LB", @43:@{@45:@"HC", @46:@"LC", @47:@"LD"}},
 									 @8: @{@51: @"MA", @52: @"MB"},
 									 @9: @{@61: @"NA", @62: @"NB"}};
@@ -1132,9 +1099,9 @@
 	//Fills in non-existing keys, when merging
 	[mutableDict addEntriesFromDictionaryRecursive:otherDict flags:BEDictionaryMutableCopyFlag];
 	NSDictionary *referenceMerge = @{@1: @"A", @2: @"C", @3: @"D",
-									 @4: @{@11: @"IA", @12: @"IB"},
-									 @5: @{@21: @"JA", @22: @"JB"},
-									 @6:@{@30:@"GA", @31:@"KA", @32: @"KB", @33:@{@36:@"KC", @37:@"KD"}},
+									 @4: @{@10: @"EA", @11: @"IA", @12: @"IB"},
+									 @5: @{@20: @"FA", @21: @"JA", @22: @"JB"},
+									 @6:@{@30:@"GA", @31:@"KA", @32: @"KB", @33:@{@35:@"GC", @36:@"KC", @37:@"KD"}},
 									 @7:@{@40:@"HA", @41:@"LA", @42:@"LB", @43:@{@45:@"HC", @46:@"LC", @47:@"LD"}},
 									 @8: @{@51: @"MA", @52: @"MB"},
 									 @9: @{@61: @"NA", @62: @"NB"}};
@@ -1189,6 +1156,46 @@
 	
 	XCTAssertThrowsSpecificNamed([dict addEntriesFromDictionaryRecursive:nonDictionary], NSException,
 								 NSInvalidArgumentException);
+}
+
+#pragma mark Recursive descent into immutable nested dictionaries
+
+- (void)testNSMutableDictionary_mergeEntriesFromDictionaryRecursive_ImmutableNestedTwoLevels
+{
+	NSDictionary *innerOriginal = @{@"p": @10};
+	NSDictionary *outerOriginal = @{@"x": @1, @"n": innerOriginal};
+	NSMutableDictionary *dict = @{@"a": outerOriginal}.mutableCopy;
+	NSDictionary *other = @{@"a": @{@"x": @2, @"y": @3, @"n": @{@"p": @20, @"q": @30}}};
+	
+	[dict mergeEntriesFromDictionaryRecursive:other];
+	
+	NSDictionary *reference = @{@"a": @{@"x": @1, @"y": @3, @"n": @{@"p": @10, @"q": @30}}};
+	XCTAssertEqualObjects(dict, reference);
+	XCTAssertTrue([dict[@"a"] isKindOfClass:NSMutableDictionary.class]);
+	XCTAssertTrue([dict[@"a"][@"n"] isKindOfClass:NSMutableDictionary.class]);
+	XCTAssertNotEqual(dict[@"a"], outerOriginal);
+	XCTAssertNotEqual(dict[@"a"][@"n"], innerOriginal);
+	XCTAssertEqualObjects(outerOriginal, (@{@"x": @1, @"n": @{@"p": @10}}));
+	XCTAssertEqualObjects(innerOriginal, @{@"p": @10});
+}
+
+- (void)testNSMutableDictionary_addEntriesFromDictionaryRecursive_ImmutableNestedTwoLevels
+{
+	NSDictionary *innerOriginal = @{@"p": @10, @"keep": @YES};
+	NSDictionary *outerOriginal = @{@"x": @1, @"n": innerOriginal};
+	NSMutableDictionary *dict = @{@"a": outerOriginal}.mutableCopy;
+	NSDictionary *otherInner = @{@"p": @20, @"q": @30};
+	NSDictionary *other = @{@"a": @{@"x": @2, @"y": @3, @"n": otherInner}};
+	
+	[dict addEntriesFromDictionaryRecursive:other];
+	
+	NSDictionary *reference = @{@"a": @{@"x": @2, @"y": @3, @"n": @{@"p": @20, @"q": @30, @"keep": @YES}}};
+	XCTAssertEqualObjects(dict, reference);
+	XCTAssertTrue([dict[@"a"] isKindOfClass:NSMutableDictionary.class]);
+	XCTAssertTrue([dict[@"a"][@"n"] isKindOfClass:NSMutableDictionary.class]);
+	XCTAssertNotEqual(dict[@"a"][@"n"], otherInner);
+	XCTAssertEqualObjects(outerOriginal, (@{@"x": @1, @"n": @{@"p": @10, @"keep": @YES}}));
+	XCTAssertEqualObjects(innerOriginal, (@{@"p": @10, @"keep": @YES}));
 }
 
 #pragma mark - Regression: isIndexedSubscriptNumeric must not freeze on an empty receiver

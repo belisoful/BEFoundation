@@ -18,10 +18,10 @@ xcodebuild -project BEFoundation.xcodeproj -scheme BEFoundation -configuration D
 # Run unit tests on the x86_64 slice (Rosetta on Apple Silicon)
 xcodebuild test -project BEFoundation.xcodeproj -scheme BEFoundation -configuration Debug -destination 'platform=macOS,arch=x86_64'
 
-# Run unit tests on iOS Simulator — resolve a CONCRETE id from simctl (not 'generic').
+# Run unit tests on iOS Simulator; resolve a concrete id from simctl (not 'generic').
 # Match the simulator's iOS major to the SELECTED Xcode's SDK: a macOS image can carry
 # newer iOS runtimes (e.g. 26.x) that an older Xcode (e.g. 16.4) cannot boot. simctl is
-# the reliable enumerator — `xcodebuild -showdestinations` may return only placeholders.
+# the reliable enumerator; `xcodebuild -showdestinations` may return only placeholders.
 SDK_MAJOR=$(xcodebuild -showsdks 2>/dev/null | grep -oiE 'iphonesimulator[0-9]+' | grep -oE '[0-9]+' | sort -n | tail -1)
 ID=$(xcrun simctl list devices available \
        | awk -v hdr="-- iOS ${SDK_MAJOR}" 'index($0,hdr)==1{f=1;next} /^-- /{f=0} f && /iPad/' \
@@ -29,12 +29,12 @@ ID=$(xcrun simctl list devices available \
 xcodebuild test -project BEFoundation.xcodeproj -scheme BEFoundation -configuration Debug -destination "platform=iOS Simulator,id=$ID"
 
 # Validate the DocC catalog
-xcodebuild docbuild -project BEFoundation.xcodeproj -scheme BEFoundation -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO
+xcodebuild docbuild -project BEFoundation.xcodeproj -scheme BEFoundation -configuration Debug -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO
 ```
 
 ### Full Check (required before commit)
 
-Code is commit-ready only when every check below passes. These mirror the CI jobs.
+Code is commit-ready only when every check below passes. CI runs these plus `xcodebuild analyze`, `pod lib lint`, a SwiftPM build, and builds under the newest Xcode 26 and under Xcode 27 (`.github/workflows/ci.yml`).
 
 1. Build + `test` on **macOS arm64** (`platform=macOS`)
 2. `test` on the **macOS x86_64** slice (`platform=macOS,arch=x86_64`)
@@ -46,7 +46,7 @@ Code is commit-ready only when every check below passes. These mirror the CI job
 ## Cross-Platform and Architecture Notes
 
 - **Platform aliases** — extend the real platform classes through `BEPlatformTypes.h`. A category on `BEColor` is a category on `NSColor` (macOS) or `UIColor` (iOS). macOS-only code is wrapped in `#if TARGET_OS_OSX`.
-- **iOS Simulator** — always target a concrete arm64 simulator id. `generic/platform=iOS Simulator` also builds the x86_64 slice, which fails on the NEON/Accelerate intrinsics the framework pulls in. Pick the simulator's iOS major to match the **selected Xcode's** SDK: a CI image can carry newer iOS runtimes (e.g. 26.x) that an older Xcode (e.g. 16.4) cannot boot, so a naive "first/latest simulator" pick fails with `Unable to find a destination matching`. CI pins the toolchain via `DEVELOPER_DIR` to keep this stable.
+- **iOS Simulator** — always target a concrete arm64 simulator id. The `test` action needs a bootable device, and `generic/platform=iOS Simulator` also builds the x86_64 slice, where the two test files that import `<arm_neon.h>` compile only because of their architecture guards. Pick the simulator's iOS major to match the **selected Xcode's** SDK: a CI image can carry newer iOS runtimes (e.g. 26.x) that an older Xcode (e.g. 16.4) cannot boot, so a naive "first/latest simulator" pick fails with `Unable to find a destination matching`. CI pins the toolchain via `DEVELOPER_DIR` to keep this stable.
 - **`BOOL` encoding differs by ABI** — `@encode(BOOL)` is `"B"` on arm64 and `"c"` on x86_64. On x86_64 `BOOL` is `signed char`, so `BOOL` and `char` are indistinguishable at runtime. Tests must use `@encode(BOOL)` rather than a hardcoded `"B"`, and `NSMutableNumber` follows `NSNumber` by treating `"c"` as `char`.
 - **Frame lengths and `long double` differ by ABI** — `NSMethodSignature frameLength` and `long double` size (8 bytes arm64, 16 bytes x86_64) are architecture-specific. Guard exact-value assertions with `#if defined(__arm64__) || defined(__aarch64__)`.
 - **`<arm_neon.h>`** — never import it unguarded. Wrap any arm-only header in `#if defined(__arm64__) || defined(__aarch64__)` so the x86_64 slice compiles.
@@ -58,9 +58,9 @@ Code is commit-ready only when every check below passes. These mirror the CI job
 
 ### Release Packaging
 
-The `Framework Release vX.Y.Z/` folders ship three artifacts:
+Each release attaches three artifacts to its GitHub Release (the README links to them there). Build them into a local `Framework Release vX.Y.Z/` folder, which is git-ignored; binaries are not committed:
 
-- `BEFoundation xcframework (macOS, iOS)/BEFoundation.xcframework.zip` — the recommended, multi-platform binary (macOS, iOS device, iOS simulator). Built by `Scripts/build-xcframework.sh <output-dir>`, which archives all three platforms (`BUILD_LIBRARY_FOR_DISTRIBUTION=YES`), runs `-create-xcframework`, ad-hoc signs each contained framework, and packages it. Note: a `.framework` holds one platform only; the xcframework is the one format that ships macOS + iOS together. It is Objective-C-only — the experimental `.swift` sources are not in the target, so no `.swiftinterface` is emitted.
+- `BEFoundation xcframework (macOS, iOS)/BEFoundation.xcframework.zip` — the recommended, multi-platform binary (macOS, iOS device, iOS simulator). Built by `Scripts/build-xcframework.sh <output-dir>`, which archives all three platforms (`BUILD_LIBRARY_FOR_DISTRIBUTION=YES`), runs `-create-xcframework`, ad-hoc signs each contained framework, and packages it. Note: a `.framework` holds one platform only; the xcframework is the one format that ships macOS + iOS together. It is Objective-C-only; the target has no Swift sources, so no `.swiftinterface` is emitted.
 - `BEFoundation (arm64)/BEFoundation.macos-arm.framework.zip` (`ARCHS=arm64`) and `BEFoundation Universal (arm64, x86_64)/BEFoundation.macos-arm-x86.framework.zip` (`ARCHS='arm64 x86_64'`) — plain **macOS** frameworks. Build each with `-configuration Release` so the binary picks up the PGO profile, then zip with `Scripts/package-release-zip.sh <BEFoundation.framework> <output.zip>`:
 
   ```bash
@@ -87,7 +87,7 @@ Compress every PNG after rendering, before committing:
 oxipng -o max -Z --strip safe Sources/BEFoundation/BEFoundation.docc/Resources/*.png
 ```
 
-This is lossless — verify with `magick compare -metric AE before.png after.png null:`, which must
+This is lossless; verify with `magick compare -metric AE before.png after.png null:`, which must
 report 0. It runs about a third off the catalog: `-Z` uses zopfli, trading CPU time for a smaller
 deflate stream, and `--strip safe` drops metadata that does not affect rendering. Re-rendered
 images arrive uncompressed, so skipping this silently undoes the saving.
@@ -97,7 +97,7 @@ Do not quantize (`pngquant`, `magick -colors 256`). It cuts far more, but the do
 highlight, destroying what those images document.
 
 The `.docc` catalog is documentation source. It is excluded from the SwiftPM target and the
-podspec, and never appears in a shipped framework — `docbuild` compiles it to a `.doccarchive`,
+podspec, and never appears in a shipped framework. `docbuild` compiles it to a `.doccarchive`,
 which is published separately.
 
 ## Project Structure
@@ -108,6 +108,9 @@ which is published separately.
 - `BEFoundation.xctestplan` — Test plan configuration
 - `OptimizationProfiles/` — Profile-guided-optimization data (`BEFoundation.profdata`)
 - `Scripts/` — developer/release helpers (`build-xcframework.sh`, `package-release-zip.sh`, `check-deployment-target.sh`, `check-category-collisions.sh`, `generate-docc-dark-svgs.py`, `run-noncompliant-tests.sh`)
+- `Package.swift`, `BEFoundation.podspec` — SwiftPM manifest and CocoaPods spec; the podspec's `deployment_target` values are the release's OS floor
+- `.github/workflows/ci.yml` — CI jobs (see Full Check)
+- `CATEGORY_NAMING.md` — category selector policy; `FIXES.md` — per-release fix log; `LICENSE`
 - `Local/` — personal reference material, git-ignored; nothing here ships
 
 ### Vendored: NSMutableNumber
@@ -126,10 +129,10 @@ The repo is upstream: prefer its conventions, mirror any edit to both places, an
 ## Code Conventions
 
 - Objective-C header/implementation pattern (.h/.m files)
-- Swift files use explicit imports of Foundation and related frameworks
-- Bridging header: @todo There is no Bridging yet.
+- No Swift sources; `Package.swift` is the only Swift file
+- Bridging header: `Sources/BEFoundation/BEFoundation-Bridging-Swift.h` is an empty placeholder in the Headers build phase; there is no Swift code to bridge
 - Tests follow the naming pattern: `<ClassName>Tests.m`
-- Some source files have duplicate extensions (e.g., `.m` and `.mm` for Objective-C++)
+- `NSMutableNumber.mm` is the one Objective-C++ source; every other implementation is `.m`
 - `if` statements always use a block (`{}`), never a single-line body.
 - Uniform Access Principle / self-encapsulation: read and write state through accessors, not direct ivar access.
 - Extract Method → Predicate/Guard Clause (Fowler) is preferred over nested conditionals.
@@ -142,7 +145,7 @@ The repo is upstream: prefer its conventions, mirror any edit to both places, an
 The bar for a comment is high. Code should explain itself through clear naming and
 structure; comments are reserved for what the code cannot express.
 
-- Use HeaderDoc `/*! ... */` blocks for public types, methods, and properties — the
+- Use HeaderDoc `/*! ... */` blocks for public types, methods, and properties, the
   established house style. Put multi-sentence rationale in the method's `@discussion`.
 - Write an inline `//` comment ONLY when it documents something non-obvious the code cannot
   state on its own: a subtle invariant (e.g. "must run on the access queue"), an external
@@ -151,7 +154,7 @@ structure; comments are reserved for what the code cannot express.
   maintainer might otherwise "fix".
 - Do NOT narrate what the code obviously does, restate the method name, or leave
   historical / "FIX:" / "previously the code did X" / "regression" justifications. The diff
-  and commit message carry that — not the source.
+  and commit message carry that.
 - Prefer one terse line over a paragraph. If a comment needs several lines, it usually
   belongs in the HeaderDoc `@discussion`, not inline.
 - The same bar applies to test code: the test method name should describe intent; add a
@@ -175,10 +178,10 @@ Prefer subject–verb–object declaratives, and bullet lists of `condition → 
 ## Adding New Source Files
 
 1. Add the public `.h` to `Sources/BEFoundation/include/BEFoundation/` and the `.m` to `Sources/BEFoundation/` (private headers go beside the `.m`)
-2. Add corresponding test file to `BEFoundationTests/` (auto-compiled — the test group is synchronized)
+2. Add corresponding test file to `BEFoundationTests/` (auto-compiled; the test group is synchronized)
 3. Register new framework files in the Xcode project via project.pbxproj or the Xcode GUI; mark public headers `Public`
 4. Add the public header to the umbrella `BEFoundation.h`
-5. macOS-only files are excluded from the iOS target via `EXCLUDED_SOURCE_FILE_NAMES[sdk=iphone*]`
+5. macOS-only framework sources and headers are wrapped in `#if TARGET_OS_OSX` (the framework target compiles every file on every platform; SwiftPM and the podspec have no per-platform exclusion either). macOS-only test files are listed in the test target's `EXCLUDED_SOURCE_FILE_NAMES[sdk=iphone*]`
 
 ## Key Dependencies
 
@@ -194,5 +197,5 @@ Required without exception:
 
 - **NEVER** run `git clone/mv/restore/rm/branch/commit/merge/rebase/reset/push` without developer approval first.
 - **NEVER** run `rm` on any path without developer approval first.
-- **NEVER** erase or overwrite files for the task of unit testing — the changes being tested must be preserved.
+- **NEVER** erase or overwrite files for the task of unit testing; the changes being tested must be preserved.
 - **NEVER** delete a file or folder until its associated task is completely finished.

@@ -28,7 +28,7 @@
 
 @end
 
-// Test class that does NOT conform to ObjectRegistryProtocol
+// Test class that does not conform to ObjectRegistryProtocol
 @interface NSObjectNonConformingTestObject : NSObject
 @property (nonatomic, strong) NSString *testValue;
 @end

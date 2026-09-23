@@ -44,10 +44,10 @@ NSDate *date = [formatter dateFromString:@"Mon, 23 Jun 2025 14:45:30 -0800"];
 ```
 
 > Note: This fixed format requires the leading weekday and a numeric zone offset. A string without
-> the weekday (`23 Jun 2025 …`) or with an obsolete alphabetic zone (`… GMT` / `… EST`) will not
+> the weekday (`23 Jun 2025 …`) or with an obsolete alphabetic zone (`… GMT` / `… EST`) does not
 > parse (`dateFromString:` returns `nil`). The weekday is required but not validated against the
-> date — an inconsistent weekday (e.g. `Tue` for a Monday) is silently accepted. Comments / folding
-> whitespace (CFWS) are not supported: a real email header like `… +0000 (UTC)` will not parse, so
+> date. An inconsistent weekday (e.g. `Tue` for a Monday) is accepted. Comments and folding
+> whitespace (CFWS) are not supported: a real email header like `… +0000 (UTC)` does not parse, so
 > strip any trailing comment first.
 
 ### RFC 2822 Format Details

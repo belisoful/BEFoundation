@@ -3,8 +3,9 @@
  @copyright		-© 2025 Delicense - @belisoful. All rights released.
  @date			2025-01-01
  @author		belisoful@icloud.com
- @abstract
- @discussion
+ @abstract		Mutability reporting and recursive copying for Foundation collections.
+ @discussion	Implements the hasMutability accessors and the four recursive-copy methods declared
+				in BEMutable.h. Reference cycles inside a copied graph are detected and terminate the walk.
 */
 
 
@@ -14,15 +15,10 @@
 
 /*!
  @category		BEMutableProtocol
- @abstract		This provides compatibility properties and methods to `NSObject` to check for mutability.
- @discussion	This adds the mutability-check properties to `NSObject` so any object answers whether it
-				is mutable. The base implementation reports immutable; mutable subclasses override it.
- 
- The following properties are provided by this category:
- 
- `hasMutability`: Class property. Returns NO because only specific classes are mutable.
- 
- `hasMutability`: Instance property. Returns the same as the class property of the same.
+ @abstract		Adds the hasMutability accessors to `NSObject`.
+ @discussion	Both accessors return YES when the class conforms to BEMutable and NO otherwise.
+				The categories below override them for classes whose mutability the protocol
+ conformance alone does not describe.
  
  */
 @implementation NSObject (BEMutableProtocol)

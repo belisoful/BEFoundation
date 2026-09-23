@@ -51,7 +51,6 @@ static inline int BEClamp255(CGFloat component) {
 		s = [s substringFromIndex:2];
 	}
 
-	// Expand 3-digit (RGB) and 4-digit (RGBA) shorthand to their full form.
 	if (s.length == 3 || s.length == 4) {
 		NSMutableString *expanded = [NSMutableString stringWithCapacity:s.length * 2];
 		for (NSUInteger i = 0; i < s.length; i++) {
@@ -63,11 +62,20 @@ static inline int BEClamp255(CGFloat component) {
 	if (s.length != 6 && s.length != 8) {
 		return nil;
 	}
+	// scanHexLongLong: accepts a second "0x" prefix, so the digits are validated first.
+	static NSCharacterSet *nonHexDigits = nil;
+	static dispatch_once_t once;
+	dispatch_once(&once, ^{
+		nonHexDigits = [NSCharacterSet characterSetWithCharactersInString:@"0123456789abcdefABCDEF"].invertedSet;
+	});
+	if ([s rangeOfCharacterFromSet:nonHexDigits].location != NSNotFound) {
+		return nil;
+	}
 
 	unsigned long long value = 0;
 	NSScanner *scanner = [NSScanner scannerWithString:s];
 	if (![scanner scanHexLongLong:&value] || !scanner.atEnd) {
-		return nil;   // contained non-hex characters
+		return nil;
 	}
 
 	CGFloat r, g, b, a;

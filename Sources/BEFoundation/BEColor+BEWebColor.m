@@ -305,6 +305,26 @@ static NSDictionary<NSString *, NSString *> *BEWebColorHexTable(void)
 	return table;
 }
 
+/*! Alternate keyword spelling (lowercased) to the canonical spelling: CSS Color Level 4
+	accepts @c grey wherever it accepts @c gray. */
+static NSDictionary<NSString *, NSString *> *BEWebColorAliasTable(void)
+{
+	static NSDictionary *table = nil;
+	static dispatch_once_t once;
+	dispatch_once(&once, ^{
+		table = @{
+			@"grey": @"gray",
+			@"darkgrey": @"darkgray",
+			@"dimgrey": @"dimgray",
+			@"lightgrey": @"lightgray",
+			@"slategrey": @"slategray",
+			@"lightslategrey": @"lightslategray",
+			@"darkslategrey": @"darkslategray",
+		};
+	});
+	return table;
+}
+
 @implementation BEColor (BEWebColor)
 
 #pragma mark - Web color lookup
@@ -318,6 +338,7 @@ static NSDictionary<NSString *, NSString *> *BEWebColorHexTable(void)
 	if (key.length == 0) {
 		return nil;
 	}
+	key = BEWebColorAliasTable()[key] ?: key;
 	// Resolved colors are cached: the properties below are the common path and each one
 	// would otherwise re-parse its hex on every read.
 	static NSCache<NSString *, BEColor *> *cache = nil;

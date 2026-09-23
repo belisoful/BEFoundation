@@ -210,7 +210,10 @@
 						  [BEColor webColorNameForColor:BEColor.webAqua]);
 	XCTAssertEqualObjects([BEColor webColorNameForColor:BEColor.webMagenta],
 						  [BEColor webColorNameForColor:BEColor.webFuchsia]);
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wnonnull"
 	XCTAssertNil([BEColor webColorNameForColor:nil]);
+#pragma clang diagnostic pop
 }
 
 - (void)testWebColors_roundTripThroughName
@@ -222,6 +225,64 @@
 		// Aliases resolve to the same color, so compare colors rather than spellings.
 		XCTAssertEqualObjects([BEColor webColorNamed:found], color, @"%@ round-trip", name);
 	}
+}
+
+
+#pragma mark - Hex prefix strictness
+
+- (void)testHexParse_rejectsASecondPrefix {
+	XCTAssertNil([BEColor colorWithHexString:@"#0x1234"], @"\"#\" then \"0x\" is not #001234");
+	XCTAssertNil([BEColor colorWithHexString:@"#0X1234"]);
+	XCTAssertNil([BEColor colorWithHexString:@"0x0x1234"]);
+	XCTAssertNil([BEColor colorWithHexString:@"#0x1"], @"shorthand expansion does not launder the prefix");
+	XCTAssertNil([BEColor colorWithHexString:@"#0x12"]);
+	XCTAssertNil([BEColor colorWithHexString:@"0x#123456"]);
+}
+
+- (void)testHexParse_0xPrefixAcceptsEveryDigitCount {
+	XCTAssertEqualObjects([BEColor colorWithHexString:@"0xabc"].hexString, @"#AABBCC");
+	XCTAssertEqualObjects([BEColor colorWithHexString:@"0Xf00f"].hexStringWithAlpha, @"#FF0000FF");
+	XCTAssertEqualObjects([BEColor colorWithHexString:@"0x00FF0080"].hexStringWithAlpha, @"#00FF0080");
+}
+
+#pragma mark - Grey aliases
+
+- (NSDictionary<NSString *, NSString *> *)greyAliases
+{
+	return @{
+		@"grey": BEWebColorNameGray,
+		@"darkgrey": BEWebColorNameDarkGray,
+		@"dimgrey": BEWebColorNameDimGray,
+		@"lightgrey": BEWebColorNameLightGray,
+		@"slategrey": BEWebColorNameSlateGray,
+		@"lightslategrey": BEWebColorNameLightSlateGray,
+		@"darkslategrey": BEWebColorNameDarkSlateGray,
+	};
+}
+
+- (void)testWebColorNamed_resolvesGreyAliases
+{
+	[self.greyAliases enumerateKeysAndObjectsUsingBlock:^(NSString *alias, NSString *canonical, BOOL *stop) {
+		BEColor *reference = [BEColor webColorNamed:canonical];
+		XCTAssertNotNil(reference);
+		XCTAssertEqualObjects([BEColor webColorNamed:alias], reference, @"%@", alias);
+		XCTAssertEqualObjects([BEColor webColorNamed:alias.uppercaseString], reference, @"%@", alias);
+		NSString *padded = [NSString stringWithFormat:@" %@\n", alias.capitalizedString];
+		XCTAssertEqualObjects([BEColor webColorNamed:padded], reference, @"%@", alias);
+	}];
+}
+
+- (void)testWebColorNames_omitGreyAliases
+{
+	XCTAssertEqual(BEColor.webColorNames.count, 141u);
+	XCTAssertEqual(BEColor.webColors.count, 141u);
+	NSSet<NSString *> *aliases = [NSSet setWithArray:self.greyAliases.allKeys];
+	for (NSString *name in BEColor.webColorNames) {
+		XCTAssertFalse([aliases containsObject:name.lowercaseString], @"%@ is an alias, not a keyword entry", name);
+	}
+	[self.greyAliases enumerateKeysAndObjectsUsingBlock:^(NSString *alias, NSString *canonical, BOOL *stop) {
+		XCTAssertEqualObjects([BEColor webColorNameForColor:[BEColor webColorNamed:alias]], canonical, @"%@", alias);
+	}];
 }
 
 @end

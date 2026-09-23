@@ -6,7 +6,7 @@ tracked separately in `README.md`'s Change Log.
 
 ---
 
-## Unreleased
+## 1.2.0
 
 ### BECharacterSet / BEObjectRegistry
 
@@ -17,6 +17,299 @@ tracked separately in `README.md`'s Change Log.
   declarations are now nonnull, following Foundation's convention of a nonnull `init` alongside
   failable argument-taking initializers. `initWithSet:`, `initWithCoder:`, and `initWithKeySalt:`
   keep their `nullable` returns.
+
+### NSObject+Macroable / NSObject+DynamicMethods
+
+- **Lock-order deadlock between macro registration and dynamic dispatch.** `macro:macroBlock:`
+  held `@synchronized(self.class)` and then called `addClassMethod:`, which takes the
+  DynamicMethods class lock. Dispatch took the same two locks in the opposite order:
+  `dynamicClassMethodMeta:` held the DynamicMethods lock and read the activation state under
+  `@synchronized(self)` on the class object. A thread registering a macro while another thread
+  hit any swizzled hook on the same class (`respondsToSelector:` was enough) deadlocked both.
+  Macroable now guards its records with a private monitor per class or object that
+  DynamicMethods never acquires. A regression test races registration against dispatch under a
+  deadline.
+
+- **Cross-class lookups read another class's tables without its lock.** `dynamicClassMethodMeta:`
+  and `dynamicObjectMethodMeta:` walked the superclass chain under only the receiver's lock, and
+  `dynamicClassForSelector:`, `dynamicClassForProtocol:`, and `dynamicObjectTargetForSelector:`
+  enumerated mutable dictionaries with no lock while `addInstanceProtocol:` and the protocol
+  sync mutated them. A superclass registration concurrent with subclass dispatch raised
+  "mutated while being enumerated". Each class in the chain is now read under its own lock, and
+  the protocol tables are enumerated from a snapshot copied under the owner's lock.
+
+- **A concurrent replace with a different arity invoked the new block through the old
+  invocation.** `dynamicForwardInvocation:` fetched the method record independently of the
+  signature that `methodSignatureForSelector:` had returned, so a block replaced between the two
+  calls ran through a mismatched `NSInvocation`. When `mutateInvocation:withMeta:` returned nil,
+  the return value was copied from uninitialized `alloca` memory while reporting the message as
+  handled. Both forwarding paths now compare the invocation's signature with the record's
+  (`+[BEMethodSignatureHelper methodSignature:matchesSignature:]`) and treat a mismatch or a nil
+  mutated invocation as not handled.
+
+- **Re-registering an instance protocol with a different class was invisible to synced
+  objects.** The sync stamp XORed a SHA-1 of the protocol pointer alone, so removing `P/Impl1`
+  and adding `P/Impl2` restored the previous stamp, `synchronizeWithClassProtocols` returned
+  early, and already-synced objects kept forwarding to `Impl1`. The XOR set-hash is replaced by
+  a per-class generation counter folded into an order-dependent stamp, and the sync rebuilds a
+  protocol whose class registration changed.
+
+- **Retain cycle through `setOriginalObject:`.** `addObjectProtocol:withTarget:` stores the
+  target strongly in the object's associated dictionary and hands the target the original
+  object; a target that held it strongly formed a cycle. The `NSProtocolImpClass` contract now
+  states that the receiver holds the original object weakly, and the test fixture follows it.
+
+- `getDynamicMethodsSwizzlePairs` is initialized under `dispatch_once`. `dynamicClassForSelector:`
+  continues past a protocol registered without a class, so `instancesRespondToSelector:` and
+  `instanceMethodSignatureForSelector:` agree.
+
+- **`enableDynamicMethods` was inert on a subclass that overrides a hook beneath a swizzled
+  parent.** `swizzleDynamicMethods` returned early when any superclass was swizzled, so a
+  subclass with its own `respondsToSelector:`, `methodSignatureForSelector:`,
+  `forwardInvocation:`, or `conformsToProtocol:` never reached the dynamic dispatch, while
+  `enableDynamicMethods` returned YES. When a parent is swizzled, each hook the subclass
+  implements directly is now swizzled as well.
+
+- **`enableDynamicMethods` on a blocked NS-prefixed class swizzled and returned YES** while
+  `isDynamicMethodsEnabled` reported no activation. The NS gate now runs before any swizzle or
+  state change and the method returns NO.
+
+### BEObjectRegistry
+
+- **A same-salt registry re-keying an object's UUID stranded the other registry's entry.**
+  The UUID lives on the object under a salt-derived key shared by every registry with that
+  salt, but `setRegistryUUID:forObject:` re-keys only the receiver's table. The other
+  registry's `unregisterObject:` then looked up the new UUID, found nothing, returned
+  `Decremented`, and left a dangling weak entry. `clearObject:` now falls back to locating the
+  entry by object identity, and the header states that registries assigning UUIDs to the same
+  objects use distinct salts.
+
+### BEPredicateRule
+
+- **Factories returned `BEPredicateRule *` instead of `instancetype`.** Subclass call sites
+  compiled with `-Wincompatible-pointer-types` although the factories return the subclass.
+  Every `+rule...` factory returns `instancetype`.
+- **`initWithPredicate:` accepted nil despite `nonnull`,** leaving `predicate` and
+  `predicateFormat` nil and `evaluateWithObject:` silently NO, while the initializers were
+  declared `nullable` yet never returned nil. A nil predicate raises
+  `NSInvalidArgumentException`, and the initializers are `nonnull`; `initWithCoder:` keeps the
+  `NSCoding` `nullable`.
+
+### BEPriorityExtensions
+
+- The comparator's `NSNumber` locals are initialized to nil explicitly, so the nil checks hold
+  under MRC as well as ARC.
+
+### BESecurityScopedURLManager
+
+- **Access references were tracked by URL equality while the OS tracks the NSURL instance.**
+  The security scope belongs to the instance returned by bookmark resolution;
+  `stopAccessingSecurityScopedResource` on an equal URL created elsewhere is a no-op.
+  `endAccessingURLInternal:` stopped the caller's instance, so the documented pairing
+  `ss_startAccessingSecurityScopedResource` / `ss_endAccessingSecurityScopedResource` reported
+  the scope closed while the sandbox extension stayed consumed for the process lifetime.
+  `handleBookmarkRelocationFromPath:toPath:` and `finishRelocationForURL:` moved the counts onto
+  a fresh unscoped URL and never stopped the old instance. All bookkeeping now runs through
+  three helpers on the access queue that acquire, release, and transfer access on the tracked
+  instance: `start` calls the OS only on the 0→1 transition and returns the tracked instance,
+  `end` stops `[refCounts member:url]`, and relocation transfers the counts onto the newly
+  resolved `entry.url`.
+
+- **`removeURLFromCatalog:` and re-adding a URL released one reference, not the session.** The
+  header promised that both end every active access; each decremented once, leaving the scope
+  open, and re-adding stole a caller's live access. Both now drain every reference for the
+  entry, stop once, and remove the resolved-URL record. `endAccessingAllURLs` clears the same
+  record.
+
+- **Every instance persisted to the same defaults key and cache file.** The comment claimed
+  per-instance isolation, but private instances with storage enabled clobbered each other and
+  the shared manager. `initWithStorageIdentifier:` derives the key and file name from the
+  identifier; the default identifier reproduces the existing names, so `sharedManager` and
+  `init` are unchanged. The tests use a unique identifier per test and leave no state in the
+  user's defaults or Caches.
+
+- **Fast enumeration forwarded each call to a fresh `allValues` array.** The
+  `NSFastEnumerationState` of one array was handed to another on every call; it worked only
+  because immutable arrays return everything at once. The first call takes one snapshot,
+  autoreleased into the caller's pool and referenced from the state, and every call forwards to
+  it.
+
+### BEWebData / NSURL+Data / NSData+URLDownload
+
+- **`dataWithBytesNoCopy:length:freeWhenDone:YES` copied the bytes and never freed the
+  buffer.** The class-cluster initializer `initWithBytes:length:copy:deallocator:` declared its
+  `copy` parameter as a pointer and ignored `deallocator`. The parameter is `BOOL` and the
+  deallocator runs once after the copy.
+- **`BEWebData` and `NSURL+Data` parsed the same data URL differently.** `charset=` matched
+  case-sensitively without trimming or quote handling, `BEWebData` defaulted to `US-ASCII` for
+  binary types while `NSURL.dataCharset` returned nil, and only one of the two tolerated
+  whitespace in base64. `NSURL (Data)` is now the sole parser and decoder and `BEWebData` reads
+  from it: parameter names and the `base64` token are case-insensitive and trimmed, quoted
+  values are unquoted, base64 ignores unknown characters, and the default charset is `US-ASCII`
+  for text-based MIME types and nil otherwise. `+charsetFromMediaType:` applies the same rules
+  to an HTTP `Content-Type` value.
+- **`Content-Length` drove `initWithCapacity:` unclamped.** A hostile header of 2^62 became an
+  allocation hint. The hint is clamped to 16 MB and a negative length is treated as unknown.
+
+### BEPathWatcher
+
+- A NULL result from `dispatch_source_create` leaked the file descriptor and passed NULL to
+  `dispatch_resume`. The descriptor is closed and `startMonitoring` returns NO.
+
+### NSNotification+ExtraProperties
+
+- `identifier` was declared `strong` but the setter copied any `NSCopying` value. The property
+  is declared `copy` and the header states the rule.
+
+### NSPriorityNotificationCenter
+
+- **Observer call-outs were serialized on a caller-owned lock.** Delivery wrapped every observer
+  call in `@synchronized(notification.userInfo)`. An empty `@{}` is the process-wide
+  `__NSDictionary0` singleton, so every empty-userInfo notification in the process shared one
+  monitor, and queued observers held it while running on their operation queue. A synchronous
+  observer that waited on a thread running a queued observer for an unrelated notification
+  deadlocked. The lock is removed from every path; `NSNotificationCenter` has none, and the lock
+  protected nothing (`NSNotification+MutableUserInfo` only casts `userInfo`). The header states
+  that an observer mutating a mutable `userInfo` synchronizes that itself.
+
+- **Selector delivery messaged a weak observer without a strong hold.** The weak `observer` was
+  loaded once for `methodSignatureForSelector:` and again for `setTarget:`, and `invoke` ran on
+  the raw pointer. An observer deallocated on another thread between the loads was messaged
+  after free. The selector path loads the observer once into a strong local and returns when it
+  is nil.
+
+- **Every `init` bridged to the system default center.** Each instance registered for every
+  notification on `NSNotificationCenter.defaultCenter` and re-posted its own posts there,
+  although the header documented this only for `+defaultCenter`. A private center leaked its
+  posts process-wide and paid the interception cost of every system notification. Bridging
+  now happens only in `initForSingleton:`, which creates `defaultCenter`; `init` produces a
+  self-contained center.
+
+### BEFileCache
+
+- **Payloads were decoded with `requiresSecureCoding = NO`.** Any same-user process can write
+  into the cache directory, and a planted archive instantiated arbitrary classes on
+  `objectForKey:`; the header claimed secure coding. Payloads now decode with
+  `unarchivedObjectOfClasses:` limited to the Foundation property-list set, the new
+  `allowedClasses` property, and the payload's root class recorded at write time in the `.meta`
+  sidecar and the index (`BEFileCacheItem.objectClassName`), honored only when that class
+  adopts `NSSecureCoding`. Entries written before 1.2.0 carry no record and decode with the
+  Foundation set plus `allowedClasses`. The recorded class is itself read from the cache
+  directory, so a same-user writer can still name any `NSSecureCoding` class as the root;
+  `allowedClasses` widens the set and never narrows it.
+
+### NSNumber+Primes16b
+
+- **1 was reported as a prime.** The table's index 0 holds the guard value 1, and every search
+  matched it: `ceilPrime16:1` returned 1, `floorPrimeValue16:1` returned 1, and
+  `floorPrimeValue16:2 offset:-1` stepped onto it. The searches start at index 1, floor and
+  round of a value below 2 return `NSNotFound` / 0 / nil, and the offset variants reject a final
+  index of 0. Twelve tests that pinned the old result are corrected.
+
+### NSDictionary+BExtension
+
+- **Recursive merge and add did not descend into an immutable nested dictionary.** With default
+  flags the recursion ran only when the receiver's nested value was already mutable, so merge
+  silently dropped the other side's nested keys and add replaced the nested dictionary
+  wholesale, while the header promised recursion at every level. Descent is now the default:
+  an immutable nested dictionary is mutable-copied, stored back, and recursed into.
+  `BEDictionarySelfMutableCollectionFlag` stays for source compatibility and adds no further
+  behavior.
+
+### NSNumber+BExtension
+
+- **Floating divide-by-zero returned `+INFINITY` for every sign and numerator, always as a
+  double.** `-1.0 / 0.0` and `0.0 / 0.0` both produced `+INF`. The guard is removed; IEEE 754
+  division yields the signed infinity or NaN, boxed in the resolved operand type.
+- **Integer add, subtract, and multiply wrapped silently** while the header claimed overflow
+  detection. The signed and unsigned paths now use `__builtin_*_overflow` and return NaN, the
+  module's existing sentinel for undefined results.
+- **A negative integer exponent was reinterpreted as a huge unsigned exponent** and the overflow
+  path returned 0. A negative exponent now routes to `pow`.
+- **XOR with a NaN operand cast NaN to `long long`** (undefined behavior). NaN is returned first.
+- **A nil or unsupported operand returned nil from a nonnull method.** It now raises
+  `NSInvalidArgumentException`.
+- `pow_int64` negated `INT64_MIN` when the magnitude was 2^63 (undefined behavior); the negation
+  runs in unsigned arithmetic.
+
+### NSMutableNumber (vendored, upstream v1.3.1)
+
+- **32 `-Wobjc-designated-initializers` warnings under Xcode 27.** The SDK marks every
+  `NSNumber` initializer `NS_DESIGNATED_INITIALIZER`, and each raises when sent to a subclass
+  through `super` because `NSNumber` is a class cluster. `NSMutableNumber` owns its storage and
+  chains to `NSObject`'s `init`, so the chaining rule cannot be satisfied; the diagnostic is
+  suppressed for the file with the rationale recorded beside the pragma.
+
+### FxTime / BECharacterSet
+
+- **`FxTime initWithCoder:` accepted a wrong-sized payload as an all-zero time.** A payload
+  whose length differs from `sizeof(CMTime)` now fails the decode with `NSCoderReadCorruptError`
+  and returns nil.
+- **`BECharacterSet` coding piggybacked on `NSNumber` and `NSData` private coder keys**
+  (`NS.number`, `NS.data`) inside its own key namespace. The class encodes `BE.equality` and
+  `BE.bitmap` under its own keys, decodes the previous layout when `BE.bitmap` is absent, clamps
+  the equality setting to its enum range, and fails the decode when no bitmap is present.
+
+### BEColor+BExtension / BEColor+BEWebColor
+
+- **`colorWithHexString:` accepted a second prefix.** `#0x1234` parsed as `#001234` because the
+  scanner accepted `0x` after the `#` was stripped. The remainder is validated as hex digits, so
+  `#0x1234` returns nil; one `#` or `0x` prefix is accepted.
+- **The seven `grey` keywords were missing.** The header cited "Gray and Grey" as duplicates,
+  but `webColorNamed:@"grey"`, `darkgrey`, `dimgrey`, `lightgrey`, `slategrey`,
+  `lightslategrey`, and `darkslategrey` returned nil. An alias table resolves them;
+  `webColorNames` and the reverse lookup keep the 141 canonical `Gray` spellings.
+
+### BEDotView
+
+- **Under MRC the setters released the ivar before copying the argument**, so `setDepth:`
+  passing `_colorName` back in freed the string first, and the class had no `dealloc`. The
+  setters copy the argument to a local first and an MRC `dealloc` releases the object ivars.
+
+- **Nib-loaded instances had no defaults.** Depth, shadow, and border defaults (and on iOS the
+  transparent background and redraw-on-resize content mode) were set only in `initWithFrame:`.
+  A view decoded from a nib or storyboard drew without shading or shadow and, on iOS, on an
+  opaque black background. Both initializers now share one common-init path.
+
+- **Hex color names accepted trailing garbage and rejected shorthand.** `#12345Z` parsed as
+  `#012345`, and `#RGB` failed the length check and fell back to neutral gray. The hex branch
+  now goes through `+[BEColor colorWithHexString:]`, so shorthand expands and a malformed value
+  leaves the pair unset.
+
+- **Changing `depth` discarded explicit `mainColor`/`highlightColor` overrides.** `setDepth:`
+  re-ran `setColorName:`, which cleared both. The pair is recomputed only while neither override
+  is set.
+
+### AppKit — BEWindowController
+
+- **`-close` wrote an ivar after `[super close]` could deallocate the receiver.** When a
+  `BEWindowControllerManager` was the sole owner it removed the controller synchronously from
+  `NSWindowWillCloseNotification`, and the following `_isClosing = NO` store was a
+  use-after-free. `-close` now holds a strong reference to itself for the whole method.
+
+### Build, CI, and metadata
+
+- **The podspec declared MIT.** `LICENSE` is the public-domain DELICENSE and the README badge
+  says so; CocoaPods and license scanners recorded terms the project does not grant. The
+  podspec now declares `Public Domain`.
+- **CI never compiled with the release toolchain.** Every job pinned Xcode 16.4 while releases
+  ship from Xcode 26. A `release-toolchain` job builds and tests with the newest Xcode 26 on the
+  runner, and an `xcode-27` job on the macOS 26 image builds, tests, and runs `docbuild` with
+  the newest Xcode 27. The iOS job fails immediately when it cannot resolve the simulator SDK
+  major instead of matching every runtime. Static-analyzer and `pod lib lint` jobs are added,
+  the Rosetta install runs only when the x86_64 probe fails, and the checkout action is pinned
+  to a commit.
+- **Release binaries were committed.** The three zips under `Framework Release v1.1.1/` are
+  removed from the tree and the folder pattern is ignored; the README links to the GitHub
+  Release assets.
+- **`ciimage-text-composite.png` had no dark variant.** The `~dark` PNG is rendered with the
+  category's own `createImageText:` and `combineImage:alpha:withImage:` over a darker gradient.
+- **`BESecurityScopedURLManagerTests.m` was excluded from the iOS test target** although the
+  class ships on iOS with platform-specific branches. The exclusion is removed; the AppKit-only
+  cases are guarded with `TARGET_OS_OSX`.
+- AGENTS.md described an iOS source-exclusion mechanism the framework target does not have
+  (macOS-only sources are guarded with `#if TARGET_OS_OSX`), and CATEGORY_NAMING.md now records
+  that the collision guard probes macOS classes only.
 
 ---
 

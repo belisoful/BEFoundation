@@ -6,7 +6,7 @@ An `NSTabView` subclass that supports hiding and showing tabs dynamically.
 
 `BETabView` extends `NSTabView` to add the ability to hide and show individual tab items while maintaining their position in the tab order. Hidden tabs are removed from the visible interface but remain in memory and can be shown again at any time.
 
-This is useful for conditional UI where certain tabs should only be visible under specific circumstances, such as:
+Typical uses:
 - Progressive disclosure (show advanced tabs only when needed)
 - Permission-based tab visibility
 - Wizard-style interfaces with conditional steps
@@ -105,7 +105,7 @@ if (hiddenTab) {
 
 All tab view items, including both visible and hidden tabs.
 
-This property provides access to all tabs that have been added to the tab view, regardless of their visibility state. The order of items in this array determines the position where tabs will appear when shown.
+This property provides access to all tabs that have been added to the tab view, regardless of their visibility state. The order of items in this array determines the position where tabs appear when shown.
 
 The inherited `tabViewItems` property returns only visible tabs, while `allTabViewItems` returns all tabs.
 
@@ -185,7 +185,7 @@ Whether this tab view item is currently hidden.
 
 Setting this property to `YES` hides the tab (removes it from the visible tab bar and content area). Setting it to `NO` shows the tab (adds it back to the visible interface at its preserved position).
 
-This property only works when the tab item is part of a `BETabView`. Using it with a standard `NSTabView` will raise an `NSInternalInconsistencyException`.
+This property takes effect when the tab item is part of a `BETabView`. On an item that belongs to no tab view the value is stored and applied when the item is inserted into a `BETabView`. Setting it on an item that belongs to a standard `NSTabView` raises an `NSInternalInconsistencyException`.
 
 ## NSTabView (TabViewItemIdentifier)
 

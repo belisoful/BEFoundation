@@ -82,7 +82,7 @@
 	
 	NSError *error = nil;
 	
-	// Archive using the modern API but do NOT require secure coding.
+	// Archive using the modern API but do not require secure coding.
 	NSKeyedArchiver *archiver = [[NSKeyedArchiver alloc] initRequiringSecureCoding:NO];
 	[archiver encodeObject:original forKey:NSKeyedArchiveRootObjectKey];
 	[archiver finishEncoding];
@@ -156,7 +156,6 @@
 	TestWindowController *child1 = [[TestWindowController alloc] init];
 	TestWindowController *child2 = [[TestWindowController alloc] init];
 	
-	// Add children
 	child1.parentController = parent;
 	child2.parentController = parent;
 	
@@ -164,7 +163,6 @@
 	XCTAssertEqualObjects(child2.parentController, parent);
 	XCTAssertEqual(parent.childControllers.count, 2);
 	
-	// Remove one child
 	child1.parentController = nil;
 	XCTAssertNil(child1.parentController);
 	XCTAssertEqual(parent.childControllers.count, 1);
@@ -175,13 +173,11 @@
 	BEWindowController *parent = [[BEWindowController alloc] init];
 	TestWindowController *child1 = [[TestWindowController alloc] init];
 	
-	// Add children
 	child1.parentController = parent;
 	
 	XCTAssertEqualObjects(child1.parentController, parent);
 	XCTAssertEqual(parent.childControllers.count, 0);
 	
-	// Remove one child
 	child1.parentController = nil;
 	XCTAssertNil(child1.parentController);
 	XCTAssertEqual(parent.childControllers.count, 0);
@@ -213,7 +209,6 @@
 	TestWindowController *parent = [[TestWindowController alloc] init];
 	TestWindowController *child1 = [[TestWindowController alloc] init];
 	
-	// Add children
 	child1.parentController = plainParent;
 	
 	[parent addChildWindowController:child1];
@@ -225,7 +220,6 @@
 	XCTAssertEqual(child1.parentController, plainParent);
 	
 	
-	// Remove child
 	child1.parentController = nil;
 	
 	[parent addChildWindowController:child1];
@@ -333,8 +327,7 @@
 	XCTAssertTrue([parentA containsChildWindowController:child]);
 	XCTAssertFalse([parentB containsChildWindowController:child]);
 
-	// Reparent A -> B. Regression: the child previously lingered in BOTH parents' sets
-	// with a stale back-reference.
+	// Reparent A -> B. The child must leave the old parent's set and drop the stale back-reference.
 	child.parentController = parentB;
 	XCTAssertEqualObjects(child.parentController, parentB, @"Back-reference must point to the new parent.");
 	XCTAssertTrue([parentB containsChildWindowController:child], @"Child must be in the new parent.");
@@ -342,7 +335,6 @@
 	XCTAssertEqual(parentA.childControllers.count, 0u);
 	XCTAssertEqual(parentB.childControllers.count, 1u);
 
-	// Detach entirely.
 	child.parentController = nil;
 	XCTAssertNil(child.parentController);
 	XCTAssertFalse([parentB containsChildWindowController:child]);
@@ -358,6 +350,40 @@
 
 - (void)testSupportsSecureCoding {
 	XCTAssertTrue([BEWindowController supportsSecureCoding]);
+}
+
+/*!
+ * The manager drops its strong reference synchronously from NSWindowWillCloseNotification,
+ * inside [super close]. -close must survive being the last message a sole-owned controller
+ * receives. The receiver is messaged through an unretained pointer so ARC adds no retain of
+ * its own around the call.
+ */
+- (void)testCloseSurvivesReleaseByItsSoleOwnerDuringSuperClose {
+	BEWindowControllerManager *manager = [[BEWindowControllerManager alloc] init];
+	NSWindow *window = [[NSWindow alloc] initWithContentRect:NSMakeRect(0, 0, 120, 80)
+												   styleMask:NSWindowStyleMaskTitled
+													 backing:NSBackingStoreBuffered
+													   defer:YES];
+	window.releasedWhenClosed = NO;
+
+	__weak BEWindowController *weakController = nil;
+	__unsafe_unretained BEWindowController *unretainedController = nil;
+	@autoreleasepool {
+		BEWindowController *wc = [[BEWindowController alloc] initWithWindow:window];
+		weakController = wc;
+		unretainedController = wc;
+		[[NSNotificationCenter defaultCenter] postNotification:
+			[NSNotification notificationWithName:BEWindowDidLoadNotification object:window]];
+		XCTAssertTrue([manager.windowControllers containsObject:wc], @"Precondition: the manager tracks the controller.");
+	}
+	XCTAssertNotNil(weakController, @"Precondition: the manager is the sole owner.");
+
+	@autoreleasepool {
+		XCTAssertNoThrow([unretainedController close]);
+		XCTAssertEqual(manager.windowControllers.count, 0u, @"Closing the window untracks the controller.");
+	}
+
+	XCTAssertNil(weakController, @"The controller deallocates once its sole owner releases it.");
 }
 
 - (void)testTwoPrimariesDoNotInfinitelyRecurse {

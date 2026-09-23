@@ -28,7 +28,6 @@ static inline BOOL BEMulOverflowsSize(size_t a, size_t b) {
 		return NO;
 	}
 	
-	// Prepare vImage buffers
 	vImage_Buffer srcGray = {
 		.data = (void *)grayData,
 		.height = height,
@@ -36,7 +35,6 @@ static inline BOOL BEMulOverflowsSize(size_t a, size_t b) {
 		.rowBytes = grayRowBytes
 	};
 
-	// All channels are duplicated from gray, except alpha
 	vImage_Buffer dstARGB = {
 		.data = argbData,
 		.height = height,
@@ -44,7 +42,6 @@ static inline BOOL BEMulOverflowsSize(size_t a, size_t b) {
 		.rowBytes = argbRowBytes
 	};
 
-	// Grayscale duplicated to R, G, B channels
 	vImage_Error err = vImageConvert_Planar8ToXRGB8888(
 		alpha,
 		&srcGray, // Red
@@ -69,7 +66,6 @@ static inline BOOL BEMulOverflowsSize(size_t a, size_t b) {
 		return NO;
 	}
 	
-	// Create intermediate 32-bit float buffer (overflow-guarded).
 	if (BEMulOverflowsSize(width, sizeof(float))) {
 		return NO;
 	}
@@ -80,7 +76,6 @@ static inline BOOL BEMulOverflowsSize(size_t a, size_t b) {
 	float *tempFloat32 = malloc(height * float32RowBytes);
 	if (!tempFloat32) return NO;
 	
-	// Step 1: Convert 16F to 32F
 	vImage_Buffer src16F = {
 		.data = (void *)grayData,
 		.height = height,
@@ -101,7 +96,6 @@ static inline BOOL BEMulOverflowsSize(size_t a, size_t b) {
 		return NO;
 	}
 	
-	// Step 2: Convert single channel 32F to RGB 32F
 	vImage_Buffer dstRGBA = {
 		.data = rgbaData,
 		.height = height,
@@ -140,7 +134,6 @@ static inline BOOL BEMulOverflowsSize(size_t a, size_t b) {
 		.rowBytes = grayRowBytes
 	};
 
-	// Convert single channel 32F to RGB 32F
 	vImage_Buffer dstARGB = {
 		.data = rgbaData,
 		.height = height,
@@ -255,12 +248,12 @@ static inline BOOL BEMulOverflowsSize(size_t a, size_t b) {
 		if (texture.pixelFormat == MTLPixelFormatR8Unorm) {
 			newBytesPerPixel    = 4;
 			newBitsPerComponent = 8;
-			// vImageConvert_Planar8ToXRGB8888 produces [X][R][G][B] — alpha-first, skip it.
+			// vImageConvert_Planar8ToXRGB8888 produces [X][R][G][B], alpha first; skip it.
 			newBitmapInfo       = (CGBitmapInfo)kCGImageAlphaNoneSkipFirst | kCGBitmapByteOrder32Big;
 		} else { // R16Float or R32Float → 32-bit float RGBX
 			newBytesPerPixel    = 16;
 			newBitsPerComponent = 32;
-			// vImageConvert_PlanarFToRGBXFFFF produces [R][G][B][X] — alpha-last, skip it.
+			// vImageConvert_PlanarFToRGBXFFFF produces [R][G][B][X], alpha last; skip it.
 			newBitmapInfo       = (CGBitmapInfo)kCGImageAlphaNoneSkipLast | kCGBitmapFloatComponents;
 		}
 

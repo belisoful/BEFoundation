@@ -14,7 +14,6 @@
 #import "NSDictionary+BExtension.h"
 #import "BERuntime.h"
 #import "BE_ARC.h"
-#import <CommonCrypto/CommonDigest.h>
 
 @interface BEDynamicMethodInstanceProtocolMeta : NSObject
 @property (readonly)					Protocol		*protocol;
@@ -133,7 +132,7 @@
 	// replaced in the methods dictionary. The dispatch path holds a strong reference to the meta while
 	// it invokes -implementation, so an in-flight call keeps the IMP alive even when another thread
 	// removes or replaces the method concurrently; the trampoline is freed only once no one references
-	// it. _block is a strong ivar released by ARC; do NOT also Block_release it.
+	// it. _block is a strong ivar released by ARC; do not also Block_release it.
 	if (_implementation) {
 		imp_removeBlock(_implementation);
 	}
@@ -145,6 +144,65 @@
 
 
 static NSString * const BEDMProtocolTargetLUTKey = @"__reverseTargetLUT";
+
+/*!
+ @function		BEInvokeDynamicMethodMeta
+ @abstract		Runs a dynamic method's block for an invocation.
+ @param			invocation	The forwarded invocation.
+ @param			meta		The method record to run.
+ @return		YES when the block ran and the return value is stored in @c invocation; NO when the
+				invocation does not match the record and nothing ran.
+ @discussion	The invocation's signature is compared to the record's before anything runs. The
+				signature came from an earlier methodSignatureForSelector:, and the record is fetched
+				again here, so a concurrent replacement with a different arity or types produces a
+				record that cannot consume this invocation. Such an invocation is not handled.
+ */
+static BOOL BEInvokeDynamicMethodMeta(NSInvocation *invocation, BEDynamicMethodMeta *meta)
+{
+	if (![BEMethodSignatureHelper methodSignature:invocation.methodSignature matchesSignature:meta.methodSignature]) {
+		return NO;
+	}
+	
+	if (!meta.isCapturingCmd) {
+		[invocation invokeUsingIMP:meta.implementation];
+		return YES;
+	}
+	
+	NSInvocation *impInvocation = [BEMethodSignatureHelper mutateInvocation:invocation withMeta:meta];
+	if (!impInvocation) {
+		return NO;
+	}
+	
+	[impInvocation invokeUsingIMP:meta.implementation];
+	
+	NSUInteger returnLength = invocation.methodSignature.methodReturnLength;
+	if (returnLength) {
+		BOOL largeReturnLength = returnLength >= 256;
+		void *returnData = largeReturnLength ? malloc(returnLength) : alloca(returnLength);
+		
+		[impInvocation getReturnValue:returnData];
+		[invocation setReturnValue:returnData];
+		
+		if (largeReturnLength) {
+			free(returnData);
+		}
+	}
+	return YES;
+}
+
+/*!
+ @function		BEProtocolGenerationStamp
+ @abstract		Folds one class's protocol generation into a class-chain stamp.
+ @discussion	The mix is order-dependent and includes the class identity, so a stamp identifies
+				which classes contributed and at which generation. FNV-1a constants.
+ */
+static inline uint64_t BEProtocolGenerationStamp(uint64_t stamp, Class cls, uint64_t generation)
+{
+	const uint64_t prime = 0x100000001b3ULL;
+	stamp = (stamp ^ (uint64_t)(uintptr_t)cls) * prime;
+	stamp = (stamp ^ generation) * prime;
+	return stamp;
+}
 
 
 
@@ -238,7 +296,8 @@ static NSString * const BEDMProtocolTargetLUTKey = @"__reverseTargetLUT";
 + (const NSArray*)getDynamicMethodsSwizzlePairs
 {
 	static NSArray *swizzler = nil;
-	if (!swizzler) {
+	static dispatch_once_t onceToken;
+	dispatch_once(&onceToken, ^{
 		swizzler = @[
 			//instance  - methods to swizzle
 			[BEDynamicMethodSwizzleSelectors swizzleOriginal:@selector(conformsToProtocol:) withSelector:@selector(swizzleConformsToProtocol:)],
@@ -256,7 +315,7 @@ static NSString * const BEDMProtocolTargetLUTKey = @"__reverseTargetLUT";
 			[BEDynamicMethodSwizzleSelectors swizzleMetaOriginal:@selector(respondsToSelector:) withSelector:@selector(swizzleClassRespondsToSelector:)],
 			[BEDynamicMethodSwizzleSelectors swizzleMetaOriginal:@selector(forwardInvocation:) withSelector:@selector(swizzleClassForwardInvocation:)]
 		];
-	}
+	});
 	return swizzler;
 }
 
@@ -298,8 +357,13 @@ static NSString * const BEDMProtocolTargetLUTKey = @"__reverseTargetLUT";
 
 
 
++ (BOOL)isNSDynamicMethodsBlocked
+{
+	return ![self allowNSDynamicMethods] && [NSStringFromClass(self.class) hasPrefix:@"NS"];
+}
+
 + (NSNumber*)isSelfDynamicMethodsEnabledObject {
-	if (![self allowNSDynamicMethods] && [NSStringFromClass(self.class) hasPrefix:@"NS"]) {
+	if ([self isNSDynamicMethodsBlocked]) {
 		return nil;
 	}
 	@synchronized (self) {
@@ -354,7 +418,7 @@ static NSString * const BEDMProtocolTargetLUTKey = @"__reverseTargetLUT";
 + (BOOL)enableDynamicMethods
 {
 	BEDynamicMethodsActivationState isEnabled = self.isDynamicMethodsEnabled;
-	if (isEnabled == DMSelfEnabled || class_isMetaClass(self) || self == NSObject.class) {
+	if (isEnabled == DMSelfEnabled || class_isMetaClass(self) || self == NSObject.class || [self isNSDynamicMethodsBlocked]) {
 		return NO;
 	}
 	@synchronized (self) {
@@ -391,7 +455,6 @@ static NSString * const BEDMProtocolTargetLUTKey = @"__reverseTargetLUT";
 + (BOOL)resetDynamicMethods {
 	BEDynamicMethodsActivationState isEnabled = self.isDynamicMethodsEnabled;
 	if (!isDynamicMethodsSelf(isEnabled) || class_isMetaClass(self) || self == NSObject.class) {
-		//DMSelfEnabled or DMSelfDisabled
 		return NO;
 	}
 	@synchronized (self) {
@@ -409,18 +472,51 @@ static NSString * const BEDMProtocolTargetLUTKey = @"__reverseTargetLUT";
 + (void)swizzleDynamicMethods
 {
 	Class cls = self.class;
-	
-	//If a parent or self is swizzled, no need to swizzle
-	if ([BEDynamicMethodSwizzleSelectors statusParentsAreSwizzled:cls] || [BEDynamicMethodSwizzleSelectors statusClassIsSwizzled:cls]) {
+
+	if ([BEDynamicMethodSwizzleSelectors statusClassIsSwizzled:cls]) {
 		return;
 	}
-	
+
 	const NSArray<BEDynamicMethodSwizzleSelectors *> *swizzles = [cls getDynamicMethodsSwizzlePairs];
-	for (size_t j = 0; j < swizzles.count; j++) {
-		[swizzles[j] swizzleMethodsOnClass:cls];
+	if ([BEDynamicMethodSwizzleSelectors statusParentsAreSwizzled:cls]) {
+		// The inherited hooks already dispatch dynamic methods; only a hook this class
+		// overrides directly bypasses them.
+		for (BEDynamicMethodSwizzleSelectors *swizzle in swizzles) {
+			[cls swizzleDirectlyImplementedDynamicMethod:swizzle];
+		}
+	} else {
+		for (size_t j = 0; j < swizzles.count; j++) {
+			[swizzles[j] swizzleMethodsOnClass:cls];
+		}
 	}
-	
+
 	[BEDynamicMethodSwizzleSelectors setClass:cls swizzle:YES];
+}
+
++ (void)swizzleDirectlyImplementedDynamicMethod:(BEDynamicMethodSwizzleSelectors *)swizzle
+{
+	Class target = swizzle.isMetaClass ? object_getClass(self) : self;
+	if (!class_hasMethod(target, swizzle.originalSelector)) {
+		return;
+	}
+	// On a swizzled parent the swizzle selector already holds that parent's original IMP.
+	// NSObject is never swizzled, so its copy is the hook.
+	Class hookClass = swizzle.isMetaClass ? object_getClass(NSObject.class) : NSObject.class;
+	Method originalMethod = class_getInstanceMethod(target, swizzle.originalSelector);
+	Method hookMethod = class_getInstanceMethod(hookClass, swizzle.swizzleSelector);
+	if (!originalMethod || !hookMethod) {
+		return;
+	}
+	const char *hookTypes = method_getTypeEncoding(hookMethod);
+	if (strcmp(method_getTypeEncoding(originalMethod), hookTypes) != 0) {
+		return;
+	}
+	class_addMethod(target, swizzle.swizzleSelector, method_getImplementation(hookMethod), hookTypes);
+	Method localHook = class_getInstanceMethod(target, swizzle.swizzleSelector);
+	if (!localHook || localHook == hookMethod) {
+		return;
+	}
+	method_exchangeImplementations(originalMethod, localHook);
 }
 
 
@@ -638,6 +734,13 @@ static NSString * const BEDMProtocolTargetLUTKey = @"__reverseTargetLUT";
 	}
 }
 
++ (nullable BEDynamicMethodMeta *)dynamicSelfClassMethodMetaForSelectorString:(nonnull NSString *)selectorString
+{
+	@synchronized ([self dynamicMethodsInstanceLock]) {
+		return [[self dynamicSelfClassMethodsDictionary] objectForKey:selectorString];
+	}
+}
+
 
 + (BEDynamicMethodMeta *)dynamicClassMethodMeta:(nonnull SEL)selector
 {
@@ -645,31 +748,29 @@ static NSString * const BEDMProtocolTargetLUTKey = @"__reverseTargetLUT";
 		return nil;
 	}
 	
-	@synchronized ([self dynamicMethodsInstanceLock]) {
-		NSString *selectorString = NSStringFromSelector(selector);
-		
-		Class cls = self.class;
-		BEDynamicMethodMeta	*meta = nil;
-		do {
-			if (!meta) {
-				meta = [[cls dynamicSelfClassMethodsDictionary] objectForKey:selectorString];
+	// Each class is read under its own lock; no lock is held across the walk or across the
+	// activation check, which takes the class monitors.
+	NSString *selectorString = NSStringFromSelector(selector);
+	
+	Class cls = self.class;
+	BEDynamicMethodMeta	*meta = nil;
+	do {
+		if (!meta) {
+			meta = [cls dynamicSelfClassMethodMetaForSelectorString:selectorString];
+		}
+		if (meta) {
+			BEDynamicMethodsActivationState status = [cls isDynamicMethodsEnabled];
+			if (isDynamicMethodsEnabled(status)) {
+				return meta;
+			} else if (isDynamicMethodsDisabled(status)) {
+				meta = nil;
+			} else {
+				break;
 			}
-			if (meta) {
-				BEDynamicMethodsActivationState status = [cls isDynamicMethodsEnabled];
-				if (isDynamicMethodsEnabled(status)) {
-					//when enabled, return
-					return meta;
-				} else if (isDynamicMethodsDisabled(status)) {
-					//when found and disabled, reset
-					meta = nil;
-				} else {
-					break;
-				}
-			}
-			cls = cls.superclass;
-		} while (cls && cls != NSObject.class);
-		return nil;
-	}
+		}
+		cls = cls.superclass;
+	} while (cls && cls != NSObject.class);
+	return nil;
 }
 
 
@@ -770,6 +871,13 @@ static NSString * const BEDMProtocolTargetLUTKey = @"__reverseTargetLUT";
 	}
 }
 
+- (nullable BEDynamicMethodMeta *)dynamicSelfObjectMethodMetaForSelectorString:(nonnull NSString *)selectorString
+{
+	@synchronized ([self dynamicMethodsObjectLock]) {
+		return [[self dynamicSelfObjectMethodsDictionary] objectForKey:selectorString];
+	}
+}
+
 
 - (BEDynamicMethodMeta *)dynamicObjectMethodMeta:(nonnull SEL)selector
 {
@@ -777,39 +885,35 @@ static NSString * const BEDMProtocolTargetLUTKey = @"__reverseTargetLUT";
 		return nil;
 	}
 	
-	@synchronized ([self dynamicMethodsObjectLock]) {
-		NSString *selectorString = NSStringFromSelector(selector);
-		if (!object_isClass(self)) {
-			// when self is a normal object and enabled
-			if (isDynamicMethodsEnabled([self.class isDynamicMethodsEnabled])) {
-				return [[self dynamicSelfObjectMethodsDictionary] objectForKey:selectorString];
-			}
-			return nil;
+	// Each owner is read under its own lock; the activation check takes the class monitors and
+	// runs with no lock held.
+	NSString *selectorString = NSStringFromSelector(selector);
+	if (!object_isClass(self)) {
+		if (isDynamicMethodsEnabled([self.class isDynamicMethodsEnabled])) {
+			return [self dynamicSelfObjectMethodMetaForSelectorString:selectorString];
 		}
-		
-		// when self is a Class, traverse until NSObject
-		Class cls = self.class;
-		BEDynamicMethodMeta	*meta = nil;
-		do {
-			if (!meta) {
-				meta = [[cls dynamicSelfObjectMethodsDictionary] objectForKey:selectorString];
-			}
-			if (meta) {
-				BEDynamicMethodsActivationState status = [cls isDynamicMethodsEnabled];
-				if (isDynamicMethodsEnabled(status)) {
-					//when enabled, return
-					return meta;
-				} else if (isDynamicMethodsDisabled(status)) {
-					//when found and disabled, reset
-					meta = nil;
-				} else {
-					break;
-				}
-			}
-			cls = [cls superclass];
-		} while (cls && cls != NSObject.class);
 		return nil;
 	}
+	
+	Class cls = self.class;
+	BEDynamicMethodMeta	*meta = nil;
+	do {
+		if (!meta) {
+			meta = [cls dynamicSelfObjectMethodMetaForSelectorString:selectorString];
+		}
+		if (meta) {
+			BEDynamicMethodsActivationState status = [cls isDynamicMethodsEnabled];
+			if (isDynamicMethodsEnabled(status)) {
+				return meta;
+			} else if (isDynamicMethodsDisabled(status)) {
+				meta = nil;
+			} else {
+				break;
+			}
+		}
+		cls = [cls superclass];
+	} while (cls && cls != NSObject.class);
+	return nil;
 }
 
 
@@ -831,8 +935,8 @@ static NSString * const BEDMProtocolTargetLUTKey = @"__reverseTargetLUT";
 				It derives the method signature from the block's signature by dropping the leading
 				block (@c "?") parameter and treating the block's first explicit parameter as @c self.
 
-				The block must be of the form @c (ReturnType (^)(id self, ...)) — the @c SEL @c _cmd is
-				OPTIONAL: if the block's second parameter is a @c SEL it is delivered the selector
+				The block must be of the form @c (ReturnType (^)(id self, ...)). The @c SEL @c _cmd is
+				optional: if the block's second parameter is a @c SEL it is delivered the selector
 				being invoked; if omitted, the system adjusts the signature so the remaining arguments
 				line up. So both @c ^(id self, NSString *arg) and @c ^(id self, SEL _cmd, NSString *arg)
 				are valid.
@@ -871,9 +975,9 @@ static NSString * const BEDMProtocolTargetLUTKey = @"__reverseTargetLUT";
  @method		-removeObjectMethod:
  @abstract		Removes dynamic method from an existing object.
  @param			selector	The dynamic method to remove.
- @discussion	This method adds a new method to an existing object with an
-				implementing @c block.
- @return 		Was the dynamic block method removed.
+ @discussion	Removes the dynamic method registered for @c selector on this object. The block
+				and its metadata are released once no in-flight dispatch references them.
+ @return 		YES when a dynamic method was removed; NO when none was registered.
  
  */
 - (BOOL)removeObjectMethod:(SEL)selector
@@ -919,16 +1023,40 @@ static NSString * const BEDMProtocolTargetLUTKey = @"__reverseTargetLUT";
 	}
 }
 
+/*!
+ @method		dynamicSelfInstanceProtocolsSnapshot
+ @abstract		Returns a copy of this class's instance-protocol registrations, taken under its lock.
+ @discussion	Readers enumerate the snapshot with no lock held, so a concurrent registration on
+				this class cannot mutate a collection while it is enumerated. The no-protocol class
+				list is copied as well; the reverse LUT is omitted.
+ */
++ (nullable NSDictionary<NSString*, id> *)dynamicSelfInstanceProtocolsSnapshot
+{
+	@synchronized ([self dynamicMethodsInstanceProtocolLock]) {
+		NSMutableDictionary<NSString*, id> *dynamicInstanceProtocols = [self dynamicSelfInstanceProtocolsDictionary];
+		if (!dynamicInstanceProtocols) {
+			return nil;
+		}
+		NSMutableDictionary<NSString*, id> *snapshot = [dynamicInstanceProtocols mutableCopy];
+		[snapshot removeObjectForKey:BEDMProtocolTargetLUTKey];
+		NSString *noProtocolString = NSStringFromProtocol(@protocol(NSNoProtocol));
+		NSArray<NSString*> *noProtocolClasses = [snapshot objectForKey:noProtocolString];
+		if (noProtocolClasses) {
+			[snapshot setObject:[noProtocolClasses copy] forKey:noProtocolString];
+		}
+		return snapshot;
+	}
+}
+
 + (id)dynamicClassForSelector:(SEL _Nonnull)selector isInstance:(BOOL)isInstance returnSignature:(BOOL)returnSignature
 {
 	if (!selector || self == NSObject.class) {
 		return nil;
 	}
 	
-	NSMutableDictionary<NSString*, id> *dynamicInstanceProtocols = [self dynamicSelfInstanceProtocolsDictionary];
+	NSDictionary<NSString*, id> *dynamicInstanceProtocols = [self dynamicSelfInstanceProtocolsSnapshot];
 	if (dynamicInstanceProtocols && isDynamicMethodsEnabled([self isDynamicMethodsEnabled])) {
 		
-		// 1) Loop through all the object protocols
 		NSEnumerator *enumerator = [dynamicInstanceProtocols objectEnumerator];
 		id object = nil;
 		while ((object = [enumerator nextObject])) {
@@ -939,22 +1067,24 @@ static NSString * const BEDMProtocolTargetLUTKey = @"__reverseTargetLUT";
 			
 			BEDynamicMethodInstanceProtocolMeta *meta = object;
 			Protocol *protocol = meta.protocol;
+			Class cls = meta.impClass;
 			
-			// check Required Protocol Methods
+			// A protocol registered without a class reports conformance but implements nothing, so
+			// it offers neither a responder nor a signature.
+			if (!cls) {
+				continue;
+			}
+			
 			desc = protocol_getMethodDescription(protocol, selector, YES, isInstance);
 			if (desc.name && desc.types) {
 				if (returnSignature) {
 					return [NSMethodSignature signatureWithObjCTypes:desc.types];
 				}
-				return meta.impClass;
+				return cls;
 			}
 			
-			// check Optional Protocol Methods
 			desc = protocol_getMethodDescription(protocol, selector, NO, isInstance);
 			if (desc.name && desc.types) {
-				Class cls = meta.impClass;
-				
-				// check if the target responds to Selector
 				if ((isInstance && [cls instancesRespondToSelector:selector]) || (!isInstance && [cls respondsToSelector:selector])) {
 					if (returnSignature) {
 						return [NSMethodSignature signatureWithObjCTypes:desc.types];
@@ -964,17 +1094,14 @@ static NSString * const BEDMProtocolTargetLUTKey = @"__reverseTargetLUT";
 			}
 		}
 		
-		// 2) Check the non-protocol targets if they respond to selector
-		NSMutableArray<NSString*> *noProtocolTargets = [dynamicInstanceProtocols objectForKey:NSStringFromProtocol(@protocol(NSNoProtocol))];
+		NSArray<NSString*> *noProtocolTargets = [dynamicInstanceProtocols objectForKey:NSStringFromProtocol(@protocol(NSNoProtocol))];
 			
 		if (noProtocolTargets) {
 			NSString *className;
-			// enumerate through the non-protocol targets and search for the object that responds
 			enumerator = [noProtocolTargets objectEnumerator];
 			while ((className = [enumerator nextObject])) {
 				Class cls = NSClassFromString(className);
 				if ((isInstance && [cls instancesRespondToSelector:selector]) || (!isInstance && [cls respondsToSelector:selector])) {
-					// Found
 					if (returnSignature) {
 						if (isInstance) {
 							return [cls instanceMethodSignatureForSelector:selector];
@@ -1003,7 +1130,7 @@ static NSString * const BEDMProtocolTargetLUTKey = @"__reverseTargetLUT";
 		return nil;
 	}
 	
-	NSMutableDictionary<NSString*, id> *dynamicInstanceProtocols = [self dynamicSelfInstanceProtocolsDictionary];
+	NSDictionary<NSString*, id> *dynamicInstanceProtocols = [self dynamicSelfInstanceProtocolsSnapshot];
 	if (dynamicInstanceProtocols) {
 		
 		Protocol *noProtocol = @protocol(NSNoProtocol);
@@ -1011,9 +1138,7 @@ static NSString * const BEDMProtocolTargetLUTKey = @"__reverseTargetLUT";
 		NSString *protocolString = NSStringFromProtocol(protocol);
 		id meta = [dynamicInstanceProtocols objectForKey:protocolString];
 		
-		// 1) check if the protocol is found with a target
 		if (protocol == noProtocol) {
-			// for a nil protocol, return the mutable array of basic targets
 			return meta;
 		} else if (meta) {
 			if (hasProtocol) {
@@ -1023,8 +1148,7 @@ static NSString * const BEDMProtocolTargetLUTKey = @"__reverseTargetLUT";
 		}
 		
 		
-		// 2) check all the protocol parents
-		//		This is slower due to iterating, and why it's second.
+		// Walking the protocol parents is slower, so it runs second.
 		NSEnumerator *enumerator = [dynamicInstanceProtocols objectEnumerator];
 		id object = nil;
 		while ((object = [enumerator nextObject])) {
@@ -1082,8 +1206,6 @@ static NSString * const BEDMProtocolTargetLUTKey = @"__reverseTargetLUT";
 		}
 		
 		NSString *protocolString = NSStringFromProtocol(aProtocol);
-		NSUInteger hash = 0;
-		unsigned char digest[CC_SHA1_DIGEST_LENGTH];	// is 20 bytes
 		if (isNoProtocol) {
 			NSMutableArray<NSString*> *noProtocolClasses = [dynamicInstanceProtocols objectForKey:protocolString];
 			if (!noProtocolClasses) {
@@ -1096,8 +1218,6 @@ static NSString * const BEDMProtocolTargetLUTKey = @"__reverseTargetLUT";
 				return NO;
 			}
 			[noProtocolClasses addObject:targetClassName];
-			
-			CC_SHA1(&targetClass, (CC_LONG)sizeof(Class), digest);
 		} else {
 			if ([dynamicInstanceProtocols objectForKey:protocolString]) {
 				// there was already a class for the protocol, return failed
@@ -1106,15 +1226,9 @@ static NSString * const BEDMProtocolTargetLUTKey = @"__reverseTargetLUT";
 			
 			BEDynamicMethodInstanceProtocolMeta *meta = [BEDynamicMethodInstanceProtocolMeta.alloc initWithProtocol:aProtocol impClass:targetClass];
 			[dynamicInstanceProtocols setObject:meta forKey:protocolString];
-			
-			CC_SHA1(&aProtocol, (CC_LONG)sizeof(Protocol*), digest);
 		}
 		
-		hash = *(NSUInteger *)digest; //8 bytes long long so is fine,
-		
-		NSUInteger classHash = [self dynamicProtocolSelfHash];
-		classHash ^= hash;
-		[self setDynamicProtocolSelfHash:classHash];
+		[self advanceDynamicProtocolGeneration];
 		
 		NSMutableDictionary<NSValue*, id> *reverseTargetLUT = [dynamicInstanceProtocols objectForKey:BEDMProtocolTargetLUTKey];
 		if (!isNoTargetClass && !isNoProtocol) {
@@ -1165,8 +1279,6 @@ static NSString * const BEDMProtocolTargetLUTKey = @"__reverseTargetLUT";
 			}
 		}
 		
-		NSUInteger hash = 0;
-		unsigned char digest[CC_SHA1_DIGEST_LENGTH] = {0};	// is 20 bytes
 		if (isNoProtocol) {
 			NSMutableArray<NSString*> *noProtocolTargets = [dynamicInstanceProtocols objectForKey:protocolString];
 			if (!noProtocolTargets) {
@@ -1181,7 +1293,6 @@ static NSString * const BEDMProtocolTargetLUTKey = @"__reverseTargetLUT";
 					[dynamicInstanceProtocols removeObjectForKey:protocolString];
 				}
 				[reverseTargetLUT removeObjectForKey:targetClassValue];
-				CC_SHA1(&targetClass, (CC_LONG)sizeof(Class), digest);
 			}
 		} else {
 			BEDynamicMethodInstanceProtocolMeta *protocolClass = [dynamicInstanceProtocols objectForKey:protocolString];
@@ -1191,15 +1302,10 @@ static NSString * const BEDMProtocolTargetLUTKey = @"__reverseTargetLUT";
 			}
 			[dynamicInstanceProtocols removeObjectForKey:protocolString];
 			removed = YES;
-			// aProtocol may still be NSNoProtocol when protocolString was resolved from the
-			// reverse LUT above; hash the resolved protocol so this undoes the add-time
-			// contribution to the sync hash rather than a NSNoProtocol digest.
-			Protocol *resolvedProtocol = NSProtocolFromString(protocolString);
-			CC_SHA1(&resolvedProtocol, (CC_LONG)sizeof(Protocol*), digest);
 
 			// Drop the LUT entry keyed by the registration's target class. When the caller
 			// removed by protocol only (no class passed), fall back to the removed meta's
-			// impClass — otherwise a stale entry misdirects a later
+			// impClass, otherwise a stale entry misdirects a later
 			// removeInstanceForwardClass: for that class into this protocol path.
 			NSValue *lutKey = targetClassValue;
 			if (!lutKey && protocolClass.impClass) {
@@ -1210,11 +1316,9 @@ static NSString * const BEDMProtocolTargetLUTKey = @"__reverseTargetLUT";
 			}
 		}
 		
-		hash = *(NSUInteger *)digest; //8 bytes long long so is fine,
-		
-		NSUInteger classHash = [self dynamicProtocolSelfHash];
-		classHash ^= hash;
-		[self setDynamicProtocolSelfHash:classHash];
+		if (removed) {
+			[self advanceDynamicProtocolGeneration];
+		}
 		
 		// if none or just the reverseTargetLUT
 		NSUInteger protocolCount = dynamicInstanceProtocols.count;
@@ -1230,38 +1334,51 @@ static NSString * const BEDMProtocolTargetLUTKey = @"__reverseTargetLUT";
 #pragma mark Object Dynamic Protocols
 
 
+/*!
+ @method		dynamicProtocolHash
+ @abstract		Returns the stamp of the instance-protocol registrations visible to this class.
+ @discussion	Each class in the chain keeps a generation counter that advances on every
+				add or remove of an instance protocol or forward class. The stamp folds the generation
+				and identity of every enabled class in the chain, so any change to the visible
+				registrations, including replacing a protocol's class, yields a new stamp. An object
+				stores the stamp it last synchronized against; a differing stamp triggers a sync.
+				A chain with no registrations yields 0, the value a never-synchronized object holds.
+ */
 + (uint64_t)dynamicProtocolHash
 {
-	uint64_t cummulativeHash = 0;
+	const uint64_t basis = 0xcbf29ce484222325ULL;
+	uint64_t stamp = basis;
+	BOOL hasRegistrations = NO;
 	Class cls = self;
 	id priorObj = nil;
 	do {
 		if (isDynamicMethodsEnabled([cls isDynamicMethodsEnabled])) {
-			cummulativeHash ^= [cls dynamicProtocolSelfHash];
+			uint64_t generation = [cls dynamicProtocolSelfHash];
+			hasRegistrations = hasRegistrations || generation != 0;
+			stamp = BEProtocolGenerationStamp(stamp, cls, generation);
 		}
 		priorObj = cls;
 		cls = [cls superclass];
 	} while (cls != priorObj);
-	return cummulativeHash;
-}
-/*
-- (void)setDynamicProtocolHash:(uint64_t)hash
-{
-	if (hash) {
-		objc_setAssociatedObject(self, [self.class _dynamicInstanceProtocolHashKey], [NSNumber numberWithInteger:hash], OBJC_ASSOCIATION_RETAIN);
-	} else {
-		objc_setAssociatedObject(self, [self.class _dynamicInstanceProtocolHashKey], nil, OBJC_ASSOCIATION_ASSIGN);
+	if (!hasRegistrations) {
+		return 0;
 	}
-}*/
+	return stamp ? stamp : basis;
+}
+
++ (void)advanceDynamicProtocolGeneration
+{
+	[self setDynamicProtocolSelfHash:[self dynamicProtocolSelfHash] + 1];
+}
 
 - (uint64_t)dynamicProtocolSelfHash
 {
-	return [objc_getAssociatedObject(self, [self.class _dynamicInstanceProtocolSelfHashKey]) unsignedIntegerValue];
+	return [objc_getAssociatedObject(self, [self.class _dynamicInstanceProtocolSelfHashKey]) unsignedLongLongValue];
 }
 - (void)setDynamicProtocolSelfHash:(uint64_t)hash
 {
 	if (hash) {
-		objc_setAssociatedObject(self, [self.class _dynamicInstanceProtocolSelfHashKey], [NSNumber numberWithInteger:hash], OBJC_ASSOCIATION_RETAIN);
+		objc_setAssociatedObject(self, [self.class _dynamicInstanceProtocolSelfHashKey], [NSNumber numberWithUnsignedLongLong:hash], OBJC_ASSOCIATION_RETAIN);
 	} else {
 		objc_setAssociatedObject(self, [self.class _dynamicInstanceProtocolSelfHashKey], nil, OBJC_ASSOCIATION_ASSIGN);
 	}
@@ -1272,6 +1389,31 @@ static NSString * const BEDMProtocolTargetLUTKey = @"__reverseTargetLUT";
 {
 	@synchronized ([self dynamicMethodsObjectProtocolLock]) {
 		return objc_getAssociatedObject(self, [self _dynamicObjectProtocolMetaKey]);
+	}
+}
+
+/*!
+ @method		dynamicSelfObjectProtocolsSnapshot
+ @abstract		Returns a copy of this object's protocol registrations, taken under its lock.
+ @discussion	Readers enumerate the snapshot with no lock held, so a concurrent
+				synchronizeWithClassProtocols or registration cannot mutate a collection while it
+				is enumerated. The no-protocol target map is copied as well; the reverse LUT is omitted.
+ */
+- (nullable NSDictionary<NSString*, id> *)dynamicSelfObjectProtocolsSnapshot
+{
+	@synchronized ([self dynamicMethodsObjectProtocolLock]) {
+		NSMutableDictionary<NSString*, id> *dynamicObjectProtocols = [self dynamicSelfObjectProtocolsDictionary];
+		if (!dynamicObjectProtocols) {
+			return nil;
+		}
+		NSMutableDictionary<NSString*, id> *snapshot = [dynamicObjectProtocols mutableCopy];
+		[snapshot removeObjectForKey:BEDMProtocolTargetLUTKey];
+		NSString *noProtocolString = NSStringFromProtocol(@protocol(NSNoProtocol));
+		NSDictionary<NSString*, id> *noProtocolTargets = [snapshot objectForKey:noProtocolString];
+		if (noProtocolTargets) {
+			[snapshot setObject:[noProtocolTargets copy] forKey:noProtocolString];
+		}
+		return snapshot;
 	}
 }
 
@@ -1332,17 +1474,35 @@ static NSString * const BEDMProtocolTargetLUTKey = @"__reverseTargetLUT";
 				&& ((BEDynamicMethodProtocolTargetMeta *)meta).isInstanceTarget;
 		}]];
 
-		if (addedProtocols.count) {
-			[addedProtocols enumerateObjectsUsingBlock:^(NSString*  _Nonnull key, BOOL * _Nonnull stop) {
-				BEDynamicMethodInstanceProtocolMeta *meta = [instanceProtocols objectForKey:key];
-				[self addObjectProtocol:meta.protocol withTarget:meta];
-			}];
+		// A protocol on both sides whose class registration was replaced (removed and added again,
+		// with any class) still points at the target built from the old registration. Its target
+		// meta records the class meta it came from; a mismatch means rebuild it.
+		NSMutableSet<NSString*> *retainedProtocols = classProtocols.mutableCopy;
+		[retainedProtocols intersectSet:objectProtocols];
+		for (NSString *key in retainedProtocols) {
+			id meta = [selfObjectProtocols objectForKey:key];
+			if (![meta isKindOfClass:BEDynamicMethodProtocolTargetMeta.class]) {
+				continue;
+			}
+			BEDynamicMethodProtocolTargetMeta *targetMeta = meta;
+			if (targetMeta.isInstanceTarget && targetMeta.instanceMeta != [instanceProtocols objectForKey:key]) {
+				[removedProtocols addObject:key];
+				[addedProtocols addObject:key];
+			}
 		}
+
+		// Removals run first so a replaced protocol's key is free before it is re-added.
 		if (removedProtocols.count) {
 			[removedProtocols enumerateObjectsUsingBlock:^(NSString*  _Nonnull key, BOOL * _Nonnull stop) {
 				BEDynamicMethodProtocolTargetMeta *meta = [selfObjectProtocols objectForKey:key];
 
 				[self removeObjectProtocol:meta.protocol];
+			}];
+		}
+		if (addedProtocols.count) {
+			[addedProtocols enumerateObjectsUsingBlock:^(NSString*  _Nonnull key, BOOL * _Nonnull stop) {
+				BEDynamicMethodInstanceProtocolMeta *meta = [instanceProtocols objectForKey:key];
+				[self addObjectProtocol:meta.protocol withTarget:meta];
 			}];
 		}
 		
@@ -1402,8 +1562,6 @@ static NSString * const BEDMProtocolTargetLUTKey = @"__reverseTargetLUT";
 		// Targets in both sets (instanceClassTargets ∩ objectClassTargets) are already
 		// in sync, so they need no action.
 		[self setDynamicProtocolSelfHash:classHash];
-		// Control reaches here only when the object's protocol hash differs from the class's, so
-		// synchronization runs. The early-out above returns NO when the two are already in sync.
 		returnValue = YES;
 	}
 
@@ -1415,7 +1573,7 @@ static NSString * const BEDMProtocolTargetLUTKey = @"__reverseTargetLUT";
 {
 	[self synchronizeWithClassProtocols];
 	
-	NSMutableDictionary<NSString*, id> *dynamicObjectProtocols = [self dynamicSelfObjectProtocolsDictionary];
+	NSDictionary<NSString*, id> *dynamicObjectProtocols = [self dynamicSelfObjectProtocolsSnapshot];
 	if (!dynamicObjectProtocols) {
 		return nil;
 	}
@@ -1429,17 +1587,14 @@ static NSString * const BEDMProtocolTargetLUTKey = @"__reverseTargetLUT";
 	NSString *protocolString = NSStringFromProtocol(protocol);
 	id meta = [dynamicObjectProtocols objectForKey:protocolString];
 	
-	// 1) check if the protocol is found with a target
 	if (protocol == noProtocol) {
-		// for a nil protocol, return the mutable array of basic targets
 		return meta;
 	} else if (meta) {
 		return ((BEDynamicMethodProtocolTargetMeta*)meta).target;
 	}
 	
 	
-	// 2) check all the protocol parents
-	//		This is slower due to iterating, and why it's second.
+	// Walking the protocol parents is slower, so it runs second.
 	NSEnumerator *enumerator = [dynamicObjectProtocols objectEnumerator];
 	id object = nil;
 	while ((object = [enumerator nextObject])) {
@@ -1464,12 +1619,11 @@ static NSString * const BEDMProtocolTargetLUTKey = @"__reverseTargetLUT";
 	
 	[self synchronizeWithClassProtocols];
 	
-	NSMutableDictionary<NSString*, id> *dynamicObjectProtocols = [self dynamicSelfObjectProtocolsDictionary];
+	NSDictionary<NSString*, id> *dynamicObjectProtocols = [self dynamicSelfObjectProtocolsSnapshot];
 	if (!dynamicObjectProtocols) {
 		return nil;
 	}
 	
-	// 1) Loop through all the object protocols
 	NSEnumerator *enumerator = [dynamicObjectProtocols objectEnumerator];
 	id object = nil;
 	while ((object = [enumerator nextObject])) {
@@ -1487,7 +1641,6 @@ static NSString * const BEDMProtocolTargetLUTKey = @"__reverseTargetLUT";
 			continue;
 		}
 
-		// check Required Protocol Methods
 		desc = protocol_getMethodDescription(protocol, selector, YES, YES);
 		if (desc.name && desc.types) {
 			if (returnSignature) {
@@ -1496,12 +1649,10 @@ static NSString * const BEDMProtocolTargetLUTKey = @"__reverseTargetLUT";
 			return meta.target;
 		}
 		
-		// check Optional Protocol Methods
 		desc = protocol_getMethodDescription(protocol, selector, NO, YES);
 		if (desc.name && desc.types) {
 			id target = meta.target;
 			
-			// check if the target responds to Selector
 			if ([target respondsToSelector:selector]) {
 				if (returnSignature) {
 					return [NSMethodSignature signatureWithObjCTypes:desc.types];
@@ -1511,13 +1662,11 @@ static NSString * const BEDMProtocolTargetLUTKey = @"__reverseTargetLUT";
 		}
 	}
 	
-	// 2) Check the non-protocol targets if they respond to selector
-	NSMutableDictionary<NSString*, id> *noProtocolTargets = [dynamicObjectProtocols objectForKey:NSStringFromProtocol(@protocol(NSNoProtocol))];
+	NSDictionary<NSString*, id> *noProtocolTargets = [dynamicObjectProtocols objectForKey:NSStringFromProtocol(@protocol(NSNoProtocol))];
 	if (!noProtocolTargets) {
 		return nil;
 	}
 	
-	// enumerate through the non-protocol targets and search for the object that responds
 	enumerator = [noProtocolTargets objectEnumerator];
 	while ((object = [enumerator nextObject])) {
 		if ([object respondsToSelector:selector]) {
@@ -1535,7 +1684,7 @@ static NSString * const BEDMProtocolTargetLUTKey = @"__reverseTargetLUT";
 - (id)targetForProtocol:(Protocol *)protocol
 {
 	id target = [self dynamicObjectTargetForProtocol:protocol];
-	if ([target isKindOfClass:NSMutableDictionary.class]) {
+	if ([target isKindOfClass:NSDictionary.class]) {
 		return [target allValues];
 	}
 	return target;
@@ -1548,7 +1697,7 @@ static NSString * const BEDMProtocolTargetLUTKey = @"__reverseTargetLUT";
 		return NO;
 	}
 	id target = [self dynamicObjectTargetForProtocol:protocol];
-	return target && ![target isKindOfClass:NSMutableDictionary.class]; // && ![target isKindOfClass:NSMutableArray.class]
+	return target && ![target isKindOfClass:NSDictionary.class];
 }
 
 - (BOOL)addObjectProtocol:(nonnull Protocol *)aProtocol
@@ -1604,7 +1753,6 @@ static NSString * const BEDMProtocolTargetLUTKey = @"__reverseTargetLUT";
 		
 		id protocolString = NSStringFromProtocol(aProtocol);
 		if (isNoProtocol) {
-			//	 protocolString = NSStringFromProtocol(@protocol(NSNoProtocol));
 			NSMutableDictionary<NSString*, id> *noProtocolTargets = [dynamicObjectProtocols objectForKey:protocolString];
 			if (!noProtocolTargets) {
 				// Set the No Protocol list of targets.
@@ -1756,7 +1904,7 @@ static NSString * const BEDMProtocolTargetLUTKey = @"__reverseTargetLUT";
 	
 	id target = [self dynamicObjectTargetForProtocol:aProtocol];
 	
-	return target != nil && ![target isKindOfClass:NSMutableArray.class] && ![target isKindOfClass:NSMutableDictionary.class];
+	return target != nil && ![target isKindOfClass:NSArray.class] && ![target isKindOfClass:NSDictionary.class];
 }
 
 
@@ -1816,29 +1964,7 @@ static NSString * const BEDMProtocolTargetLUTKey = @"__reverseTargetLUT";
 	}
 	
 	if (meta) {
-		NSInvocation *impInvocation = invocation;
-		if (meta.isCapturingCmd) {
-			impInvocation = [BEMethodSignatureHelper mutateInvocation:impInvocation withMeta:meta];
-		}
-		
-		[impInvocation invokeUsingIMP:meta.implementation];
-		
-		if (meta.isCapturingCmd) {
-			NSUInteger returnLength = invocation.methodSignature.methodReturnLength;
-			if (returnLength) {
-				BOOL largeReturnLength = returnLength >= 256;
-				void *returnData = largeReturnLength ? malloc(returnLength) : alloca(returnLength);
-				
-				[impInvocation getReturnValue:returnData];
-				[invocation setReturnValue:returnData];
-				
-				if (largeReturnLength) {
-					free(returnData);
-				}
-			}
-		}
-		
-		return YES;
+		return BEInvokeDynamicMethodMeta(invocation, meta);
 	} else {
 		id target = [self dynamicObjectTargetForSelector:aSelector returnSignature:NO];
 		if (target) {
@@ -1900,7 +2026,7 @@ static NSString * const BEDMProtocolTargetLUTKey = @"__reverseTargetLUT";
 	}
 
 	// Check methods added via addObjectMethod: directly on the class object.
-	// (addClassMethod: entries are instance-facing and must NOT appear here.)
+	// (addClassMethod: entries are instance-facing and must not appear here.)
 	BEDynamicMethodMeta *meta = [self dynamicObjectMethodMeta:aSelector];
 	if (meta) {
 		return meta.methodSignature;
@@ -1941,28 +2067,7 @@ static NSString * const BEDMProtocolTargetLUTKey = @"__reverseTargetLUT";
 	BEDynamicMethodMeta *meta = [self dynamicObjectMethodMeta:aSelector];
 	
 	if (meta) {
-		NSInvocation *impInvocation = invocation;
-		if (meta.isCapturingCmd) {
-			impInvocation = [BEMethodSignatureHelper mutateInvocation:impInvocation withMeta:meta];
-		}
-		
-		[impInvocation invokeUsingIMP:meta.implementation];
-		
-		if (meta.isCapturingCmd) {
-			NSUInteger returnLength = invocation.methodSignature.methodReturnLength;
-			if (returnLength) {
-				BOOL largeReturnLength = returnLength >= 256;
-				void *returnData = largeReturnLength ? malloc(returnLength) : alloca(returnLength);
-				
-				[impInvocation getReturnValue:returnData];
-				[invocation setReturnValue:returnData];
-				
-				if (largeReturnLength) {
-					free(returnData);
-				}
-			}
-		}
-		return YES;
+		return BEInvokeDynamicMethodMeta(invocation, meta);
 	} else {
 		id target = [self dynamicClassForSelector:aSelector isInstance:NO returnSignature:NO];
 		if (target) {

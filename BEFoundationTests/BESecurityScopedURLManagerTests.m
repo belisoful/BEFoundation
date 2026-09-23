@@ -27,14 +27,17 @@
 /// relocation regression test can seed and inspect them directly.
 @property (nonatomic, strong) NSCountedSet<NSURL *> *refCounts;
 @property (nonatomic, strong) NSMutableDictionary<NSString *, NSURL *> *resolvedAccessURLByKey;
-/// Private persistence method — allows exercising the synchronous dispatch_sync path.
+/// Private persistence method; allows exercising the synchronous dispatch_sync path.
 - (void)saveCatalogSynchronously:(BOOL)synchronously;
+/// Per-instance persistence locations, both derived from storageIdentifier.
+@property (nonatomic, readonly) NSString *userDefaultsKey;
+@property (nonatomic, readonly) NSString *cacheFilePath;
 /// Internal access-start helper. Must normally be called from within the accessQueue block.
 /// Exposed here so tests can drive the nil-URL guard branch directly without going
 /// through startAccessingAllURLs (which pre-screens for nil before calling this method).
 - (nullable NSURL *)startAccessingURLInternal:(NSURL *)url;
 /// Internal URL resolver (no dispatch). Exposed so tests can reach the nil-parameter
-/// guard directly — the public urlFromCatalogWithAbsolutePath: has its own nil guard
+/// guard directly; the public urlFromCatalogWithAbsolutePath: has its own nil guard
 /// and never passes nil into this method through the production call chain.
 - (nullable NSURL *)urlFromCatalogWithAbsolutePathInternal:(NSString *)absolutePathString;
 @end
@@ -69,11 +72,16 @@ static BOOL BETestIsSandboxed(void) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-#pragma mark - Persistence key constants (mirroring the implementation)
+#pragma mark - Persistence naming (mirroring the implementation)
+//
+// The NSUserDefaults key is `<storageIdentifier>Catalog` and the Caches file is
+// `<storageIdentifier>_Catalog.archive`. Every test uses a unique identifier so the
+// suite never touches the production stores of the default identifier.
 // ─────────────────────────────────────────────────────────────────────────────
 
-static NSString * const kBETestCatalogUserDefaultsKey = @"BESecurityScopedURLManagerCatalog";
-static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLManager_Catalog.archive";
+static NSString * const kBETestDefaultStorageIdentifier = @"BESecurityScopedURLManager";
+static NSString * const kBETestUserDefaultsKeySuffix    = @"Catalog";
+static NSString * const kBETestCacheFilenameSuffix      = @"_Catalog.archive";
 
 // ─────────────────────────────────────────────────────────────────────────────
 #pragma mark - Mock delegate
@@ -115,9 +123,8 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 }
 @end
 
-/// A delegate that stores the access-failed completion handler and calls it LATER, from
-/// -answerNow, instead of synchronously — the case that startAccessingURL: previously dropped
-/// on the main thread.
+/// A delegate that stores the access-failed completion handler and calls it later, from
+/// -answerNow, instead of synchronously.
 @interface BEURLManagerDeferredDelegate : NSObject <BESecurityScopedURLManagerDelegate>
 @property (nonatomic, strong, nullable) NSURL *relocationURL;
 @property (nonatomic, copy, nullable) void (^storedHandler)(NSURL * _Nullable);
@@ -155,6 +162,12 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 /// Private manager with storageOptions = None to avoid disk I/O by default.
 @property (nonatomic, strong) BESecurityScopedURLManager *manager;
 
+/// Unique per-test storage identifier shared by every manager the test creates.
+@property (nonatomic, copy) NSString *storageIdentifier;
+
+/// NSUserDefaults key derived from storageIdentifier.
+@property (nonatomic, readonly) NSString *userDefaultsKey;
+
 /// Temp directory URL (always exists).
 @property (nonatomic, strong) NSURL *tempDirURL;
 
@@ -164,7 +177,7 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 /// Temp file #2 for multi-entry tests.
 @property (nonatomic, strong) NSURL *tempFile2URL;
 
-/// Cache file URL (mirrors kBETestCacheFilename in Caches directory).
+/// Cache file URL derived from storageIdentifier in the Caches directory.
 @property (nonatomic, strong, readonly) NSURL *cacheFileURL;
 
 @end
@@ -178,14 +191,10 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 - (void)setUp {
 	[super setUp];
 
-	// Wipe any persisted state from previous runs before every test so that
-	// loadCatalog (which is async) always starts from a clean slate.
-	[[NSUserDefaults standardUserDefaults] removeObjectForKey:kBETestCatalogUserDefaultsKey];
-	[[NSUserDefaults standardUserDefaults] synchronize];
-	NSError *removeErr = nil;
-	[[NSFileManager defaultManager] removeItemAtURL:self.cacheFileURL error:&removeErr];
+	self.storageIdentifier = [NSString stringWithFormat:@"BEFoundationTests.%@", [NSUUID UUID].UUIDString];
+	[self removePersistedTestState];
 
-	self.manager = [[BESecurityScopedURLManager alloc] init];
+	self.manager = [self newIsolatedManager];
 	self.manager.storageOptions = BESecurityScopedURLStorageNone; // no disk I/O by default
 
 	self.tempDirURL = [NSURL fileURLWithPath:NSTemporaryDirectory() isDirectory:YES];
@@ -209,17 +218,32 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 	NSError *tearDownErr = nil;
 	[[NSFileManager defaultManager] removeItemAtURL:self.tempFileURL  error:&tearDownErr];
 	[[NSFileManager defaultManager] removeItemAtURL:self.tempFile2URL error:&tearDownErr];
-	[[NSUserDefaults standardUserDefaults] removeObjectForKey:kBETestCatalogUserDefaultsKey];
-	[[NSUserDefaults standardUserDefaults] synchronize];
-	NSError *removeErr = nil;
-	[[NSFileManager defaultManager] removeItemAtURL:self.cacheFileURL error:&removeErr];
+	[self removePersistedTestState];
 	[super tearDown];
+}
+
+- (NSString *)userDefaultsKey {
+	return [self.storageIdentifier stringByAppendingString:kBETestUserDefaultsKeySuffix];
 }
 
 - (NSURL *)cacheFileURL {
 	NSURL *cacheDir = [[NSFileManager defaultManager]
 					   URLsForDirectory:NSCachesDirectory inDomains:NSUserDomainMask].firstObject;
-	return [cacheDir URLByAppendingPathComponent:kBETestCacheFilename];
+	NSString *fileName = [self.storageIdentifier stringByAppendingString:kBETestCacheFilenameSuffix];
+	return [cacheDir URLByAppendingPathComponent:fileName];
+}
+
+/// Removes the test identifier's NSUserDefaults key and cache file so nothing persists between tests.
+- (void)removePersistedTestState {
+	[[NSUserDefaults standardUserDefaults] removeObjectForKey:self.userDefaultsKey];
+	[[NSUserDefaults standardUserDefaults] synchronize];
+	NSError *removeErr = nil;
+	[[NSFileManager defaultManager] removeItemAtURL:self.cacheFileURL error:&removeErr];
+}
+
+/// A private manager persisting under this test's unique storage identifier.
+- (BESecurityScopedURLManager *)newIsolatedManager {
+	return [[BESecurityScopedURLManager alloc] initWithStorageIdentifier:self.storageIdentifier];
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -261,9 +285,9 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
  */
 - (void)writeDataToUserDefaults:(NSData *)data {
 	if (data) {
-		[[NSUserDefaults standardUserDefaults] setObject:data forKey:kBETestCatalogUserDefaultsKey];
+		[[NSUserDefaults standardUserDefaults] setObject:data forKey:self.userDefaultsKey];
 	} else {
-		[[NSUserDefaults standardUserDefaults] removeObjectForKey:kBETestCatalogUserDefaultsKey];
+		[[NSUserDefaults standardUserDefaults] removeObjectForKey:self.userDefaultsKey];
 	}
 	[[NSUserDefaults standardUserDefaults] synchronize];
 }
@@ -300,7 +324,7 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 // ─────────────────────────────────────────────────────────────────────────────
 
 - (void)testInit {
-	BESecurityScopedURLManager *m = [[BESecurityScopedURLManager alloc] init];
+	BESecurityScopedURLManager *m = [self newIsolatedManager];
 	m.storageOptions = BESecurityScopedURLStorageNone;
 	XCTAssertNotNil(m);
 	XCTAssertEqual(m.storageOptions, BESecurityScopedURLStorageNone);
@@ -308,10 +332,69 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 }
 
 - (void)testInitDefaultStorageOptionsAreAll {
-	// setUp clears persistence so a fresh manager always starts empty.
-	BESecurityScopedURLManager *m = [[BESecurityScopedURLManager alloc] init];
+	BESecurityScopedURLManager *m = [self newIsolatedManager];
 	XCTAssertEqual(m.storageOptions, BESecurityScopedURLStorageAll);
 	[m clearCatalog]; // cleanup
+}
+
+/*!
+ @testcase testInitUsesDefaultStorageIdentifier
+ @abstract -init and +sharedManager persist under the default identifier, whose derived
+		   NSUserDefaults key and cache file name are the names used before storage identifiers existed.
+ @discussion Nothing is written: the catalog is not mutated and storageOptions is set to None
+			 before any operation that could save.
+ */
+- (void)testInitUsesDefaultStorageIdentifier {
+	BESecurityScopedURLManager *m = [[BESecurityScopedURLManager alloc] init];
+	m.storageOptions = BESecurityScopedURLStorageNone;
+
+	XCTAssertEqualObjects(m.storageIdentifier, kBETestDefaultStorageIdentifier);
+	XCTAssertEqualObjects(m.userDefaultsKey, @"BESecurityScopedURLManagerCatalog");
+	XCTAssertEqualObjects(m.cacheFilePath.lastPathComponent, @"BESecurityScopedURLManager_Catalog.archive");
+	XCTAssertEqualObjects([BESecurityScopedURLManager sharedManager].storageIdentifier, m.storageIdentifier);
+}
+
+- (void)testEmptyStorageIdentifierSelectsDefault {
+	BESecurityScopedURLManager *m = [[BESecurityScopedURLManager alloc] initWithStorageIdentifier:@""];
+	m.storageOptions = BESecurityScopedURLStorageNone;
+	XCTAssertEqualObjects(m.storageIdentifier, kBETestDefaultStorageIdentifier);
+}
+
+/*!
+ @testcase testStorageIdentifierIsolatesPersistedCatalogs
+ @abstract Managers with different storage identifiers write, clear, and load distinct stores.
+ */
+- (void)testStorageIdentifierIsolatesPersistedCatalogs {
+	NSString *otherIdentifier = [self.storageIdentifier stringByAppendingString:@".other"];
+	NSString *otherKey = [otherIdentifier stringByAppendingString:kBETestUserDefaultsKeySuffix];
+	BESecurityScopedURLManager *other = [[BESecurityScopedURLManager alloc] initWithStorageIdentifier:otherIdentifier];
+	other.storageOptions = BESecurityScopedURLStorageUserDefaults;
+	self.manager.storageOptions = BESecurityScopedURLStorageUserDefaults;
+
+	XCTAssertEqualObjects(other.storageIdentifier, otherIdentifier);
+	XCTAssertNotEqualObjects(other.userDefaultsKey, self.manager.userDefaultsKey);
+	XCTAssertNotEqualObjects(other.cacheFilePath, self.manager.cacheFilePath);
+
+	[self.manager addURLToCatalog:self.tempDirURL lifetime:BESecurityScopedURLBookmarkLifetimeLongLived];
+	[self drainAccessQueue];
+	XCTAssertNotNil([[NSUserDefaults standardUserDefaults] objectForKey:self.userDefaultsKey]);
+	XCTAssertNil([[NSUserDefaults standardUserDefaults] objectForKey:otherKey],
+				 @"Saving one manager must not write another identifier's store");
+
+	[other addURLToCatalog:self.tempFileURL lifetime:BESecurityScopedURLBookmarkLifetimeLongLived];
+	(void)other.catalog;
+	XCTAssertNotNil([[NSUserDefaults standardUserDefaults] objectForKey:otherKey]);
+
+	[other clearCatalog];
+	XCTAssertNil([[NSUserDefaults standardUserDefaults] objectForKey:otherKey]);
+	XCTAssertNotNil([[NSUserDefaults standardUserDefaults] objectForKey:self.userDefaultsKey],
+					@"Clearing one manager must not clear another identifier's store");
+
+	BESecurityScopedURLManager *fresh = [[BESecurityScopedURLManager alloc] initWithStorageIdentifier:otherIdentifier];
+	fresh.storageOptions = BESecurityScopedURLStorageUserDefaults;
+	XCTAssertEqual(fresh.catalog.count, 0UL, @"A manager loads only the catalog stored under its own identifier");
+
+	[[NSUserDefaults standardUserDefaults] removeObjectForKey:otherKey];
 }
 
 - (void)testSharedManagerIsNotNil {
@@ -368,7 +451,7 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 	[self.manager addURLToCatalog:self.tempDirURL lifetime:BESecurityScopedURLBookmarkLifetimeLongLived];
 	[self drainAccessQueue]; // wait for async save
 
-	NSData *saved = [[NSUserDefaults standardUserDefaults] objectForKey:kBETestCatalogUserDefaultsKey];
+	NSData *saved = [[NSUserDefaults standardUserDefaults] objectForKey:self.userDefaultsKey];
 	XCTAssertNotNil(saved, @"UserDefaults should contain saved catalog data");
 	XCTAssertGreaterThan(saved.length, 0UL);
 }
@@ -382,11 +465,11 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 	self.manager.storageOptions = BESecurityScopedURLStorageUserDefaults;
 	[self.manager addURLToCatalog:self.tempDirURL lifetime:BESecurityScopedURLBookmarkLifetimeLongLived];
 	[self drainAccessQueue];
-	XCTAssertNotNil([[NSUserDefaults standardUserDefaults] objectForKey:kBETestCatalogUserDefaultsKey],
+	XCTAssertNotNil([[NSUserDefaults standardUserDefaults] objectForKey:self.userDefaultsKey],
 					@"Pre-condition: data must be present before clearing");
 
 	[self.manager clearCatalog];
-	NSData *afterClear = [[NSUserDefaults standardUserDefaults] objectForKey:kBETestCatalogUserDefaultsKey];
+	NSData *afterClear = [[NSUserDefaults standardUserDefaults] objectForKey:self.userDefaultsKey];
 	XCTAssertNil(afterClear, @"UserDefaults key should be removed after clearing an empty catalog");
 }
 
@@ -400,7 +483,7 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 	[self.manager addURLToCatalog:self.tempDirURL lifetime:BESecurityScopedURLBookmarkLifetimeShortLived];
 	[self drainAccessQueue];
 
-	NSData *saved = [[NSUserDefaults standardUserDefaults] objectForKey:kBETestCatalogUserDefaultsKey];
+	NSData *saved = [[NSUserDefaults standardUserDefaults] objectForKey:self.userDefaultsKey];
 	XCTAssertNil(saved, @"ShortLived entries must not be written to UserDefaults");
 }
 
@@ -446,7 +529,7 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 	[self.manager addURLToCatalog:self.tempDirURL lifetime:BESecurityScopedURLBookmarkLifetimeLongLived];
 	[self drainAccessQueue];
 
-	NSData *udData = [[NSUserDefaults standardUserDefaults] objectForKey:kBETestCatalogUserDefaultsKey];
+	NSData *udData = [[NSUserDefaults standardUserDefaults] objectForKey:self.userDefaultsKey];
 	XCTAssertNotNil(udData,  @"UserDefaults should have data when storageOptions=All");
 	XCTAssertTrue([[NSFileManager defaultManager] fileExistsAtPath:self.cacheFileURL.path],
 				  @"Cache file should exist when storageOptions=All");
@@ -460,26 +543,22 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 		   Covers: cacheFilePath getter — _cacheFilePath non-nil → return _cacheFilePath (else branch).
  */
 - (void)testCacheFilePathIsStableAcrossCalls {
-	// A freshly created manager with CacheDirectory storage will exercise cacheFilePath.
-	BESecurityScopedURLManager *m = [[BESecurityScopedURLManager alloc] init];
+	// A freshly created manager with CacheDirectory storage exercises cacheFilePath.
+	BESecurityScopedURLManager *m = [self newIsolatedManager];
 	m.storageOptions = BESecurityScopedURLStorageCacheDirectory;
 
-	// Trigger the first access (nil-check branch — lazy init runs).
+	// Trigger the first access (nil-check branch; lazy init runs).
 	[m addURLToCatalog:self.tempDirURL lifetime:BESecurityScopedURLBookmarkLifetimeLongLived];
 	[self drainAccessQueue]; // flushes async save → reads cacheFilePath
 
-	// Read the path a second time (cache-hit branch — _cacheFilePath already set).
+	// Read the path a second time (cache-hit branch; _cacheFilePath already set).
 	[m addURLToCatalog:self.tempFile2URL lifetime:BESecurityScopedURLBookmarkLifetimeLongLived];
 	[self drainAccessQueue];
 
 	// The cache archive must exist at a single consistent location.
-	NSURL *cacheDir = [[NSFileManager defaultManager]
-					   URLsForDirectory:NSCachesDirectory inDomains:NSUserDomainMask].firstObject;
-	NSURL *expectedPath = [cacheDir URLByAppendingPathComponent:kBETestCacheFilename];
-	XCTAssertTrue([[NSFileManager defaultManager] fileExistsAtPath:expectedPath.path],
+	XCTAssertTrue([[NSFileManager defaultManager] fileExistsAtPath:self.cacheFileURL.path],
 				  @"cacheFilePath must resolve to the same location on every call");
 
-	// Cleanup
 	[m clearCatalog];
 }
 
@@ -504,7 +583,7 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 						  lifetime:BESecurityScopedURLBookmarkLifetimeLongLived];
 	XCTAssertEqual(self.manager.catalog.count, 2UL, @"Pre-condition: two entries required");
 
-	// Verify the entry that will survive has non-nil bookmarkData.
+	// Verify the entry that survives has non-nil bookmarkData.
 	NSString *dirKey = self.tempDirURL.absoluteString;
 	if (![dirKey hasSuffix:@"/"]) { dirKey = [dirKey stringByAppendingString:@"/"]; }
 	BESecurityScopedURLBookmarkEntry *survivor = self.manager.catalog[dirKey];
@@ -521,7 +600,7 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 	XCTAssertEqual(self.manager.catalog.count, 1UL);
 
 	NSData *saved = [[NSUserDefaults standardUserDefaults]
-					 objectForKey:kBETestCatalogUserDefaultsKey];
+					 objectForKey:self.userDefaultsKey];
 	XCTAssertNotNil(saved,
 					@"saveCatalogInternal must write non-nil data to UserDefaults "
 					@"when a LongLived entry with valid bookmarkData remains in the catalog");
@@ -577,7 +656,7 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 	[self writeDataToUserDefaults:garbage];
 
 	// Create a fresh manager with UserDefaults storage; loadCatalog fires asynchronously.
-	BESecurityScopedURLManager *m = [[BESecurityScopedURLManager alloc] init];
+	BESecurityScopedURLManager *m = [self newIsolatedManager];
 	m.storageOptions = BESecurityScopedURLStorageUserDefaults;
 	XCTAssertEqual(m.catalog.count, 0UL,
 				   @"Corrupt archive data should be handled gracefully, leaving the catalog empty");
@@ -593,7 +672,7 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 	NSData *garbage = [@"garbage bytes for cache file test" dataUsingEncoding:NSUTF8StringEncoding];
 	[self writeDataToCacheFile:garbage];
 
-	BESecurityScopedURLManager *m = [[BESecurityScopedURLManager alloc] init];
+	BESecurityScopedURLManager *m = [self newIsolatedManager];
 	m.storageOptions = BESecurityScopedURLStorageCacheDirectory;
 	XCTAssertEqual(m.catalog.count, 0UL,
 				   @"Corrupt cache file should be handled gracefully");
@@ -607,14 +686,14 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 		   Covers: loadCatalog—!loadedCatalog || ![loadedCatalog isKindOfClass:[NSDictionary class]]
  */
 - (void)testLoadCatalogNonDictionaryDataHandledGracefully {
-	// Archive an NSString — will decode successfully but is not an NSDictionary.
+	// Archive an NSString; it decodes but is not an NSDictionary.
 	NSError *stringArchiveErr = nil;
 	NSData *stringArchive = [NSKeyedArchiver archivedDataWithRootObject:@"not a dict"
 												   requiringSecureCoding:YES
 																   error:&stringArchiveErr];
 	[self writeDataToUserDefaults:stringArchive];
 
-	BESecurityScopedURLManager *m = [[BESecurityScopedURLManager alloc] init];
+	BESecurityScopedURLManager *m = [self newIsolatedManager];
 	m.storageOptions = BESecurityScopedURLStorageUserDefaults;
 	XCTAssertEqual(m.catalog.count, 0UL,
 				   @"A non-dictionary archive should be skipped, leaving the catalog empty");
@@ -633,7 +712,7 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 	NSData *dictArchive = [self archivedDictionaryWithObjects:fakeDict];
 	[self writeDataToUserDefaults:dictArchive];
 
-	BESecurityScopedURLManager *m = [[BESecurityScopedURLManager alloc] init];
+	BESecurityScopedURLManager *m = [self newIsolatedManager];
 	m.storageOptions = BESecurityScopedURLStorageUserDefaults;
 	XCTAssertEqual(m.catalog.count, 0UL,
 				   @"Non-entry objects in the archived dictionary should be skipped via the continue branch");
@@ -654,7 +733,7 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 	NSData *dictArchive = [self archivedDictionaryWithObjects:fakeDict];
 	[self writeDataToCacheFile:dictArchive];
 
-	BESecurityScopedURLManager *m = [[BESecurityScopedURLManager alloc] init];
+	BESecurityScopedURLManager *m = [self newIsolatedManager];
 	m.storageOptions = BESecurityScopedURLStorageAll; // includes CacheDirectory fallback
 	XCTAssertEqual(m.catalog.count, 0UL,
 				   @"Fallback to cache file should be handled gracefully");
@@ -669,13 +748,13 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 		   Covers: loadCatalog—UserDefaults read first; cache file not read when UD has data.
  */
 - (void)testLoadCatalogUserDefaultsTakesPrecedenceOverCacheFile {
-	// UserDefaults: corrupt bytes → will cause an error, catalog stays empty.
+	// UserDefaults: corrupt bytes → error, catalog stays empty.
 	[self writeDataToUserDefaults:[@"corrupt" dataUsingEncoding:NSUTF8StringEncoding]];
-	// Cache file: a valid dictionary. Should NOT be reached.
+	// Cache file: a valid dictionary. Must not be reached.
 	NSDictionary *fakeDict = @{ @"key": [NSData data] };
 	[self writeDataToCacheFile:[self archivedDictionaryWithObjects:fakeDict]];
 
-	BESecurityScopedURLManager *m = [[BESecurityScopedURLManager alloc] init];
+	BESecurityScopedURLManager *m = [self newIsolatedManager];
 	m.storageOptions = BESecurityScopedURLStorageAll;
 	XCTAssertEqual(m.catalog.count, 0UL,
 				   @"UserDefaults takes precedence; corrupt UD data should block cache file read");
@@ -715,7 +794,7 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 	}
 
 	// Parse the binary plist, strip the "bookmarkData" key from the entry object
-	// dictionary, and re-serialize. Decoding will then call initWithCoder: with
+	// dictionary, and re-serialize. Decoding then calls initWithCoder: with
 	// nil bookmarkData → the !_bookmarkData guard triggers → initWithCoder: returns nil.
 	NSError *plistError = nil;
 	NSPropertyListFormat plistFormat = NSPropertyListBinaryFormat_v1_0;
@@ -1004,7 +1083,7 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 	BESecurityScopedURLBookmarkEntry *entry = self.manager.catalog.allValues.firstObject;
 	XCTAssertNotNil(entry);
 
-	// Replace bookmarkData with garbage bytes BEFORE the first url access,
+	// Replace bookmarkData with garbage bytes before the first url access,
 	// so the resolution attempt uses this invalid data.
 	// The private readwrite property is accessible via the BETestPrivateAccess category.
 	entry.bookmarkData = [NSData dataWithBytes:"invalid_bookmark_data" length:21];
@@ -1090,7 +1169,7 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 	// Capture bookmarkData before resolution so we can verify it changed.
 	NSData *originalBookmarkData = entry.bookmarkData;
 
-	// Access entry.url — this triggers lazy resolution.
+	// Access entry.url; this triggers lazy resolution.
 	// URLByResolvingBookmarkData: detects the file moved → isStale=YES → updateStaleBookmark called.
 	NSURL *resolved = entry.url;
 
@@ -1105,12 +1184,11 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 	XCTAssertFalse([entry.bookmarkData isEqualToData:originalBookmarkData],
 				   @"bookmarkData must be updated to the new location by updateStaleBookmark");
 
-	// After a SUCCESSFUL refresh the bookmark is no longer stale, so isStale must be reset to NO
+	// After a successful refresh the bookmark is no longer stale, so isStale must be reset to NO
 	// (matching the manager's relocation path, which also clears it after refreshing).
 	XCTAssertFalse(entry.isStale,
 				   @"isStale must be reset to NO after updateStaleBookmark successfully refreshes the bookmark");
 
-	// Cleanup.
 	NSError *movedPathErr = nil;
 	[[NSFileManager defaultManager] removeItemAtPath:movedPath error:&movedPathErr];
 }
@@ -1127,13 +1205,12 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 								 self.mutableCatalog[key] = entry;
  */
 - (void)testLoadCatalogLoadsLongLivedEntriesFromUserDefaults {
-	// Build and save a catalog with one LongLived entry.
-	BESecurityScopedURLManager *m1 = [[BESecurityScopedURLManager alloc] init];
+	BESecurityScopedURLManager *m1 = [self newIsolatedManager];
 	m1.storageOptions = BESecurityScopedURLStorageUserDefaults;
 	[m1 addURLToCatalog:self.tempDirURL lifetime:BESecurityScopedURLBookmarkLifetimeLongLived];
 	(void)m1.catalog; // drain accessQueue so the async save completes
 
-	NSData *saved = [[NSUserDefaults standardUserDefaults] objectForKey:kBETestCatalogUserDefaultsKey];
+	NSData *saved = [[NSUserDefaults standardUserDefaults] objectForKey:self.userDefaultsKey];
 	if (!saved) {
 		[m1 clearCatalog];
 		XCTSkip(@"Nothing persisted — LongLived load test requires successful bookmark creation");
@@ -1141,7 +1218,7 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 	}
 
 	// Create a fresh manager that loads from the same UserDefaults key.
-	BESecurityScopedURLManager *m2 = [[BESecurityScopedURLManager alloc] init];
+	BESecurityScopedURLManager *m2 = [self newIsolatedManager];
 	m2.storageOptions = BESecurityScopedURLStorageUserDefaults;
 	(void)m2.catalog; // drain so loadCatalog's async block completes before we inspect
 
@@ -1169,14 +1246,13 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 			 UserDefaults, then verify the fresh manager loads nothing.
  */
 - (void)testLoadCatalogSkipsShortLivedEntries {
-	// Produce a valid LongLived archive in UserDefaults.
-	BESecurityScopedURLManager *m1 = [[BESecurityScopedURLManager alloc] init];
+	BESecurityScopedURLManager *m1 = [self newIsolatedManager];
 	m1.storageOptions = BESecurityScopedURLStorageUserDefaults;
 	[m1 addURLToCatalog:self.tempDirURL lifetime:BESecurityScopedURLBookmarkLifetimeLongLived];
 	(void)m1.catalog; // drain
 	[m1 clearCatalog];
 
-	NSData *saved = [[NSUserDefaults standardUserDefaults] objectForKey:kBETestCatalogUserDefaultsKey];
+	NSData *saved = [[NSUserDefaults standardUserDefaults] objectForKey:self.userDefaultsKey];
 	if (!saved) {
 		XCTSkip(@"No persisted data — ShortLived skip test requires successful bookmark creation");
 		return;
@@ -1214,11 +1290,11 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 		XCTSkip(@"Cannot re-serialize — skipping ShortLived skip test");
 		return;
 	}
-	[[NSUserDefaults standardUserDefaults] setObject:mutated forKey:kBETestCatalogUserDefaultsKey];
+	[[NSUserDefaults standardUserDefaults] setObject:mutated forKey:self.userDefaultsKey];
 	[[NSUserDefaults standardUserDefaults] synchronize];
 
 	// Fresh manager must skip the ShortLived entry.
-	BESecurityScopedURLManager *m2 = [[BESecurityScopedURLManager alloc] init];
+	BESecurityScopedURLManager *m2 = [self newIsolatedManager];
 	m2.storageOptions = BESecurityScopedURLStorageUserDefaults;
 	(void)m2.catalog; // drain
 	XCTAssertEqual(m2.catalog.count, 0UL,
@@ -1243,17 +1319,17 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 	// Call the synchronous variant directly to exercise its dispatch_sync branch.
 	[self.manager saveCatalogSynchronously:YES];
 
-	// Check immediately — no drain required because the save was synchronous.
-	NSData *saved = [[NSUserDefaults standardUserDefaults] objectForKey:kBETestCatalogUserDefaultsKey];
+	// Check immediately; no drain is required because the save was synchronous.
+	NSData *saved = [[NSUserDefaults standardUserDefaults] objectForKey:self.userDefaultsKey];
 	if (self.manager.catalog.count > 0) {
 		// Only LongLived entries are persisted; if catalog is non-empty there must be data.
 		XCTAssertNotNil(saved,
 						@"saveCatalogSynchronously:YES must write UserDefaults before returning");
 	}
-	// Second call: catalog is empty after clear — exercises the synchronous remove path.
+	// Second call: catalog is empty after clear; exercises the synchronous remove path.
 	[self.manager clearCatalog];
 	[self.manager saveCatalogSynchronously:YES];
-	NSData *afterClear = [[NSUserDefaults standardUserDefaults] objectForKey:kBETestCatalogUserDefaultsKey];
+	NSData *afterClear = [[NSUserDefaults standardUserDefaults] objectForKey:self.userDefaultsKey];
 	XCTAssertNil(afterClear,
 				 @"saveCatalogSynchronously:YES on an empty catalog must clear UserDefaults immediately");
 }
@@ -1340,7 +1416,6 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 	NSURL *accessedURL = [self putURLInRefCounts:self.tempDirURL];
 	XCTAssertNotNil(accessedURL, @"Pre-condition: URL must be placed into refCounts");
 
-	// Confirm the URL is currently tracked.
 	BOOL trackedBeforeReAdd = [self.manager endAccessingURL:accessedURL];
 	XCTAssertTrue(trackedBeforeReAdd,
 				  @"Pre-condition: the URL must be tracked in refCounts after putURLInRefCounts:");
@@ -1365,11 +1440,11 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 
 	// Sandboxed bookmark resolution expands /var/folders/… → /private/var/folders/…
 	// This causes the URL stored in refCounts to differ from the argument passed to
-	// addURLToCatalog:lifetime:, which is the exact scenario the fix addresses.
+	// addURLToCatalog:lifetime:.
 	XCTSkipUnless(BETestIsSandboxed(),
 				  @"Subtest B requires a sandboxed process for security-scoped bookmark resolution");
 
-	// Build a URL via the symlink path — NSTemporaryDirectory() returns /var/… on macOS,
+	// Build a URL via the symlink path: NSTemporaryDirectory() returns /var/… on macOS,
 	// while the resolved bookmark yields the canonical /private/var/… form.
 	[self.manager clearCatalog];
 	NSURL *symlinkURL = [NSURL fileURLWithPath:NSTemporaryDirectory() isDirectory:YES];
@@ -1395,7 +1470,7 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 	// Re-put so addURLToCatalog: has a ref to clean up.
 	[self putURLInRefCounts:resolvedURL];
 
-	// Re-add via the symlink URL. The fix must resolve it through the catalog to find the
+	// Re-add via the symlink URL. The method must resolve it through the catalog to find the
 	// canonical form in refCounts and call endAccessingURLInternal: on that form.
 	[self.manager addURLToCatalog:symlinkURL
 						  lifetime:BESecurityScopedURLBookmarkLifetimeLongLived];
@@ -1427,15 +1502,23 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 	self.manager.resolvedAccessURLByKey[oldPath] = resolvedURL;
 	XCTAssertEqual([self.manager.refCounts countForObject:resolvedURL], 1UL);
 
-	// Relocate the entry's key.
 	NSURL *newURL = [NSURL URLWithString:@"file:///be_test_reloc_new"];
 	[self.manager handleBookmarkRelocationFromPath:oldPath toPath:newURL.absoluteString];
 	[self drainAccessQueue];
 
-	XCTAssertEqual([self.manager.refCounts countForObject:newURL], 1UL,
-				   @"Relocation must transfer the active count to the new URL");
+	// The count moves onto the entry's resolved URL, the instance that now holds the scope.
+	// The key URL stands in only when the entry does not resolve.
+	NSURL *expectedHolder = self.manager.catalog[newURL.absoluteString].url ?: newURL;
+	NSURL *holder = self.manager.resolvedAccessURLByKey[newURL.absoluteString];
+	XCTAssertNotNil(holder, @"The new key must record the instance now holding the count");
+	XCTAssertEqualObjects(holder, expectedHolder);
+	XCTAssertEqual([self.manager.refCounts countForObject:holder], 1UL,
+				   @"Relocation must transfer the active count onto the relocated instance");
+	XCTAssertEqual([self.manager.refCounts member:holder], holder,
+				   @"The recorded instance must be the tracked one");
 	XCTAssertEqual([self.manager.refCounts countForObject:resolvedURL], 0UL,
 				   @"The old resolved URL must no longer hold the count after relocation");
+	XCTAssertNil(self.manager.resolvedAccessURLByKey[oldPath]);
 }
 
 /*!
@@ -1462,10 +1545,16 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 	[self.manager handleBookmarkRelocationFromPath:oldPath toPath:newURL.absoluteString];
 	[self drainAccessQueue];
 
-	XCTAssertEqual([self.manager.refCounts countForObject:newURL], 1UL,
-				   @"Relocation must transfer a count begun via startAccessingURL:");
-	XCTAssertEqual([self.manager.refCounts countForObject:accessed], 0UL,
-				   @"The old resolved URL must no longer hold the count after relocation");
+	// Only the key changes here: the entry still resolves to `accessed`, so the count stays on
+	// that instance and is re-recorded under the new key.
+	XCTAssertEqual(self.manager.resolvedAccessURLByKey[newURL.absoluteString], accessed,
+				   @"Relocation must record the count begun via startAccessingURL: under the new key");
+	XCTAssertEqual([self.manager.refCounts countForObject:accessed], 1UL,
+				   @"The instance holding the scope keeps its count when the entry still resolves to it");
+	XCTAssertNil(self.manager.resolvedAccessURLByKey[oldPath],
+				 @"The old key must no longer record a resolved instance");
+	XCTAssertEqual([self.manager.refCounts countForObject:newURL], 0UL,
+				   @"No count may land on an unscoped instance made from the new key");
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1549,9 +1638,8 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 /*!
  @testcase testRemoveURLFromCatalogEndsActiveAccess
  @abstract If a URL has active reference-counted access when removed, the access
-		   session should be ended. Verifies that endAccessingURLInternal: is called
-		   with storedURL during removal.
-		   Covers: removeURLFromCatalog—storedURL non-nil → endAccessingURLInternal
+		   session is ended through the URL's stored key.
+		   Covers: removeURLFromCatalog—storedURL non-nil → releaseAllAccessForURL:
  */
 - (void)testRemoveURLFromCatalogEndsActiveAccess {
 	// Add to catalog first (so the entry exists with a urlString).
@@ -1561,7 +1649,6 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 	// Also get the URL into refCounts via delegate, simulating an active access session.
 	NSURL *accessedURL = [self putURLInRefCounts:self.tempFileURL];
 	if (accessedURL) {
-		// Verify the URL is tracked before removal.
 		XCTAssertTrue([self.manager endAccessingURL:accessedURL],
 					  @"Pre-condition: URL should be tracked in refCounts");
 		// Re-add it so removeURLFromCatalog: has something to end.
@@ -1631,7 +1718,7 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 	XCTAssertNoThrow([self.manager clearCatalog]);
 	XCTAssertEqual(self.manager.catalog.count, 0UL);
 
-	// After clearCatalog, refCounts must be drained — endAccessingURL must return NO.
+	// After clearCatalog, refCounts must be drained, so endAccessingURL must return NO.
 	XCTAssertFalse([self.manager endAccessingURL:inRefCounts],
 				   @"endAccessingAllURLsInternal must have drained all refCounts");
 }
@@ -1643,7 +1730,6 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 		   Covers: endAccessingAllURLsInternal — inner loop executes for count > 1
  */
 - (void)testClearCatalogWithMultipleRefsExercisesInnerLoop {
-	// Accumulate 3 refs to the same URL.
 	[self putURLInRefCounts:self.tempDirURL]; // count → 1
 	[self putURLInRefCounts:self.tempDirURL]; // count → 2
 	[self putURLInRefCounts:self.tempDirURL]; // count → 3
@@ -1651,7 +1737,7 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 	// clearCatalog calls endAccessingAllURLsInternal which must drain all 3.
 	XCTAssertNoThrow([self.manager clearCatalog]);
 
-	// All refs drained — endAccessingURL must now return NO.
+	// All refs drained; endAccessingURL must now return NO.
 	XCTAssertFalse([self.manager endAccessingURL:self.tempDirURL],
 				   @"All 3 refs must be drained by endAccessingAllURLsInternal inner loop");
 }
@@ -1749,7 +1835,7 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 					 @"Tier 1 lookup must never throw");
 
 	NSURL *result = [self.manager urlFromCatalogWithAbsolutePath:key];
-	// result is non-nil when bookmarks resolve, nil when they do not — both valid.
+	// result is non-nil when bookmarks resolve, nil when they do not; both are valid.
 	if (result) {
 		XCTAssertTrue([result isKindOfClass:[NSURL class]]);
 	}
@@ -1768,12 +1854,11 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 	NSURL *accessedURL = [self putURLInRefCounts:self.tempDirURL];
 	XCTAssertNotNil(accessedURL, @"Pre-condition: URL must be in refCounts");
 
-	// Query via the public method — it dispatches to the internal method where Tier 2 fires.
+	// Query via the public method; it dispatches to the internal method where Tier 2 fires.
 	NSURL *result = [self.manager urlFromCatalogWithAbsolutePath:accessedURL.absoluteString];
 	XCTAssertNotNil(result, @"Tier 2 should return the URL from refCounts");
 	XCTAssertEqualObjects(result, accessedURL);
 
-	// Clean up the ref count.
 	[self.manager endAccessingURL:accessedURL];
 }
 
@@ -1803,17 +1888,16 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 							   withIntermediateDirectories:YES attributes:nilDirAttrs error:&mkdirErr];
 	XCTAssertNil(mkdirErr, @"Pre-condition: subdirectory must be created");
 
-	// Create a real file inside the subdirectory.
 	NSString *fileName = @"be_tier3_file.txt";
 	NSURL *fileURL = [subDirURL URLByAppendingPathComponent:fileName];
 	NSError *tier3WriteErr = nil;
 	[@"tier3 test" writeToURL:fileURL atomically:YES encoding:NSUTF8StringEncoding error:&tier3WriteErr];
 
-	// Add tempDirURL (the parent) to the catalog. The file and subdirectory are NOT in the catalog.
+	// Add tempDirURL (the parent) to the catalog. The file and subdirectory are not in the catalog.
 	[self.manager addURLToCatalog:self.tempDirURL
 						  lifetime:BESecurityScopedURLBookmarkLifetimeLongLived];
 
-	// Skip if the directory bookmark did not resolve — Tier 3 needs a non-nil dirEntry.url.
+	// Skip if the directory bookmark did not resolve; Tier 3 needs a non-nil dirEntry.url.
 	BESecurityScopedURLBookmarkEntry *dirEntry = self.manager.catalog.allValues.firstObject;
 	if (!dirEntry || !dirEntry.bookmarkData) {
 		NSError *tier3SkipCleanupErr = nil;
@@ -1830,11 +1914,10 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 	NSURL *queryURL     = [[resolvedDir URLByAppendingPathComponent:subDirName isDirectory:YES]
 						   URLByAppendingPathComponent:fileName];
 
-	// Invoke Tier 3 via the public wrapper.
 	NSURL *result = [self.manager urlFromCatalogWithAbsolutePath:queryURL.absoluteString];
 
 	if (!result) {
-		// Tier 3 prefix check did not match — environment-specific symlink behaviour.
+		// Tier 3 prefix check did not match: environment-specific symlink behavior.
 		// Clean up and skip rather than fail on infrastructure.
 		NSError *tier3PrefixErr = nil;
 		[[NSFileManager defaultManager] removeItemAtURL:subDirURL error:&tier3PrefixErr];
@@ -1880,7 +1963,6 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 			 as a separate absolute path), confirming the strip executed correctly.
  */
 - (void)testURLFromCatalogTier3StripsLeadingSlashFromRelativePath {
-	// Create a real file inside tempDirURL.
 	NSString *fileName = [NSString stringWithFormat:@"be_tier3_slash_%@.txt", [NSUUID UUID].UUIDString];
 	NSURL *fileURL = [self.tempDirURL URLByAppendingPathComponent:fileName];
 	NSError *slashWriteErr = nil;
@@ -1910,7 +1992,7 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 	}
 
 	// The while-loop strips the leading "/" from relativePath before appending.
-	// If stripping did NOT happen, URLByAppendingPathComponent: would produce
+	// If stripping did not happen, URLByAppendingPathComponent: would produce
 	// a path starting with "/" and the lastPathComponent would still be fileName,
 	// but the full path would be wrong. Verify both the filename and the full path.
 	XCTAssertEqualObjects(result.lastPathComponent, fileName,
@@ -1924,7 +2006,7 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 }
 
 - (void)testTier3DoesNotMatchSiblingDirectory {
-	// A bookmark on "Projects" must NOT be treated as containing a sibling "ProjectsX".
+	// A bookmark on "Projects" must not be treated as containing a sibling "ProjectsX".
 	NSString *uniq = [NSUUID UUID].UUIDString;
 	NSURL *projectsDir = [self.tempDirURL URLByAppendingPathComponent:[NSString stringWithFormat:@"Projects_%@", uniq] isDirectory:YES];
 	NSURL *siblingDir  = [self.tempDirURL URLByAppendingPathComponent:[NSString stringWithFormat:@"Projects_%@X", uniq] isDirectory:YES];
@@ -1993,7 +2075,6 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 	NSURL *resolvedDir  = [self.tempDirURL URLByResolvingSymlinksInPath];
 	NSURL *containedURL = [resolvedDir URLByAppendingPathComponent:@"be_tier3_delegate_check.txt"];
 
-	// Trigger Tier 3 resolution.
 	NSURL *result = [self.manager urlFromCatalogWithAbsolutePath:containedURL.absoluteString];
 
 	if (!result) {
@@ -2002,7 +2083,7 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 		return;
 	}
 
-	// Enqueue our assertion block AFTER the resolution call. The Tier 3 dispatch_async
+	// Enqueue our assertion block after the resolution call. The Tier 3 dispatch_async
 	// to the main queue was already queued inside urlFromCatalogWithAbsolutePath:, so
 	// FIFO guarantees it runs before this block.
 	XCTestExpectation *exp = [self expectationWithDescription:@"Main queue drained after Tier 3"];
@@ -2031,7 +2112,7 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 						  lifetime:BESecurityScopedURLBookmarkLifetimeLongLived];
 
 	// Build a fictional URL with a different directory prefix but the same filename
-	// as tempFileURL, which DOES exist inside tempDirURL.
+	// as tempFileURL, which does exist inside tempDirURL.
 	NSString *fileName = self.tempFileURL.lastPathComponent;
 	NSURL *fictionalURL = [[NSURL fileURLWithPath:@"/be_tier4_fictional_dir"]
 						   URLByAppendingPathComponent:fileName];
@@ -2255,7 +2336,7 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 	XCTAssertEqual(self.manager.catalog.count, 1UL,
 				   @"Pre-condition: non-existent URL must be in catalog");
 
-	// Delegate provides tempDirURL — a different URL that CAN have a bookmark created.
+	// Delegate provides tempDirURL, a different URL that can have a bookmark created.
 	BEURLManagerTestDelegate *delegate = [BEURLManagerTestDelegate new];
 	delegate.relocationURL = self.tempDirURL;
 	self.manager.delegate = delegate;
@@ -2273,7 +2354,7 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 					 @"Original catalog key must be removed after relocation");
 		[self.manager endAccessingURL:result];
 	}
-	// result may be nil if tempDirURL bookmark creation also fails — both paths are valid.
+	// result may be nil if tempDirURL bookmark creation also fails; both paths are valid.
 }
 
 - (void)testStartAccessingURLDelegateURLAlreadyInRefCounts {
@@ -2437,7 +2518,6 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 	BOOL result = [self.manager endAccessingURL:accessed];
 	XCTAssertTrue(result, @"endAccessingURL should return YES for a tracked URL");
 
-	// After one end, the URL should no longer be tracked.
 	XCTAssertFalse([self.manager endAccessingURL:accessed],
 				   @"After ending, the URL must no longer be tracked");
 }
@@ -2450,14 +2530,13 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 		   Covers: endAccessingURLInternal—count > 1 → no stop; count == 1 → stop
  */
 - (void)testEndAccessingURLWithMultipleRefsDoesNotStopUntilLastRef {
-	// Build two refs to the same URL via two separate delegate calls.
 	NSURL *ref1 = [self putURLInRefCounts:self.tempDirURL]; // count = 1
 	NSURL *ref2 = [self putURLInRefCounts:self.tempDirURL]; // count = 2
 	XCTAssertNotNil(ref1);
 	XCTAssertNotNil(ref2);
 	XCTAssertEqualObjects(ref1, ref2);
 
-	// First end: count goes 2 → 1. Access NOT stopped (count > 1 branch).
+	// First end: count goes 2 → 1. Access not stopped (count > 1 branch).
 	BOOL end1 = [self.manager endAccessingURL:ref1];
 	XCTAssertTrue(end1, @"First end should return YES");
 
@@ -2465,9 +2544,68 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 	XCTAssertTrue([self.manager endAccessingURL:ref2],
 				  @"Second end (count 1 → 0) should also return YES");
 
-	// Now fully untracked.
 	XCTAssertFalse([self.manager endAccessingURL:self.tempDirURL],
 				   @"After both refs released, URL must not be tracked");
+}
+
+/*!
+ @testcase testAccessReferencesTrackTheInstanceThatStartedAccess
+ @abstract The security scope belongs to the NSURL instance that started access. A later start
+		   with an equal URL returns that instance and increments its count, an end with an equal
+		   URL decrements that instance's count and leaves it tracked, and catalog removal drains
+		   every reference and drops the key's resolved-instance record.
+ @discussion Runs on plain file URLs, where the OS start/stop calls are harmless no-ops, so it
+			 is not sandbox-gated.
+ */
+- (void)testAccessReferencesTrackTheInstanceThatStartedAccess {
+	NSURL *started = [self putURLInRefCounts:self.tempFileURL];
+	XCTAssertNotNil(started, @"Pre-condition: the first start must be tracked");
+	XCTAssertEqual([self.manager.refCounts countForObject:started], 1UL);
+
+	NSURL *equalURL = [NSURL fileURLWithPath:self.tempFileURL.path];
+	XCTAssertNotEqual(equalURL, started, @"Pre-condition: a distinct instance is required");
+	XCTAssertEqualObjects(equalURL, started, @"Pre-condition: the instances must compare equal");
+
+	NSURL *second = [self.manager startAccessingURL:equalURL];
+	XCTAssertEqual(second, started, @"A second start must return the instance that started access");
+	XCTAssertEqual([self.manager.refCounts countForObject:started], 2UL);
+	XCTAssertEqual(self.manager.resolvedAccessURLByKey[equalURL.absoluteString], started,
+				   @"The key must record the tracked instance");
+
+	XCTAssertTrue([self.manager endAccessingURL:[NSURL fileURLWithPath:self.tempFileURL.path]],
+				  @"An end with an equal instance must match the tracked one");
+	XCTAssertEqual([self.manager.refCounts countForObject:started], 1UL);
+	XCTAssertEqual([self.manager.refCounts member:equalURL], started,
+				   @"The instance that started access must remain the tracked one");
+
+	[self.manager addURLToCatalog:self.tempFileURL lifetime:BESecurityScopedURLBookmarkLifetimeShortLived];
+	XCTAssertEqual([self.manager.refCounts countForObject:started], 1UL,
+				   @"Adding a URL without an existing entry must not touch its access");
+
+	[self.manager removeURLFromCatalog:self.tempFileURL];
+	XCTAssertEqual([self.manager.refCounts countForObject:started], 0UL,
+				   @"Removal must drain every reference");
+	XCTAssertNil(self.manager.resolvedAccessURLByKey[self.tempFileURL.absoluteString],
+				 @"Removal must drop the key's resolved-instance record");
+	XCTAssertFalse([self.manager endAccessingURL:started]);
+}
+
+/*!
+ @testcase testReAddingCatalogURLDrainsEveryAccessReference
+ @abstract Re-adding a URL that is already in the catalog ends the whole access session, not one reference.
+ */
+- (void)testReAddingCatalogURLDrainsEveryAccessReference {
+	[self.manager addURLToCatalog:self.tempFileURL lifetime:BESecurityScopedURLBookmarkLifetimeShortLived];
+	NSURL *started = [self putURLInRefCounts:self.tempFileURL];
+	XCTAssertNotNil(started, @"Pre-condition: access must be tracked");
+	[self putURLInRefCounts:self.tempFileURL];
+	XCTAssertEqual([self.manager.refCounts countForObject:started], 2UL);
+
+	[self.manager addURLToCatalog:self.tempFileURL lifetime:BESecurityScopedURLBookmarkLifetimeShortLived];
+
+	XCTAssertEqual([self.manager.refCounts countForObject:started], 0UL,
+				   @"Re-adding must drain every reference for the URL");
+	XCTAssertNil(self.manager.resolvedAccessURLByKey[self.tempFileURL.absoluteString]);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -2504,7 +2642,6 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 	[self.manager addURLToCatalog:self.tempDirURL
 						  lifetime:BESecurityScopedURLBookmarkLifetimeLongLived];
 
-	// Act: call via the absolute-path string convenience wrapper.
 	NSURL *result = [self.manager startAccessingURLWithAbsolutePath:self.tempDirURL.absoluteString];
 
 	// The return value is implementation-defined (may be nil when bookmark resolution
@@ -2514,7 +2651,7 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 	if (result) {
 		[self.manager endAccessingURL:result];
 	}
-	// No XCTFail here — the method reaching this line without crashing is the key assertion.
+	// No XCTFail here; reaching this line without crashing is the assertion.
 }
 
 /*!
@@ -2532,12 +2669,10 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 	[self.manager addURLToCatalog:self.tempDirURL
 						  lifetime:BESecurityScopedURLBookmarkLifetimeLongLived];
 
-	// Act: end via absoluteString.
 	BOOL result = [self.manager endAccessingURLWithAbsolutePath:accessedURL.absoluteString];
 	XCTAssertTrue(result,
 				  @"endAccessingURLWithAbsolutePath: must return YES when the URL is tracked");
 
-	// The ref must now be gone.
 	XCTAssertFalse([self.manager endAccessingURL:accessedURL],
 				   @"After ending, the URL must no longer be tracked in refCounts");
 }
@@ -2563,7 +2698,6 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 		   Covers: endAccessingAllURLsInternal—inner for-loop runs count times
  */
 - (void)testEndAccessingAllURLsWithMultipleRefsPerURL {
-	// Accumulate 3 references to the same URL.
 	[self putURLInRefCounts:self.tempDirURL]; // count = 1
 	[self putURLInRefCounts:self.tempDirURL]; // count = 2
 	[self putURLInRefCounts:self.tempDirURL]; // count = 3
@@ -2571,7 +2705,6 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 	// endAccessingAllURLs must drain all three without crashing.
 	XCTAssertNoThrow([self.manager endAccessingAllURLs]);
 
-	// All refs should now be gone.
 	XCTAssertFalse([self.manager endAccessingURL:self.tempDirURL],
 				   @"After endAccessingAllURLs, no refs should remain");
 }
@@ -2645,12 +2778,12 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 	[self.manager addURLToCatalog:self.tempDirURL
 						  lifetime:BESecurityScopedURLBookmarkLifetimeLongLived];
 
-	// First call — entry.url resolves (if bookmark creation succeeded) and the
+	// First call: entry.url resolves (if bookmark creation succeeded) and the
 	// resolved URL is added to refCounts with count = 1.
 	NSArray<NSURL *> *first = [self.manager startAccessingAllURLs];
 
 	if (first.count == 0) {
-		// bookmark resolution failed in this environment — skip rather than give a
+		// bookmark resolution failed in this environment; skip rather than give a
 		// false result, because the else branch requires a successful first resolution.
 		[self.manager endAccessingAllURLs];
 		XCTSkip(@"startAccessingURLInternal: else branch requires successful bookmark resolution");
@@ -2660,7 +2793,7 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 	NSURL *resolvedURL = first.firstObject;
 	XCTAssertNotNil(resolvedURL, @"Pre-condition: first call must return a resolved URL");
 
-	// Second call — resolved URL is already in refCounts; else { success = YES; } fires
+	// Second call: resolved URL is already in refCounts; else { success = YES; } fires
 	// and addObject increments the count to 2.
 	NSArray<NSURL *> *second = [self.manager startAccessingAllURLs];
 	XCTAssertGreaterThan(second.count, 0UL,
@@ -2714,7 +2847,7 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 	NSURL *outOfScopeURL = [NSURL fileURLWithPath:@"/Library"];
 
 	// Place the out-of-scope URL directly into refCounts via the delegate path
-	// so Tier 2 in urlFromCatalogWithAbsolutePathInternal: will resolve it.
+	// so Tier 2 in urlFromCatalogWithAbsolutePathInternal: resolves it.
 	BEURLManagerTestDelegate *delegate = [BEURLManagerTestDelegate new];
 	delegate.relocationURL = outOfScopeURL;
 	self.manager.delegate = delegate;
@@ -2723,30 +2856,24 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 	self.manager.delegate = nil;
 
 	if (!inRefCounts) {
-		// Delegate path failed — cannot set up the pre-condition.
+		// Delegate path failed; cannot set up the pre-condition.
 		XCTSkip(@"Could not place out-of-scope URL into refCounts; skipping");
 		return;
 	}
 
 	// Now drain the ref count so the URL is no longer in refCounts.
-	// On the next call to startAccessingURLInternal:, Tier 2 will miss and
-	// startAccessingSecurityScopedResource will be called for the URL.
+	// On the next call to startAccessingURLInternal:, Tier 2 misses and
+	// startAccessingSecurityScopedResource is called for the URL.
 	[self.manager endAccessingURL:inRefCounts];
 	XCTAssertFalse([self.manager endAccessingURL:outOfScopeURL],
 				   @"Pre-condition: out-of-scope URL must not be in refCounts before the test");
 
-	// Re-put the URL into refCounts via Tier 2 to give urlFromCatalogWithAbsolutePathInternal:
-	// something to return without touching the OS bookmark layer — then drain again.
-	// Actually the cleanest path: call startAccessingURLInternal: directly with outOfScopeURL.
-	// Tier 1 misses (not in catalog), Tier 2 misses (not in refCounts), Tier 3/4 miss.
-	// resolvedURL = nil → startAccessingURLInternal: returns nil before reaching the
-	// startAccessingSecurityScopedResource call.
-	//
-	// To actually exercise the startAccessingSecurityScopedResource failure branch we need
-	// resolvedURL to be non-nil. The only way without a catalog entry is to insert via
-	// refCounts (Tier 2) in the same dispatch_sync. startAccessingAllURLs does exactly this
-	// for catalog entries. So: add outOfScopeURL to the catalog, call startAccessingAllURLs.
-	// If startAccessingSecurityScopedResource returns NO, it is excluded from the result.
+	// Tier 1 misses (not in catalog), Tier 2 misses (not in refCounts), and Tier 3/4 miss for a
+	// bare outOfScopeURL, so startAccessingURLInternal: returns nil before reaching
+	// startAccessingSecurityScopedResource. Reaching that call needs a non-nil resolvedURL: add
+	// outOfScopeURL to the catalog and call startAccessingAllURLs, which inserts into refCounts
+	// (Tier 2) in the same dispatch_sync. A NO from startAccessingSecurityScopedResource excludes
+	// the URL from the result.
 
 	[self.manager addURLToCatalog:outOfScopeURL
 						  lifetime:BESecurityScopedURLBookmarkLifetimeShortLived];
@@ -2754,9 +2881,9 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 	NSArray<NSURL *> *accessed = [self.manager startAccessingAllURLs];
 
 	// Two valid outcomes:
-	// — accessed is empty: startAccessingSecurityScopedResource returned NO for outOfScopeURL
+	// - accessed is empty: startAccessingSecurityScopedResource returned NO for outOfScopeURL
 	//   (the branch we want to cover). refCounts must be empty.
-	// — accessed contains outOfScopeURL: startAccessingSecurityScopedResource returned YES
+	// - accessed contains outOfScopeURL: startAccessingSecurityScopedResource returned YES
 	//   (sandboxed process with full scope). refCounts has count = 1.
 	if (accessed.count == 0) {
 		// Branch covered: startAccessingSecurityScopedResource returned NO → returned nil.
@@ -2764,7 +2891,6 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 					   @"URL must not be in refCounts when startAccessingSecurityScopedResource fails");
 	} else {
 		// Sandboxed process: startAccessingSecurityScopedResource returned YES.
-		// Clean up the active ref.
 		[self.manager endAccessingURL:accessed.firstObject];
 	}
 }
@@ -2831,19 +2957,13 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 				   removeObject:oldURL; addObject:newURL
  */
 - (void)testHandleBookmarkRelocationTransfersRefCounts {
-	// Add tempFileURL to catalog.
 	[self.manager addURLToCatalog:self.tempFileURL
 						  lifetime:BESecurityScopedURLBookmarkLifetimeLongLived];
 
 	NSString *oldPath = self.tempFileURL.absoluteString;
 	NSString *newPath = @"file:///be_test_relocated_destination.txt";
 
-	// Manually insert a ref count for the old URL.
-	// putURLInRefCounts: uses a delegate → result URL may differ; manually
-	// manipulate refCounts via the public access API instead.
-	// We use the endAccessingURL/startAccessingURL round-trip:
-	// if bookmark resolution works, startAccessingURL adds the resolved URL.
-	// For maximum portability we add via the delegate path with tempFileURL as the relocation.
+	// Seed refCounts through the delegate path, with tempFileURL as the relocation.
 	BEURLManagerTestDelegate *setupDelegate = [BEURLManagerTestDelegate new];
 	setupDelegate.relocationURL = self.tempFileURL;
 	self.manager.delegate = setupDelegate;
@@ -2851,7 +2971,7 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 						  [NSURL fileURLWithPath:@"/be_nonexistent_setup_path"]];
 	self.manager.delegate = nil;
 
-	// Trigger the relocation — old path in catalog, may or may not have refCount.
+	// Trigger the relocation: old path in catalog, with or without a refCount.
 	[self.manager handleBookmarkRelocationFromPath:oldPath toPath:newPath];
 	[self drainAccessQueue];
 
@@ -2862,23 +2982,22 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 	XCTAssertNotNil(catalog[newPath],
 					@"New catalog key must be present after relocation");
 
-	// Verify ref count transfer: if a ref was placed on the old path, it must
-	// now be accessible via the new path URL — endAccessingURL: on the new URL
-	// should return YES (was tracked), and a subsequent call must return NO.
+	// The ref placed on the old path moves onto the instance the relocated entry resolves to,
+	// recorded under the new key. The key URL stands in only when the entry does not resolve.
 	if (inRefCounts) {
-		NSURL *newURL = [NSURL URLWithString:newPath];
-		// The ref should have been transferred from inRefCounts (oldPath URL) to newURL.
-		// End via the new URL — must succeed if the transfer happened.
-		BOOL endedViaNewURL = [self.manager endAccessingURL:newURL];
-		// End via the original URL — should NOT succeed (old URL removed from refCounts).
-		BOOL endedViaOldURL = [self.manager endAccessingURL:inRefCounts];
+		NSURL *holder = self.manager.resolvedAccessURLByKey[newPath];
+		XCTAssertNotNil(holder, @"The new key must record the instance holding the transferred ref");
+		BESecurityScopedURLBookmarkEntry *relocated = catalog[newPath];
+		XCTAssertEqualObjects(holder, relocated.url ?: [NSURL URLWithString:newPath]);
+		XCTAssertEqual([self.manager.refCounts countForObject:holder], 1UL,
+					   @"Exactly one ref was added, so exactly one must be held after relocation");
 
-		// Exactly one of the two end calls must have succeeded (the transferred ref).
-		XCTAssertTrue(endedViaNewURL || endedViaOldURL,
-					  @"The ref count placed on the old URL must be accessible (via old or new URL) "
-					  @"after relocation; neither endAccessingURL: call succeeded");
-		XCTAssertFalse(endedViaNewURL && endedViaOldURL,
-					   @"Only one ref was added — both end calls succeeding would indicate a double-count");
+		XCTAssertTrue([self.manager endAccessingURL:holder],
+					  @"The transferred ref must end through the recorded instance");
+		XCTAssertFalse([self.manager endAccessingURL:holder],
+					   @"Only one ref was added; a second end must find nothing");
+		XCTAssertFalse([self.manager endAccessingURL:inRefCounts],
+					   @"The old URL must hold no ref after relocation");
 	}
 }
 
@@ -2898,15 +3017,13 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 
 	NSString *oldPath = self.tempDirURL.absoluteString;
 	if (![oldPath hasSuffix:@"/"]) { oldPath = [oldPath stringByAppendingString:@"/"]; }
-	// New path is the same directory — entry stays resolvable so entry.url is non-nil.
+	// New path is the same directory, so the entry stays resolvable and entry.url is non-nil.
 	NSString *newPath = oldPath;
 
 	XCTestExpectation *exp = [self expectationWithDescription:@"didRelocateURL on main queue"];
 	exp.assertForOverFulfill = NO; // delegate may not fire if entry.url is nil
 
-	// Patch the delegate to fulfill when called.
 	__block BOOL delegateCalled = NO;
-	// We can't easily swizzle, so we poll after a short spin.
 	[self.manager handleBookmarkRelocationFromPath:oldPath toPath:newPath];
 
 	// Give the dispatch_async(accessQueue) + dispatch_async(main_queue) chain time to execute.
@@ -2959,6 +3076,47 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 	XCTAssertEqual(count, 2UL);
 }
 
+/*!
+ @testcase testFastEnumerationOverLargeCatalogYieldsEveryEntryOnceWhileMutating
+ @abstract for-in over more than one 16-object buffer sees each entry exactly once, and a
+		   removal during the loop neither skips nor repeats an entry.
+ */
+- (void)testFastEnumerationOverLargeCatalogYieldsEveryEntryOnceWhileMutating {
+	const NSUInteger entryCount = 40;
+	NSMutableArray<NSURL *> *fileURLs = [NSMutableArray arrayWithCapacity:entryCount];
+	for (NSUInteger i = 0; i < entryCount; i++) {
+		NSString *path = [NSTemporaryDirectory() stringByAppendingPathComponent:
+						  [NSString stringWithFormat:@"be_enum_%@.txt", [NSUUID UUID].UUIDString]];
+		XCTAssertTrue([@"unit test" writeToFile:path atomically:YES encoding:NSUTF8StringEncoding error:NULL]);
+		NSURL *url = [NSURL fileURLWithPath:path];
+		[fileURLs addObject:url];
+		XCTAssertTrue([self.manager addURLToCatalog:url lifetime:BESecurityScopedURLBookmarkLifetimeShortLived]);
+	}
+	XCTAssertEqual(self.manager.catalog.count, entryCount);
+
+	NSCountedSet<NSString *> *seen = [NSCountedSet set];
+	NSUInteger iteration = 0;
+	for (BESecurityScopedURLBookmarkEntry *entry in self.manager) {
+		XCTAssertTrue([entry isKindOfClass:[BESecurityScopedURLBookmarkEntry class]]);
+		[seen addObject:entry.urlString];
+		if (iteration++ == 2) {
+			[self.manager removeURLFromCatalog:fileURLs.lastObject];
+			[self.manager clearCatalog];
+		}
+	}
+
+	XCTAssertEqual(iteration, entryCount, @"Every snapshot entry is visited despite the mutation");
+	XCTAssertEqual(seen.count, entryCount, @"Each entry appears exactly once");
+	for (NSString *urlString in seen) {
+		XCTAssertEqual([seen countForObject:urlString], 1UL);
+	}
+	XCTAssertEqual(self.manager.catalog.count, 0UL);
+
+	for (NSURL *url in fileURLs) {
+		[[NSFileManager defaultManager] removeItemAtURL:url error:NULL];
+	}
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 #pragma mark - NSURL convenience category
 // ─────────────────────────────────────────────────────────────────────────────
@@ -2997,7 +3155,7 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 	// Crash-safety smoke test for the per-entry accessors: many threads read the entry's mutable
 	// properties from the catalog snapshot while other threads drive the manager to mutate the
 	// same entry (resolve, start/end access, re-add). This exercises the synchronized accessors
-	// under contention. NOTE: it is NOT a deterministic data-race guard — the entry's mutable
+	// under contention. It is not a deterministic data-race guard: the entry's mutable
 	// ivars are written infrequently (one-time lazy -url resolution; rare delegate relocation), so
 	// the read/write windows seldom overlap and even TSan does not reliably trip on the unsynced
 	// variant. The real protection here is defensive correctness, mirroring the -url getter lock.
@@ -3097,7 +3255,7 @@ static NSString * const kBETestCacheFilename           = @"BESecurityScopedURLMa
 					case 3: (void)[self.manager urlFromCatalog:u]; break;
 					case 4: [self.manager removeURLFromCatalog:u]; break;
 					default:
-						// Exercise the now-queue-routed storageOptions setter under contention.
+						// Exercise the queue-routed storageOptions setter under contention.
 						self.manager.storageOptions = (i % 12 == 5)
 							? BESecurityScopedURLStorageNone
 							: BESecurityScopedURLStorageAll;

@@ -1,6 +1,6 @@
 # BEFoundation Documentation Index
 
-Comprehensive documentation for the BEFoundation framework.
+Entry points into the BEFoundation documentation.
 
 ## Documentation Structure
 
@@ -20,7 +20,7 @@ BEFoundation extends Apple's Foundation framework with utilities for:
 - **[Character Sets](doc:CharacterSets)** — Type-safe character set distinction
 - **[Predicates and Rules](doc:Predicates)** — Predicate evaluation with outcomes
 - **[Strings](doc:Strings)** — String validation and type checking
-- **[Time and Dates](doc:TimeAndDates)** — CMTime encapsulation, RFC 3339 formatting
+- **[Time and Dates](doc:TimeAndDates)** — CMTime encapsulation, RFC 3339 and RFC 2822 formatting
 - **[Method Signatures](doc:MethodSignatures)** — Block signature manipulation
 
 ### AppKit Extensions
@@ -42,7 +42,7 @@ Categories that work on both macOS (AppKit) and iOS (UIKit):
 - **[Cross-Platform UI](doc:CrossPlatformUI)** — Overview of the shared UI conveniences
 - **[BEPlatformTypes](doc:BEPlatformTypes)** — Compile-time aliases (`BEColor`, `BEImage`, `BEFont`, `BEView`)
 - **[BEColor+BExtension](doc:BEColor_BExtension)** — Hex and appearance-aware colors
-- **[BEWebColor](doc:BEColor_BEWebColor)** — The 141 CSS/SVG color keywords
+- **[BEColor+BEWebColor](doc:BEColor_BEWebColor)** — The 141 CSS/SVG color keywords
 - **[BEView+BExtension](doc:BEView_BExtension)** — Auto Layout convenience constraints
 - **[BEImage+BExtension](doc:BEImage_BExtension)** — Image round-trips, export, and resizing
 - **[BEDotView](doc:BEDotView)** — Status-indicator dot view, a port of Prado's `TDot`
@@ -52,7 +52,6 @@ Categories that work on both macOS (AppKit) and iOS (UIKit):
 - **[Images and Metal](doc:ImagesAndMetal)** — Overview of image processing components
 - **[CIImage+BExtension](doc:CIImage_BExtension)** — Text rendering and image compositing
 - **[BEMetalHelper](doc:BEMetalHelper)** — Metal texture to image conversion
-- **[BEImage+BExtension](doc:BEImage_BExtension)** — Cross-platform image round-trips and resizing
 
 ### File and Networking Utilities
 
@@ -60,9 +59,8 @@ Categories that work on both macOS (AppKit) and iOS (UIKit):
 - **[BEPathWatcher](doc:BEPathWatcher)** — File system monitoring with GCD
 - **[BEFileCache](doc:BEFileCache)** — Persistent file-backed caching
 - **[BESecurityScopedURLManager](doc:BESecurityScopedURLManager)** — Security-scoped bookmark management
-- **[NSOpenPanel+BESecurityScopedURLManager](doc:NSOpenPanel_BESecurityScopedURLManager)** — NSOpenPanel bookmarking into a manager catalog (macOS)
 - **[Web and Networking](doc:WebAndNetworking)** — Overview of networking components
-- **[BEWebData](doc:BEWebData)** — NSData subclass for data URLs
+- **[BEWebData](doc:BEWebData)** — NSData subclass that loads data, http(s), and file URLs
 - **[NSData+URLDownload](doc:NSData_URLDownload)** — Asynchronous URL downloading
 - **[NSURL+Data](doc:NSURL_Data)** — Data URL creation and parsing
 
@@ -102,11 +100,14 @@ Categories that work on both macOS (AppKit) and iOS (UIKit):
 ### Predicates and Rules
 
 - [BEPredicateRule](doc:BEPredicateRule) — Predicate evaluation with outcomes
-- [BEPriorityExtensions](doc:BEPriorityExtensions) — Priority ordering
 
 ### Notifications
 
 - [Priority Notifications](doc:PriorityNotifications) — Priority-ordered notification delivery
+- [NSPriorityNotificationCenter](doc:NSPriorityNotificationCenter) — The priority-aware center
+- [NSPriorityNotification](doc:NSPriorityNotification) — Notification with reverse order and post block
+- [NSNotification+ExtraProperties](doc:NSNotification_ExtraProperties) — `tag` and `identifier`
+- [NSNotification+MutableUserInfo](doc:NSNotification_MutableUserInfo) — Mutable `userInfo` access
 
 ### Strings
 

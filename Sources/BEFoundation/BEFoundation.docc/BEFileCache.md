@@ -42,8 +42,8 @@ id cached = [cache objectForKey:@"myKey"];
 ### Custom Cache Directory
 
 ```objc
-// Use custom directory
-BEFileCache *cache = [[BEFileCache alloc] initWithCacheDirectory:@"/path/to/cache"];
+// Use an existing directory (a path that does not exist yet is treated as a name under Caches)
+BEFileCache *cache = [[BEFileCache alloc] initWithCacheDirectory:@"/path/to/existing/cache"];
 
 // Use subdirectory in caches
 BEFileCache *cache = [[BEFileCache alloc] initWithCacheDirectory:@"MyCache"];
@@ -107,7 +107,7 @@ BOOL excluded = cache.excludedFromBackup;
 
 ### Custom File Naming
 
-Each entry stores a `.cache` payload and a `.meta` sidecar sharing one base name — by default the SHA-256 hex digest of the archived key. `fileNameBlock` substitutes a caller-computed base name; the cache appends the extensions. The block receives the key and the digest, and no filesystem paths.
+Each entry stores a `.cache` payload and a `.meta` sidecar sharing one base name, by default the SHA-256 hex digest of the archived key. `fileNameBlock` substitutes a caller-computed base name; the cache appends the extensions. The block receives the key and the digest, and no filesystem paths.
 
 ```objc
 cache.fileNameBlock = ^NSString *(id<NSCopying, NSSecureCoding> key, NSString *hashName) {
@@ -116,7 +116,7 @@ cache.fileNameBlock = ^NSString *(id<NSCopying, NSSecureCoding> key, NSString *h
 };
 ```
 
-Returned names must be a single path component (no `/`, not `.` or `..`), contain no NUL characters, fit `NAME_MAX` (255) bytes with the extension appended, and be unique per key — embed `hashName` or a prefix of it. A `nil` or rule-violating result falls back to the digest name, as does a name another entry already uses (compared case-insensitively). Names are stored in decomposed Unicode form, the form the file system reports.
+Returned names must be a single path component (no `/`, not `.` or `..`), contain no NUL characters, fit `NAME_MAX` (255) bytes with the extension appended, and be unique per key (embed `hashName` or a prefix of it). A `nil` or rule-violating result falls back to the digest name, as does a name another entry already uses (compared case-insensitively). Names are stored in decomposed Unicode form, the form the file system reports.
 
 Existing entries keep their recorded names: lookups resolve through the index, and overwriting a key whose stored name differs deletes the old file pair, so changing the block between launches leaves no orphaned files.
 

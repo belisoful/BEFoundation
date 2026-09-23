@@ -42,7 +42,7 @@ All getters and setters are thread-safe:
 ```objc
 NSMutableNumber *counter = [[NSMutableNumber alloc] initWithInt:0];
 
-// Thread-safe increment
+// Each accessor is atomic; the read-modify-write as a whole is not
 counter.intValue = counter.intValue + 1;
 
 // Or use built-in operations
@@ -88,8 +88,8 @@ NSMutableNumber *flags = [NSMutableNumber numberWithInt:0b1100];
 // Bitwise NOT
 NSMutableNumber *notFlags = flags.bitNot;  // Creates new number
 
-// In-place modification
-flags.bitNotValue = flags.bitNotValue;  // Modifies existing
+// Read the complemented value without creating a number
+unsigned long long inverted = flags.bitNotValue;
 ```
 
 ### Special Value Checks

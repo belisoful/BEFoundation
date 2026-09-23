@@ -4,9 +4,8 @@
  @date			2025-01-01
  @author		belisoful@icloud.com
  @abstract		A simplified macro system for Objective-C inspired by Laravel's Macroable trait.
- @discussion	This header provides a simple, lightweight macro system for adding methods to classes
- 				at runtime using blocks. Unlike NSObject+DynamicMethods, this is a simplified
- 				implementation focused on core macro functionality.
+ @discussion	This header provides a macro system for adding methods to classes at runtime
+ 				using blocks. It is a reduced interface over NSObject+DynamicMethods.
 
  				Macros are blocks that are attached to a class and can be called as if they
  				were native methods. The system uses NSObject+DynamicMethods internally
@@ -63,6 +62,11 @@
 
  				Macros are stored in a class-level storage and implemented using
  				NSObject+DynamicMethods when enabled.
+
+ 				Macro records are guarded by a private per-class (or per-object) monitor that
+ 				NSObject+DynamicMethods never acquires, so registering a macro concurrently with
+ 				dispatch or respondsToSelector: on the same class cannot deadlock.
+ @since      1.1
  */
 @interface NSObject (Macroable)
 
@@ -71,9 +75,11 @@
 /*!
  @method		enableMacros
  @abstract		Enables macro support for this class.
- @return		YES if macros were successfully enabled, NO if already enabled.
+ @return		YES if macros were successfully enabled; NO if already enabled, or if the
+				receiver is NSObject, a metaclass, or an NS-prefixed class that
+				`allowNSDynamicMethods` blocks.
  @discussion	Enables the underlying dynamic method support. Calling this explicitly is
- 				optional — `macro:macroBlock:` enables macros automatically on first use.
+ 				optional; `macro:macroBlock:` enables macros automatically on first use.
  */
 + (BOOL)enableMacros;
 
@@ -82,7 +88,7 @@
  @abstract		Disables macro support for this class.
  @return		YES if macros were successfully disabled, NO if already disabled.
  @discussion	Disables macro support. Existing macros remain registered but
- 				will not be callable until macros are re-enabled.
+ 				are not callable until macros are re-enabled.
  */
 + (BOOL)disableMacros;
 
@@ -105,7 +111,7 @@
  				For example, for a method `-(NSString *)greet:(NSString *)name`,
  				the block should be: `^(id self, NSString *name) { ... }`
 
- 				If a macro already exists for the selector, it will be replaced.
+ 				If a macro already exists for the selector, it is replaced.
 
  				Passing a `nil` macroBlock removes any existing macro for the selector and
  				returns YES (whether or not one was registered). Registering a macro
@@ -192,7 +198,7 @@
  @abstract		Initializes a macro metadata object.
  @param			selector	The selector for the macro.
  @param			block		The block implementing the macro.
- @return		An initialized BEMacroMeta instance, or nil if initialization failed.
+ @return		An initialized BEMacroMeta instance.
  */
 - (nullable instancetype)initWithSelector:(nonnull SEL)selector block:(nullable id)block;
 

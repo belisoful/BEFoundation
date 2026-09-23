@@ -117,7 +117,7 @@ NS_ASSUME_NONNULL_BEGIN
 			 absolute strings. @c relativeURL is contained iff its component sequence is a
 			 prefix of @c checkUrl's component sequence. This is exact at directory
 			 boundaries and therefore avoids the classic string-prefix pitfalls:
-			 @c /a/Projects does NOT match @c /a/ProjectsX, files are not mistaken for
+			 @c /a/Projects does not match @c /a/ProjectsX, files are not mistaken for
 			 directories, and percent-encoding differences are normalized away (path
 			 components are decoded).
 
@@ -127,7 +127,7 @@ NS_ASSUME_NONNULL_BEGIN
 			 - @c checkUrl is a descendant of @c relativeURL.
 
 			 Note: standardization resolves @c . and @c .. and redundant slashes but does
-			 NOT resolve symlinks. If you require symlink-insensitive matching, pass URLs
+			 not resolve symlinks. If you require symlink-insensitive matching, pass URLs
 			 that have already been resolved with @c -URLByResolvingSymlinksInPath.
  @return     @c YES if @c checkUrl is within the hierarchy rooted at @c relativeURL.
  */

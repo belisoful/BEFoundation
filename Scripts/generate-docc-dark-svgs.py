@@ -11,7 +11,7 @@
 # <text> (becomes light). GLOBAL substitutions run first so the tag-aware outputs below are
 # never re-mapped.
 #
-# Usage:  Scripts/generate-docc-dark-svgs.py [Source/BEFoundation.docc/Resources]
+# Usage:  Scripts/generate-docc-dark-svgs.py [Sources/BEFoundation/BEFoundation.docc/Resources]
 #         (defaults to the current directory)
 #
 import sys, os, re

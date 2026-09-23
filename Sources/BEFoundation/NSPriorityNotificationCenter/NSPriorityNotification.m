@@ -70,7 +70,6 @@
  @param			postBlock	Block to execute after each observer. May be nil.
  @return		A new NSPriorityNotification instance.
  @discussion	The post-processing block is called after each observer handles the notification.
-				This is useful for logging, debugging, or cleanup operations.
  */
 + (instancetype)notificationWithName:(NSNotificationName)aName object:(nullable id)anObject postBlock:(void (NS_SWIFT_SENDABLE ^_Nullable)(NSNotification *notification))postBlock
 {
@@ -100,8 +99,8 @@
  @param			anObject	The associated object. May be nil.
  @param			reverse		Whether to process observers in reverse order.
  @return		A new NSPriorityNotification instance.
- @discussion	When reverse is YES, observers are processed in LIFO (last-in-first-out) order,
-				which can be useful for implementing cascading cancellation or override patterns.
+ @discussion	When reverse is YES, observers are notified in reverse priority order (lowest
+				priority first); observers of equal priority run in reverse registration order.
  */
 + (instancetype)notificationWithName:(NSNotificationName)aName object:(nullable id)anObject reverse:(BOOL)reverse
 {
@@ -116,8 +115,7 @@
  @param			userInfo	Additional data dictionary. May be nil.
  @param			reverse		Whether to process observers in reverse order.
  @return		A new NSPriorityNotification instance.
- @discussion	This method combines user information with reverse processing capabilities,
-				allowing for complex notification handling patterns.
+ @discussion	This method combines user information with reverse processing.
  */
 + (instancetype)notificationWithName:(NSNotificationName)aName object:(nullable id)anObject userInfo:(nullable NSDictionary *)userInfo reverse:(BOOL)reverse
 {
@@ -149,12 +147,10 @@
  @param			reverse		Whether to process observers in reverse order.
  @param			postBlock	Block to execute after each observer. May be nil.
  @return		A new NSPriorityNotification instance.
- @discussion	This is the master factory method that all other factory methods delegate to.
-				It provides access to all NSPriorityNotification features in a single call.
+ @discussion	This is the factory method that all other factory methods delegate to.
  */
 + (instancetype)notificationWithName:(NSNotificationName)aName object:(nullable id)anObject userInfo:(nullable NSDictionary *)userInfo reverse:(BOOL)reverse postBlock:(void (NS_SWIFT_SENDABLE ^_Nullable)(NSNotification *notification))postBlock
 {
-	// All class factory methods delegate to this implementation
 	return [self.alloc initWithName:aName object:anObject userInfo:userInfo reverse:reverse postBlock:postBlock];
 }
 
@@ -186,8 +182,9 @@
  @param			userInfo	Additional data dictionary. May be nil.
  @param			reverse		Whether to process observers in reverse order.
  @return		An initialized NSPriorityNotification instance.
- @discussion	This designated initializer allows control over observer processing order.
-				When reverse is YES, observers are called in reverse registration order.
+ @discussion	This initializer allows control over observer processing order.
+				When reverse is YES, observers are notified in reverse priority order (lowest
+				priority first); observers of equal priority run in reverse registration order.
  */
 - (instancetype)initWithName:(NSNotificationName)name object:(nullable id)object userInfo:(nullable NSDictionary *)userInfo reverse:(BOOL)reverse
 {
@@ -204,7 +201,7 @@
  @param			postBlock	Block to execute after each observer. May be nil.
  @return		An initialized NSPriorityNotification instance.
  @discussion	This designated initializer sets up post-processing capabilities.
-				The block is copied using BLOCK_COPY for proper memory management.
+				The block is copied.
  */
 - (instancetype)initWithName:(NSNotificationName)name object:(nullable id)object userInfo:(nullable NSDictionary *)userInfo postBlock:(void (NS_SWIFT_SENDABLE ^)(NSNotification *notification))postBlock
 {
@@ -221,8 +218,7 @@
  @param			reverse		Whether to process observers in reverse order.
  @param			postBlock	Block to execute after each observer. May be nil.
  @return		An initialized NSPriorityNotification instance.
- @discussion	This is the master designated initializer that provides access to all
-				NSPriorityNotification features. The block is copied for proper memory management.
+ @discussion	This designated initializer receives every parameter. The block is copied.
  */
 // NSNotification is an abstract class cluster: -initWithName:object:userInfo: raises for
 // any non-Apple subclass. We intentionally skip [super init…] and store our own ivars,
@@ -250,9 +246,9 @@
  @method		supportsSecureCoding
  @abstract		Indicates support for secure coding.
  @return		YES, confirming NSPriorityNotification supports secure coding.
- @discussion	NSPriorityNotification fully implements NSSecureCoding to ensure safe
-				archiving and unarchiving operations. Objects conforming to GlobalRegistryProtocol
-				are handled specially to maintain object identity across coding operations.
+ @discussion	NSPriorityNotification implements NSSecureCoding. Objects conforming to
+				BERegistryProtocol are encoded by their global registry UUID, so identity
+				survives archiving.
  */
 + (BOOL)supportsSecureCoding
 {
@@ -260,7 +256,7 @@
 }
 
 // userInfo commonly holds nested property-list collections. Secure decoding requires every
-// class reachable inside the dictionary to be whitelisted — decoding with NSDictionary alone
+// class reachable inside the dictionary to be listed; decoding with NSDictionary alone
 // rejects nested arrays/dictionaries/dates and yields nil. This is the standard plist set.
 + (NSSet<Class> *)userInfoCodingClasses
 {
@@ -283,19 +279,19 @@
  
 				**Keyed Coding:**
 				- Decodes name, userInfo, and reverse flag using specific keys
-				- Handles GlobalRegistryProtocol objects via UUID lookup
+				- Handles BERegistryProtocol objects via UUID lookup
 				
 				**Non-Keyed Coding:**
 				- Decodes objects in sequence: name, registry flag, UUID (if applicable), userInfo, reverse
 				- Maintains backward compatibility with older archive formats
 				
 				**Global Registry Handling:**
-				Objects conforming to GlobalRegistryProtocol are restored using their global
+				Objects conforming to BERegistryProtocol are restored using their global
 				registry UUID rather than direct object archiving, ensuring object identity
 				is preserved across coding operations.
 				
 				**Post-Processing Blocks:**
-				Blocks are not archived for security reasons and will be NULL after decoding.
+				Blocks are not archivable; postBlock is NULL after decoding.
  */
 // Same reasoning as initWithName:…:  NSNotification's initializers raise on
 // non-Apple subclasses, so we skip the super call and decode into our own ivars.
@@ -305,13 +301,11 @@
 {
 	if (self) {
 		if ([aDecoder allowsKeyedCoding]) {
-			// Keyed coding path - more robust and preferred
 			_name = [aDecoder decodeObjectOfClass:[NSString class] forKey:@"name"];
 			if (![_name isKindOfClass:NSString.class]) {
 				return nil;    // a nameless notification traps in CoreFoundation on post
 			}
 			
-			// Handle GlobalRegistryProtocol objects
 			NSString *uuid = [aDecoder decodeObjectOfClass:NSString.class forKey:@"ObjectGlobalRegistryUUID"];
 			if (uuid) {
 				_object = [NSObject.globalRegistry registeredObjectForUUID:uuid];
@@ -323,13 +317,11 @@
 			self.tag = [aDecoder decodeIntegerForKey:@"tag"];
 			self.identifier = [aDecoder decodeObjectOfClasses:[NSPriorityNotification userInfoCodingClasses] forKey:@"identifier"];
 		} else {
-			// Non-keyed coding path - for backward compatibility
 			_name = [aDecoder decodeObject];
 			if (![_name isKindOfClass:NSString.class]) {
 				return nil;
 			}
 			
-			// Check if object uses GlobalRegistryProtocol
 			NSNumber *hasGlobalRegistry = [aDecoder decodeObject];
 			if (hasGlobalRegistry.boolValue) {
 				NSString *uuid = [aDecoder decodeObject];
@@ -350,7 +342,7 @@
 			}
 		}
 		
-		// Post-processing blocks are not archived for security reasons
+		// Blocks are not archivable.
 		_postBlock = NULL;
 	}
 	return self;
@@ -365,29 +357,26 @@
  
 				**Keyed Coding:**
 				- Encodes name, userInfo, and reverse flag with specific keys
-				- Handles GlobalRegistryProtocol objects by encoding their UUID
+				- Handles BERegistryProtocol objects by encoding their UUID
 				
 				**Non-Keyed Coding:**
 				- Encodes objects in sequence for backward compatibility
-				- Includes registry flag to indicate GlobalRegistryProtocol usage
+				- Includes registry flag to indicate BERegistryProtocol usage
 				
 				**Global Registry Handling:**
-				Objects conforming to GlobalRegistryProtocol are automatically registered
+				Objects conforming to BERegistryProtocol are automatically registered
 				globally if not already registered, then their UUID is encoded instead of
 				the object itself. This ensures object identity is preserved across
 				coding operations.
 				
 				**Post-Processing Blocks:**
-				Blocks are intentionally not encoded for security reasons. They cannot
-				be safely archived and restored across process boundaries.
+				Blocks are not archivable and are not encoded.
  */
 - (void)encodeWithCoder:(NSCoder *)aCoder
 {
 	if ([aCoder allowsKeyedCoding]) {
-		// Keyed coding path - more robust and preferred
 		[aCoder encodeObject:self.name forKey:@"name"];
 		
-		// Handle GlobalRegistryProtocol objects
 		if ([self.object conformsToProtocol:@protocol(BERegistryProtocol)]) {
 			if (![self.object isGlobalRegistered]) {
 				[self.object registerGlobalInstance];
@@ -411,10 +400,8 @@
 			[aCoder encodeObject:identifier forKey:@"identifier"];
 		}
 	} else {
-		// Non-keyed coding path - for backward compatibility
 		[aCoder encodeObject:self.name];
 		
-		// Handle GlobalRegistryProtocol objects
 		if ([self.object conformsToProtocol:@protocol(BERegistryProtocol)]) {
 			if (![self.object isGlobalRegistered]) {
 				[self.object registerGlobalInstance];
@@ -450,7 +437,7 @@
 		}
 	}
 	
-	// Post-processing blocks are intentionally not encoded for security reasons
+	// Blocks are not archivable, so postBlock is not encoded.
 }
 
 /*!

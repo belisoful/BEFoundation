@@ -223,21 +223,19 @@ static NSLock *nsdata_lock = nil;
 	
 	[super setUp];
 	
-	// 1. Create a custom configuration (using ephemeral configuration is common for testing)
 	NSURLSessionConfiguration *config = [NSURLSessionConfiguration ephemeralSessionConfiguration];
 	
-	// 2. Explicitly inject MockURLProtocol into the configuration's protocol classes
-	// This is the CRITICAL step to make your mock work with a delegate-based NSURLSession.
+	// Inject MockURLProtocol into the configuration's protocol classes.
+	// This step is what makes the mock work with a delegate-based NSURLSession.
 	NSMutableArray *protocolClasses = [NSMutableArray arrayWithArray:config.protocolClasses];
 	[protocolClasses insertObject:MockURLProtocol.class atIndex:0];
 	config.protocolClasses = protocolClasses;
 	
-	// 3. Apply the configuration app-wide so every download path (including the convenience
+	// Apply the configuration app-wide so every download path (including the convenience
 	//    methods, which build their handler internally) routes through MockURLProtocol.
 	NSData.defaultSessionConfiguration = config;
 	self.testConfiguration = config;
 
-	// Ensure any previous mock state is cleared
 	[MockURLProtocol reset];
 }
 
@@ -762,14 +760,11 @@ static NSLock *nsdata_lock = nil;
 			 - Handler's isComplete property is set correctly
  */
 - (void)testHandlerPauseResume {
-	// Setup mock response
 	NSData *testData = [@"Pause resume test" dataUsingEncoding:NSUTF8StringEncoding];
 	[MockURLProtocol setMockResponse:testData statusCode:200 headers:nil];
 	
-	// Create expectation for async completion
 	XCTestExpectation *completionExpectation = [self expectationWithDescription:@"Download completes after pause/resume"];
 	
-	// Create URL and handler
 	NSURL *url = [NSURL URLWithString:@"http://example.com/test.txt"];
 	BEDataDownloadHandler *handler = [[BEDataDownloadHandler alloc] init];
 	handler.delayResume = YES; // Start in suspended state
@@ -778,20 +773,17 @@ static NSLock *nsdata_lock = nil;
 		[completionExpectation fulfill];
 	};
 	
-	// Start the download task (will be suspended due to delayResume)
+	// Start the download task (suspended by delayResume)
 	NSURLSessionDataTask *task = [NSData dataDownloadWithContentsOfURL:url handler:handler];
 	
-	// Verify initial state
 	XCTAssertNotNil(task, @"Task should be created");
 	XCTAssertNotNil(handler.task, @"Handler should have task reference");
 	XCTAssertEqual(handler.task, task, @"handler task should be the output task");
 	XCTAssertEqual(task.state, NSURLSessionTaskStateSuspended, @"Task should start suspended");
 	
-	// Test resume functionality
 	[handler resume];
 	XCTAssertEqual(task.state, NSURLSessionTaskStateRunning, @"Task should be running after resume");
 	
-	// Test pause functionality
 	[handler pause];
 	// Note: State may be NSURLSessionTaskStateSuspended, but in mock environment
 	// the task might complete before pause takes effect
@@ -803,10 +795,8 @@ static NSLock *nsdata_lock = nil;
 	// Resume again to ensure completion
 	[handler resume];
 	
-	// Wait for completion
 	[self waitForExpectations:@[completionExpectation] timeout:5.0];
 	
-	// Verify final state
 	XCTAssertTrue(handler.isComplete, @"Handler should be marked as complete");
 	XCTAssertNotNil(handler.data, @"Handler should have downloaded data");
 	XCTAssertEqualObjects(handler.data, testData, @"Handler's data should match test data");
@@ -835,8 +825,31 @@ static NSLock *nsdata_lock = nil;
 	
 	[self waitForExpectations:@[completionExpectation] timeout:5.0];
 	
-	// Should report -1 for unknown length
 	XCTAssertEqual(reportedExpectedLength, -1);
+}
+
+- (void)testDataDownloadWithAbsurdContentLengthCompletes {
+	NSData *testData = [@"Small body behind a hostile Content-Length" dataUsingEncoding:NSUTF8StringEncoding];
+	NSString *absurdLength = [NSString stringWithFormat:@"%lld", (long long)1 << 62];
+	[MockURLProtocol setMockResponse:testData statusCode:200 headers:@{@"Content-Length": absurdLength}];
+
+	XCTestExpectation *completionExpectation = [self expectationWithDescription:@"Download completes"];
+
+	__block int64_t reportedExpectedLength = 0;
+	NSURL *url = [NSURL URLWithString:@"http://example.com/hostile.bin"];
+	BEDataDownloadHandler *handler = [NSData dataDownloadWithContentsOfURL:url
+																completion:^(NSData *data, NSURLResponse *response) {
+		XCTAssertEqualObjects(data, testData);
+		[completionExpectation fulfill];
+	} error:nil progress:^(int64_t totalBytesReceived, int64_t totalBytesExpected) {
+		reportedExpectedLength = totalBytesExpected;
+	}];
+
+	XCTAssertNotNil(handler);
+	[self waitForExpectations:@[completionExpectation] timeout:5.0];
+
+	XCTAssertEqual(reportedExpectedLength, (int64_t)1 << 62, @"The header value is reported as-is; only the allocation hint is clamped");
+	XCTAssertEqual(handler.receivedData.length, testData.length);
 }
 
 #pragma mark - Associated Objects Tests
@@ -954,7 +967,6 @@ static NSLock *nsdata_lock = nil;
 }
 
 - (void)testLargeDataDownload {
-	// Create 1MB of data
 	NSMutableData *largeData = [NSMutableData dataWithLength:1024 * 1024];
 	[MockURLProtocol setMockResponse:largeData statusCode:200 headers:@{@"Content-Length": @"1048576"}];
 	[MockURLProtocol setProgressSimulation:YES chunkSize:10240];
@@ -1256,18 +1268,14 @@ static NSLock *nsdata_lock = nil;
 			 - Download completes successfully
  */
 - (void)testCallbacksOnMainQueue {
-	// Setup mock response
 	NSData *testData = [@"Main queue test" dataUsingEncoding:NSUTF8StringEncoding];
 	[MockURLProtocol setMockResponse:testData statusCode:200 headers:nil];
 	
-	// Create expectation for async completion
 	XCTestExpectation *completionExpectation = [self expectationWithDescription:@"Main queue callback"];
 	
-	// Create URL and start download
 	NSURL *url = [NSURL URLWithString:@"http://example.com/test.txt"];
 	BEDataDownloadHandler *handler = [NSData dataDownloadWithContentsOfURL:url
 																completion:^(NSData *data, NSURLResponse *response) {
-		// Verify completion is on main thread
 		XCTAssertTrue([NSThread isMainThread], @"Completion block should be called on main thread");
 		XCTAssertNotNil(data, @"Data should not be nil");
 		XCTAssertEqualObjects(data, testData, @"Downloaded data should match test data");
@@ -1275,18 +1283,14 @@ static NSLock *nsdata_lock = nil;
 	} error:^(NSError *error, BOOL auxiliary) {
 		XCTFail(@"Error block should not be called: %@", error);
 	} progress:^(int64_t totalBytesReceived, int64_t totalBytesExpected) {
-		// Verify progress is on main thread
 		XCTAssertTrue([NSThread isMainThread], @"Progress block should be called on main thread");
 		XCTAssertGreaterThan(totalBytesReceived, 0, @"Should have received some bytes");
 	}];
 	
-	// Verify handler was created
 	XCTAssertNotNil(handler, @"Handler should be created");
 	
-	// Wait for completion
 	[self waitForExpectations:@[completionExpectation] timeout:5.0];
 	
-	// Verify final state
 	XCTAssertTrue(handler.isComplete, @"Handler should be marked as complete");
 }
 
@@ -1306,7 +1310,6 @@ static NSLock *nsdata_lock = nil;
 	XCTAssertNotNil(task);
 	
 	[handler cancel];
-	// Task should be cancelled
 }
 
 - (void)testDelayResumeProperty {
@@ -1383,7 +1386,7 @@ static NSLock *nsdata_lock = nil;
 
 	// The deletion runs in the same didCompleteWithError: callout, right after the block returns,
 	// so by the time the wait unblocks the synthesized temp file is gone (its lifetime matches a
-	// download task's location — valid only for the callback, not the caller's to keep).
+	// download task's location, valid only for the callback).
 	XCTAssertNotNil(capturedLocation);
 	XCTAssertFalse([[NSFileManager defaultManager] fileExistsAtPath:capturedLocation.path],
 				   @"Synthesized temp file should be deleted after the completion callback returns");
@@ -1412,7 +1415,7 @@ static NSLock *nsdata_lock = nil;
 	[self waitForExpectations:@[completion] timeout:5.0];
 
 	// Spin the runloop briefly to let session invalidation propagate, then the handler must be gone.
-	// Without the -finishTasksAndInvalidate fix the session would retain it for the process lifetime.
+	// Without -finishTasksAndInvalidate the session retains it for the process lifetime.
 	NSDate *deadline = [NSDate dateWithTimeIntervalSinceNow:2.0];
 	while (weakHandler != nil && [deadline timeIntervalSinceNow] > 0) {
 		[[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.02]];
@@ -1453,7 +1456,6 @@ static NSLock *nsdata_lock = nil;
 	
 	NSURL *url = [NSURL URLWithString:@"http://example.com/test.dat"];
 	BEDataDownloadHandler *handler = [[BEDataDownloadHandler alloc] init];
-	// Download file to temp
 	handler.tempCompletionBlock = ^(NSURL *tempFileLocation, NSURLResponse *response) {
 		[fileExpectation fulfill];
 	};
@@ -1478,7 +1480,6 @@ static NSLock *nsdata_lock = nil;
 	
 	NSURL *url = [NSURL URLWithString:@"http://example.com/test.dat"];
 	BEDataDownloadHandler *handler = [[BEDataDownloadHandler alloc] init];
-	// Download file to temp
 	handler.tempCompletionBlock = ^(NSURL *tempFileLocation, NSURLResponse *response) {
 		[fileExpectation fulfill];
 	};

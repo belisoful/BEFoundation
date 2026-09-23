@@ -11,8 +11,6 @@
 				associated with a single document.
  
 				This class provides a default, built-in implementation for both the parent and child protocols.
-				Subclasses explicitly opt-in to this functionality by conforming to BEParentWindowController
-				and/or BEChildWindowController.
 */
 
 #ifndef BEWindowController_h
@@ -40,7 +38,7 @@ APPKIT_EXTERN NSNotificationName const BEWindowDidLoadNotification;
 /*!
  @protocol      BEWindowDelegate
  @abstract      Extends `NSWindowDelegate` to include a `windowDidLoad:` notification-based callback.
- @discussion    This protocol provides a convenient hook for window delegates to respond to the `windowDidLoad` event, similar to how `NSViewController`'s `viewDidLoad` works.
+ @discussion    This protocol gives window delegates a hook for the `windowDidLoad` event, similar to how `NSViewController`'s `viewDidLoad` works.
 */
 @protocol BEWindowDelegate <NSWindowDelegate>
 @optional
@@ -48,7 +46,7 @@ APPKIT_EXTERN NSNotificationName const BEWindowDidLoadNotification;
 /*!
  @method        windowDidLoad:
  @abstract      Called from within `-[BEWindowController windowDidLoad]` after `super` has been called.
- @discussion    This provides a convenient hook for delegates that need to perform setup *after* the window is loaded, similar to `-[NSViewController viewDidLoad]`.
+ @discussion    This gives delegates a hook for setup after the window is loaded, similar to `-[NSViewController viewDidLoad]`.
  @param         notification The notification object containing the window as its `object`.
 */
 - (void)windowDidLoad:(NSNotification *)notification NS_SWIFT_UI_ACTOR;
@@ -91,7 +89,7 @@ APPKIT_EXTERN NSNotificationName const BEWindowDidLoadNotification;
  @method        removeChildWindowController:
  @abstract      Removes a window controller from the parent's set of children.
  @param         childController The window controller to remove.
- @result        `YES` if the child was successfully removed, `NO` if it was not found.
+ @return        `YES` if the child was successfully removed, `NO` if it was not found.
 */
 - (BOOL)removeChildWindowController:(NSWindowController *)childController;
 @end
@@ -146,15 +144,12 @@ APPKIT_EXTERN NSNotificationName const BEWindowDidLoadNotification;
  @class         BEWindowController
  @abstract      A base `NSWindowController` that implements parent/child tracking and document-wide closing logic.
  @discussion    This class provides the implementation for both BEParentWindowControllerBase and BEChildWindowControllerBase.
-				Subclasses can explicitly activate this functionality by conforming to BEParentWindowController and/or
-				BEChildWindowController. No additional implementation is required in subclasses - the functionality is
-				inherited automatically.
  
 				It also introduces the concept of a "primary" window controller. When a primary window is closed, it takes responsibility for closing all other windows associated with the same `NSDocument`.
  
 				A subclass opts in to parent/child support by conforming to
-				BEParentWindowController and/or BEChildWindowController; no implementation is
-				needed — everything is inherited from BEWindowController.
+				BEParentWindowController and/or BEChildWindowController. No implementation is
+				needed; everything is inherited from BEWindowController.
 
 				Building a hierarchy and persisting state. Because the class adopts
 				NSSecureCoding and can be instantiated from a nib in Interface Builder
@@ -179,7 +174,7 @@ APPKIT_EXTERN NSNotificationName const BEWindowDidLoadNotification;
 /*!
  @property      isPrimaryWindowController
  @abstract      Indicates that this is the "primary" window for a document.
- @discussion    When the primary window controller is closed (via its `close` method), it will trigger `closeDocumentWindowControllers` to close all other window controllers associated with the same document. This is useful for main document windows.
+ @discussion    When the primary window controller is closed (via its `close` method), it triggers `closeDocumentWindowControllers` to close all other window controllers associated with the same document.
 */
 @property (nonatomic, assign) BOOL         isPrimaryWindowController;
 

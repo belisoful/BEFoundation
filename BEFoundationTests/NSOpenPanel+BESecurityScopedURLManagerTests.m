@@ -12,7 +12,7 @@
 //  Cancel), so the internal completion-handler wrapping that adds URLs to the
 //  catalog on NSModalResponseOK cannot be exercised through panel interaction.
 //  The tests below verify that the method is callable, handles nil and missing
-//  managers gracefully, and does not modify the catalog when no selection occurs.
+//  managers, and does not modify the catalog when no selection occurs.
 //
 
 #import <XCTest/XCTest.h>
@@ -388,7 +388,6 @@
 				 should be set to the parent directory of that file.
  */
 - (void)testPresetDirectoryAtURLWithExistingFileURL {
-	// Create a temporary file.
 	NSString *filePath = [NSTemporaryDirectory()
 						  stringByAppendingPathComponent:@"be_preset_test.txt"];
 	[@"test" writeToFile:filePath atomically:YES encoding:NSUTF8StringEncoding error:nil];
@@ -529,10 +528,9 @@
 		localManager.storageOptions = BESecurityScopedURLStorageNone;
 		weakRef = localManager;
 
-		// Hand the manager to the panel. With RETAIN semantics the panel now owns it.
+		// Hand the manager to the panel. With retain semantics the panel now owns it.
 		self.panel.ss_urlManager = localManager;
 
-		// Drop our only strong local reference.
 		localManager = nil;
 	} // localManager ARC released here; inner autorelease pool drains
 
@@ -572,7 +570,7 @@
 #pragma mark - Regression Tests (testable bookmark-creation seam)
 
 - (void)testAddURLsToCatalogWithNoManagerReturnsEmpty {
-	// The OK-path logic is now a separate seam (ss_addURLsToCatalog:) so it can be tested
+	// The OK-path logic is a separate seam (ss_addURLsToCatalog:) so it can be tested
 	// without driving the panel UI. With no manager, nothing is attempted.
 	NSOpenPanel *panel = [NSOpenPanel ss_openPanelWithManager:nil];
 	NSArray<NSURL *> *failed = [panel ss_addURLsToCatalog:@[[NSURL fileURLWithPath:@"/tmp"]]];
@@ -580,8 +578,7 @@
 }
 
 - (void)testAddURLsToCatalogReturnsFailuresForUnbookmarkableURLs {
-	// Non-file / nonexistent URLs cannot be bookmarked; the seam must REPORT the failures
-	// rather than silently swallowing them (the previous behavior discarded the BOOL).
+	// Non-file / nonexistent URLs cannot be bookmarked; the seam must report the failures.
 	NSOpenPanel *panel = [NSOpenPanel ss_openPanelWithManager:self.manager];
 	NSURL *bogus = [NSURL URLWithString:@"https://example.com/not-a-file"];
 	NSArray<NSURL *> *failed = [panel ss_addURLsToCatalog:@[bogus]];

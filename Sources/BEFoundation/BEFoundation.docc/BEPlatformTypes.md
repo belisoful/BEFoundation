@@ -8,7 +8,7 @@ Cross-platform aliases for the AppKit/UIKit types BEFoundation uses on both macO
 
 ## Overview
 
-BEFoundation builds for both macOS (AppKit) and iOS (UIKit). A handful of types are spelled differently on each platform. These `@compatibility_alias` declarations give each a single BEFoundation spelling that resolves to the right platform class at compile time — so the same source compiles and runs on both, and a category declared on `BEColor` is really a category on `NSColor` (macOS) or `UIColor` (iOS).
+BEFoundation builds for both macOS (AppKit) and iOS (UIKit). A handful of types are spelled differently on each platform. These `@compatibility_alias` declarations give each a single BEFoundation spelling that resolves to the right platform class at compile time, so the same source compiles and runs on both. A category declared on `BEColor` is really a category on `NSColor` (macOS) or `UIColor` (iOS).
 
 | BEFoundation | macOS | iOS |
 | --- | --- | --- |

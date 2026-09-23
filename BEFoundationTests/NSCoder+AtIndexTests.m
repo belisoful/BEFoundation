@@ -108,9 +108,7 @@
 - (void)testEncodeConditionalObject {
 	NSString *testString = @"Conditional Test";
 	
-	// First encode unconditionally
 	[self.archiver encodeObject:testString atIndex:0];
-	// Then encode conditionally
 	[self.archiver encodeConditionalObject:testString atIndex:1];
 	
 	[self finishEncodingAndCreateUnarchiver];
@@ -310,7 +308,6 @@
 #pragma mark - Secure Coding Tests
 
 - (void)testDecodeObjectOfClass {
-	// Setup secure coding
 	
 	NSString *testString = @"Secure Test";
 	NSNumber *testNumber = @123;
@@ -326,7 +323,6 @@
 	XCTAssertEqualObjects(decodedString, testString);
 	XCTAssertEqualObjects(decodedNumber, testNumber);
 	
-	// Test wrong class
 	id wrongClass = [self.unarchiver decodeObjectOfClass:[NSArray class] atIndex:0];
 	XCTAssertTrue([wrongClass isKindOfClass:[NSString class]], @"Actually decoded object should still be NSString");
 
@@ -411,7 +407,6 @@
 	XCTAssertNil(error1);
 	XCTAssertEqualObjects(decoded1, testString);
 	
-	// Test with non-existent index
 	NSError *error2;
 	id decoded2 = [self.unarchiver decodeTopLevelObjectAtIndex:999 error:&error2];
 	XCTAssertNil(decoded2);
@@ -427,20 +422,16 @@
 	
 	[self finishEncodingAndCreateUnarchiver];
 	
-	// Test correct class
 	NSError *error1;
 	NSString *decoded1 = [self.unarchiver decodeTopLevelObjectOfClass:[NSString class] atIndex:0 error:&error1];
 	XCTAssertNil(error1);
 	XCTAssertEqualObjects(decoded1, testString);
 	
-	// Test wrong class
 	NSError *error2;
 	NSArray *decoded2 = [self.unarchiver decodeTopLevelObjectOfClass:[NSArray class] atIndex:0 error:&error2];
 	XCTAssertNil(error2, @"Expected no error, since decoding may succeed with mismatched class");
 	XCTAssertFalse([decoded2 isKindOfClass:[NSArray class]], @"Object should not be an NSArray");
-	// error2 should be set when requiring secure coding with wrong class
 	
-	// Test with number
 	NSError *error3;
 	NSNumber *decoded3 = [self.unarchiver decodeTopLevelObjectOfClass:[NSNumber class] atIndex:1 error:&error3];
 	XCTAssertNil(error3);
@@ -460,25 +451,21 @@
 	
 	NSSet *allowedClasses = [NSSet setWithObjects:[NSString class], [NSNumber class], nil];
 	
-	// Test string with allowed classes
 	NSError *error1;
 	NSString *decoded1 = [self.unarchiver decodeTopLevelObjectOfClasses:allowedClasses atIndex:0 error:&error1];
 	XCTAssertNil(error1);
 	XCTAssertEqualObjects(decoded1, testString);
 	
-	// Test number with allowed classes
 	NSError *error2;
 	NSNumber *decoded2 = [self.unarchiver decodeTopLevelObjectOfClasses:allowedClasses atIndex:1 error:&error2];
 	XCTAssertNil(error2);
 	XCTAssertEqualObjects(decoded2, testNumber);
 	
-	// Test array with classes that don't include NSArray
 	NSError *error3;
 	NSArray *decoded3 = [self.unarchiver decodeTopLevelObjectOfClasses:allowedClasses atIndex:2 error:&error3];
 	XCTAssertNil(decoded3);
 	// error3 may be set depending on secure coding requirements
 	
-	// Test with classes that include NSArray
 	NSSet *expandedClasses = [NSSet setWithObjects:[NSString class], [NSNumber class], [NSArray class], nil];
 	NSError *error4;
 	NSArray *decoded4 = [self.unarchiver decodeTopLevelObjectOfClasses:expandedClasses atIndex:2 error:&error4];
@@ -497,17 +484,14 @@
 	
 	[self finishEncodingAndCreateUnarchiver];
 	
-	// Test string array with string class
 	NSSet *stringClasses = [NSSet setWithObject:[NSString class]];
 	NSArray *decoded1 = [self.unarchiver decodeArrayOfObjectsOfClasses:stringClasses atIndex:0];
 	XCTAssertEqualObjects(decoded1, stringArray);
 	
-	// Test number array with number class
 	NSSet *numberClasses = [NSSet setWithObject:[NSNumber class]];
 	NSArray *decoded2 = [self.unarchiver decodeArrayOfObjectsOfClasses:numberClasses atIndex:1];
 	XCTAssertEqualObjects(decoded2, numberArray);
 	
-	// Test mixed array with multiple allowed classes
 	NSSet *mixedClasses = [NSSet setWithObjects:[NSString class], [NSNumber class], nil];
 	NSArray *decoded3 = [self.unarchiver decodeArrayOfObjectsOfClasses:mixedClasses atIndex:2];
 	XCTAssertEqualObjects(decoded3, mixedArray);
@@ -538,25 +522,21 @@
 	NSSet *numberClasses = [NSSet setWithObject:[NSNumber class]];
 	NSSet *mixedClasses = [NSSet setWithObjects:[NSString class], [NSNumber class], nil];
 	
-	// Test string-to-string dictionary
 	NSDictionary *decoded1 = [self.unarchiver decodeDictionaryWithKeysOfClasses:stringClasses
 															objectsOfClasses:stringClasses
 																	 atIndex:0];
 	XCTAssertEqualObjects(decoded1, stringToStringDict);
 	
-	// Test string-to-number dictionary
 	NSDictionary *decoded2 = [self.unarchiver decodeDictionaryWithKeysOfClasses:stringClasses
 															objectsOfClasses:numberClasses
 																	 atIndex:1];
 	XCTAssertEqualObjects(decoded2, stringToNumberDict);
 	
-	// Test mixed keys dictionary with mixed key classes
 	NSDictionary *decoded3 = [self.unarchiver decodeDictionaryWithKeysOfClasses:mixedClasses
 															objectsOfClasses:stringClasses
 																	 atIndex:2];
 	XCTAssertEqualObjects(decoded3, mixedKeysDict);
 	
-	// Test mixed values dictionary with mixed value classes
 	NSDictionary *decoded4 = [self.unarchiver decodeDictionaryWithKeysOfClasses:stringClasses
 															objectsOfClasses:mixedClasses
 																	 atIndex:3];
@@ -592,7 +572,6 @@
 }
 
 - (void)testMultipleDataTypes {
-	// Test encoding/decoding multiple different data types at once
 	[self.archiver encodeBool:YES atIndex:0];
 	[self.archiver encodeInt:42 atIndex:1];
 	[self.archiver encodeFloat:3.14f atIndex:2];

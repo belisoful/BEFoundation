@@ -31,6 +31,7 @@ xcodebuild \
     -project BEFoundation.xcodeproj \
     -scheme BEFoundation \
     -configuration Debug \
+    -destination 'platform=macOS' \
     -derivedDataPath "$DERIVED" \
     -only-testing:BEFoundationTests/NSMethodSignatureBlockSignaturesTests \
     -only-testing:BEFoundationTests/NSDynamicMethodsTests \

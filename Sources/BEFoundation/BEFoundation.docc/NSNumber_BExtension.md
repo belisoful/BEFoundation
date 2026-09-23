@@ -8,7 +8,7 @@ Mathematical operations extension for NSNumber with type-safe arithmetic operati
 
 ## Overview
 
-This category extends NSNumber with convenient methods for performing mathematical operations with other NSNumber instances or primitive types. All operations preserve type precision and handle overflow conditions appropriately.
+This category extends NSNumber with methods for performing mathematical operations with other NSNumber instances or primitive types. The result type follows the type precedence below, and integer overflow returns `NaN`.
 
 ## Usage
 
@@ -52,10 +52,13 @@ NSNumber *result6 = [num addDouble:0.5];   // 10.5
 NSNumber *result7 = [num powerDouble:0.5]; // sqrt(10)
 ```
 
-### Division and Modulus by Zero
+### Edge Cases
 
-Integer division or modulus by zero returns `NaN` instead of trapping; floating-point division by
-zero returns infinity (matching IEEE semantics through `fmod`/`pow` for the other operations).
+- Integer division or modulus by zero returns `NaN` instead of trapping.
+- Floating-point division by zero follows IEEE 754: positive or negative infinity for a nonzero numerator, `NaN` for 0/0.
+- Integer add, subtract, or multiply whose exact result does not fit the resolved 64-bit type returns `NaN`.
+- Integer power that overflows 64 bits returns `0`.
+- A `nil` operand raises `NSInvalidArgumentException`.
 
 ### Type Precedence
 

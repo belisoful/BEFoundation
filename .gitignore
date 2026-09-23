@@ -57,6 +57,9 @@ fastlane/test_output
 # Personal / local reference material (not part of the framework)
 Local/
 
+# Release artifacts are attached to the GitHub Release, not committed
+Framework Release*/
+
 # Swift Package Manager
 .build/
 .swiftpm/

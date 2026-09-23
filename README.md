@@ -20,7 +20,7 @@ For full documentation, see the [BEFoundation Documentation](Sources/BEFoundatio
 ### Swift Package Manager
 
 ```swift
-.package(url: "https://github.com/belisoful/BEFoundation.git", from: "1.1.1")
+.package(url: "https://github.com/belisoful/BEFoundation.git", from: "1.2.0")
 ```
 
 or add it in Xcode via **File ▸ Add Package Dependencies…**.
@@ -41,9 +41,9 @@ Download an artifact below and drop it into your target.
 
 The `.xcframework` is the recommended download: it carries macOS and iOS (device + simulator) in one binary, so a single artifact drops into any target. The plain `.framework` builds are macOS-only.
 
- - [BEFoundation.xcframework.zip v1.1.1 (macOS + iOS)](https://github.com/belisoful/BEFoundation/releases/download/v1.1.1/BEFoundation.xcframework.zip) — **recommended**, multi-platform
- - [BEFoundation.macos-arm-x86.framework.zip v1.1.1 (macOS Universal: arm64 x86_64)](https://github.com/belisoful/BEFoundation/releases/download/v1.1.1/BEFoundation.macos-arm-x86.framework.zip)
- - [BEFoundation.macos-arm.framework.zip v1.1.1 (macOS arm64)](https://github.com/belisoful/BEFoundation/releases/download/v1.1.1/BEFoundation.macos-arm.framework.zip)
+ - [BEFoundation.xcframework.zip v1.2.0 (macOS + iOS)](https://github.com/belisoful/BEFoundation/releases/download/v1.2.0/BEFoundation.xcframework.zip) — **recommended**, multi-platform
+ - [BEFoundation.macos-arm-x86.framework.zip v1.2.0 (macOS Universal: arm64 x86_64)](https://github.com/belisoful/BEFoundation/releases/download/v1.2.0/BEFoundation.macos-arm-x86.framework.zip)
+ - [BEFoundation.macos-arm.framework.zip v1.2.0 (macOS arm64)](https://github.com/belisoful/BEFoundation/releases/download/v1.2.0/BEFoundation.macos-arm.framework.zip)
 
 ---
 
@@ -58,10 +58,10 @@ The `.xcframework` is the recommended download: it carries macOS and iOS (device
 - [`BECharacterSet`](Sources/BEFoundation/BEFoundation.docc/BECharacterSet.md) and [`BEMutableCharacterSet`](Sources/BEFoundation/BEFoundation.docc/BEMutableCharacterSet.md): Making a distinction between `NSCharacterSet` and `NSMutableCharacterSet`
 
 ### 🖥️ Cross-Platform UI (iOS & macOS)
-- [`BEPlatformTypes`](Sources/BEFoundation/BEFoundation.docc/BEPlatformTypes.md): compile-time aliases — `BEColor`, `BEImage`, `BEFont`, `BEView` — that resolve to the right AppKit/UIKit class per platform, so the same source builds on both
+- [`BEPlatformTypes`](Sources/BEFoundation/BEFoundation.docc/BEPlatformTypes.md): compile-time aliases (`BEColor`, `BEImage`, `BEFont`, `BEView`) that resolve to the right AppKit/UIKit class per platform, so the same source builds on both
 - [`BEColor+BExtension`](Sources/BEFoundation/BEFoundation.docc/BEColor_BExtension.md): hex-string colors (`#RGB`/`#RGBA`/`#RRGGBB`/`#RRGGBBAA`) and appearance-aware dynamic colors
 - [`BEColor+BEWebColor`](Sources/BEFoundation/BEFoundation.docc/BEColor_BEWebColor.md): the 141 CSS/SVG color keywords as constants, `web`-prefixed properties, and name lookups
-- [`BEView+BExtension`](Sources/BEFoundation/BEFoundation.docc/BEView_BExtension.md): Auto Layout helpers — pin to superview/view, center, and size constraints
+- [`BEView+BExtension`](Sources/BEFoundation/BEFoundation.docc/BEView_BExtension.md): Auto Layout helpers: pin to superview/view, center, and size constraints
 - [`BEImage+BExtension`](Sources/BEFoundation/BEFoundation.docc/BEImage_BExtension.md): `CGImage`/`CIImage` round-trips, PNG/JPEG export, pixel size, and aspect-aware resize (fit/fill)
 - [`BEDotView`](Sources/BEFoundation/BEFoundation.docc/BEDotView.md): a status-indicator dot view (3D radial-gradient or flat), a port of Prado's `TDot`
 - [`NSPasteboard+BExtension`](Sources/BEFoundation/BEFoundation.docc/NSPasteboard_BExtension.md) (macOS): one-call typed read/write for strings, URLs, and images
@@ -73,8 +73,7 @@ The `.xcframework` is the recommended download: it carries macOS and iOS (device
 ### 🧠 Runtime & Object Management
 - [`BEMutable`](Sources/BEFoundation/BEFoundation.docc/BEMutable.md): Mutable and Collection classes have their own protocols for distinction
 - [`NSObject+DynamicMethods`](Sources/BEFoundation/BEFoundation.docc/NSObject_DynamicMethods.md): Runtime extensions to add selectors implemented by blocks to specific objects and classes
-- Runtime extensions to add protocols implemented by objects or classes to specific objects and classes
-- `NSObject+Macroable`: Laravel-inspired macro system for attaching block-based methods to classes and individual instances at runtime, built on top of `NSObject+DynamicMethods`
+- [`NSObject+Macroable`](Sources/BEFoundation/BEFoundation.docc/NSObject_Macroable.md): Laravel-inspired macro system for attaching block-based methods to classes and individual instances at runtime, built on top of `NSObject+DynamicMethods`
 - [`BEObjectRegistry`](Sources/BEFoundation/BEFoundation.docc/BEObjectRegistry.md): Global object registry with weak references to track object lifetimes
 - [`BESingleton`](Sources/BEFoundation/BEFoundation.docc/BESingleton.md): Singleton pattern macro
 
@@ -90,7 +89,7 @@ The `.xcframework` is the recommended download: it carries macOS and iOS (device
 - [`NSURL+Data`](Sources/BEFoundation/BEFoundation.docc/NSURL_Data.md): create and read `data:`-scheme URLs
 - [`BEWebData`](Sources/BEFoundation/BEFoundation.docc/BEWebData.md): read a resource through one interface, whether it is a `data:` URL, an `http(s)` download, or a local file
 - [`NSData+URLDownload`](Sources/BEFoundation/BEFoundation.docc/NSData_URLDownload.md): download remote data in memory or to a temporary file
-- [`BEFileCache`](Sources/BEFoundation/BEFoundation.docc/BEFileCache.md): a two-tier cache — an `NSCache` memory tier over a durable on-disk tier indexed for O(1) cold start — with count/cost limits, `NSDiscardableContent` awareness, crash-safe reconciliation at launch, a score-driven eviction policy (last-access recency, `retentionCost`, and an `evictionBalance` dial between age and value density), and caller-defined entry file naming (`fileNameBlock`)
+- [`BEFileCache`](Sources/BEFoundation/BEFoundation.docc/BEFileCache.md): a two-tier cache, an `NSCache` memory tier over a durable on-disk tier indexed for O(1) cold start, with count/cost limits, `NSDiscardableContent` awareness, crash-safe reconciliation at launch, a score-driven eviction policy (last-access recency, `retentionCost`, and an `evictionBalance` dial between age and value density), and caller-defined entry file naming (`fileNameBlock`)
 - [`BESecurityScopedURLManager`](Sources/BEFoundation/BEFoundation.docc/BESecurityScopedURLManager.md): create, resolve, and manage the access lifecycle of security-scoped bookmarks
 
 ### 🧮 Encoding, Numbers, and Dates
@@ -106,7 +105,6 @@ The `.xcframework` is the recommended download: it carries macOS and iOS (device
 
 ### 🧩 Foundation Extensions
 - [`NSObject+DynamicMethods`](Sources/BEFoundation/BEFoundation.docc/NSObject_DynamicMethods.md): Dynamic protocol conformance implemented by objects and classes
-- `NSObject`: Block-based selectors for instances and classes
 - Extensions for:
   - [`NSDictionary+BExtension`](Sources/BEFoundation/BEFoundation.docc/NSDictionary_BExtension.md): numeric subscripts, object conversion, mapping, swapping, adding, and merging
   - `NSMutableDictionary`: numeric subscripts, filtering, swap, and recursive and nonrecursive adding and merging
@@ -116,14 +114,14 @@ The `.xcframework` is the recommended download: it carries macOS and iOS (device
   - `NSMutableSet`: filtering
   - [`NSOrderedSet+BExtension`](Sources/BEFoundation/BEFoundation.docc/NSOrderedSet_BExtension.md): conversion, and mapping
   - `NSMutableOrderedSet`: conversion, `removeFirstElement`/`removeLastElement`, and filtering
-  - [`NSString+BExtension`](Sources/BEFoundation/BEFoundation.docc/NSString_BExtension.md): stringValue (to align with NSNumber and other plist data types), is itself
+  - [`NSString+BExtension`](Sources/BEFoundation/BEFoundation.docc/NSString_BExtension.md): `stringValue` returns the receiver itself, aligning with `NSNumber` and other plist data types
   - `NSMutableString`: deleteAtIndex
 
 ---
 
 ## 🧪 Unit Testing
 
-BEFoundation ships unit tests for all major components, using `XCTest`, covering behavior, edge cases, runtime behaviors, and error conditions. The suite runs parallelized across test workers. Continuous integration runs it on macOS (arm64), the macOS x86_64 slice, and the iOS Simulator, plus an AddressSanitizer pass and a DocC catalog build. In v1.1, coverage was extended to `NSObject+Macroable` (65 tests covering `BEMacroMeta`, class macros, object macros, invocation, isolation, and subclass inheritance).
+BEFoundation ships unit tests for all major components, using `XCTest`, covering behavior, edge cases, runtime behaviors, and error conditions. The suite runs parallelized across test workers. Continuous integration runs it on macOS (arm64), the macOS x86_64 slice, and the iOS Simulator, plus an AddressSanitizer pass, a DocC catalog build, `xcodebuild analyze`, `pod lib lint`, a SwiftPM build, a category-collision check, and builds under the newest Xcode 26 and under Xcode 27. In v1.1, coverage was extended to `NSObject+Macroable` (67 tests covering `BEMacroMeta`, class macros, object macros, invocation, isolation, and subclass inheritance).
 
 ---
 
@@ -162,6 +160,25 @@ BEFoundation was initially conceived and engineered by belisoful@icloud.com to r
 
 ## Change Log
 
+### New in 1.2.0
+
+ - **Behavior change:** the deployment minimums rise to **macOS 12.0** and **iOS 15.0** (from 11.0 and 14.0). Xcode 27 accepts nothing lower, and the project builds without overrides again. Update `platforms` in your package manifest or podspec if you pinned the old floor.
+ - Release binaries are attached to each GitHub Release only; the `Framework Release` folders are no longer committed.
+
+ - **Fix:** `NSObject+Macroable` and `NSObject+DynamicMethods` no longer deadlock when a macro is registered while another thread dispatches on the same class; cross-class lookups take the owning class's lock, dispatch validates the invocation signature, and re-registering an instance protocol with a different class reaches already-synced objects. See [FIXES.md](FIXES.md).
+ - **Fix:** `BESecurityScopedURLManager` stops access on the NSURL instance that started it, so the sandbox extension is released; `removeURLFromCatalog:` ends the whole session. The new `initWithStorageIdentifier:` gives private instances their own persisted catalog.
+ - **Fix:** `NSPriorityNotificationCenter` no longer serializes observer call-outs on the notification's `userInfo`. **Behavior change:** only `defaultCenter` bridges to `NSNotificationCenter.defaultCenter`; a center created with `init` is self-contained.
+ - **Fix:** `BEFileCache` decodes payloads with secure coding. The new `allowedClasses` property admits custom `NSSecureCoding` classes; the payload's root class is recorded in the `.meta` sidecar.
+ - **Fix:** `NSNumber+Primes16b` never returns 1 as a prime. `NSDictionary+BExtension` recursive merge and add descend into immutable nested dictionaries by default. `NSNumber+BExtension` follows IEEE 754 for floating divide-by-zero, returns NaN on integer overflow, and raises on a nil operand.
+ - **Fix:** `BEDotView` applies its defaults on the `initWithCoder:` path, accepts `#RGB` shorthand, rejects malformed hex, and keeps explicit color overrides across a depth change. `BEWindowController` survives `-close` when its manager is the sole owner.
+ - **Fix:** `NSURL+Data` is the single data-URL parser; `BEWebData` reads from it, so both APIs agree on case-insensitive and quoted parameters, whitespace in base64, and the default charset. `+charsetFromMediaType:` applies the same rules to an HTTP `Content-Type`. `BEWebData` frees a no-copy buffer through its deallocator.
+ - **Fix:** `BEColor webColorNamed:` resolves the seven CSS `grey` spellings; `colorWithHexString:` rejects a doubled prefix such as `#0x1234`. `FxTime` and `BECharacterSet` fail a malformed secure-coded archive instead of decoding zeros. `BEPredicateRule` factories return `instancetype` and a nil predicate raises.
+  - **Behavior change (Swift):** `BECharacterSet`, `BEObjectRegistry`, and `BEUniversalObjectRegistry` declare `init` nonnull, so Swift imports `init()` in place of `init?()`.
+ - **Fix:** `BEObjectRegistry` re-keying an object's UUID from a same-salt registry keeps the other registry's entry. `BESecurityScopedURLManager` fast enumeration works across calls. `BEPathWatcher` closes the descriptor and returns NO when its dispatch source cannot be created. `NSNotification+ExtraProperties` declares `identifier` as `copy`, matching its setter. `NSData+URLDownload` clamps the `Content-Length` allocation hint to 16 MB. `BEDotView` setters are safe under MRC and the class releases its ivars in `dealloc`.
+ - `BESecurityScopedURLManagerTests` now runs on iOS.
+ - `NSMutableNumber` is re-vendored from upstream v1.3.1, which compiles without warnings on Xcode 27.
+ - The podspec license now reads `Public Domain`, matching `LICENSE`.
+
 ### New in 1.1.1
 
  - **Fix:** `NSPriorityNotificationCenter` no longer crashes on notifications whose `object` is a non-object pointer. SceneKit posts such notifications through `CFNotificationCenterPostNotification`; the object is now read unretained, and super-center notifications reach queued observers unchanged. See [FIXES.md](FIXES.md).
@@ -169,7 +186,7 @@ BEFoundation was initially conceived and engineered by belisoful@icloud.com to r
 ### New in 1.1
 
 **Cross-Platform (iOS & macOS)**
- - The framework now builds and is unit-tested on both iOS and macOS. [`BEPlatformTypes`](Sources/BEFoundation/BEFoundation.docc/BEPlatformTypes.md) provides compile-time aliases — `BEColor`, `BEImage`, `BEFont`, `BEView` — that resolve to the right AppKit/UIKit class per platform.
+ - The framework now builds and is unit-tested on both iOS and macOS. [`BEPlatformTypes`](Sources/BEFoundation/BEFoundation.docc/BEPlatformTypes.md) provides compile-time aliases (`BEColor`, `BEImage`, `BEFont`, `BEView`) that resolve to the right AppKit/UIKit class per platform.
  - Distributed as a multi-platform `BEFoundation.xcframework` (macOS, iOS device, iOS simulator) alongside the macOS-only `.framework` builds.
  - Installable through Swift Package Manager and CocoaPods. Public headers moved to `Sources/BEFoundation/include/BEFoundation/`, so `#import <BEFoundation/Foo.h>` resolves the same way for SwiftPM, CocoaPods, and the built framework.
  - [`BEColor+BEWebColor`](Sources/BEFoundation/BEFoundation.docc/BEColor_BEWebColor.md): the 141 CSS/SVG color keywords as `BEWebColorName…` constants and `web`-prefixed class properties, with case-insensitive name lookup and exact reverse lookup.
@@ -177,7 +194,7 @@ BEFoundation was initially conceived and engineered by belisoful@icloud.com to r
  - [`BEColor+BExtension`](Sources/BEFoundation/BEFoundation.docc/BEColor_BExtension.md): hex-string colors and appearance-aware dynamic colors.
  - [`BEView+BExtension`](Sources/BEFoundation/BEFoundation.docc/BEView_BExtension.md): Auto Layout convenience constraints (pin, center, size).
  - [`BEImage+BExtension`](Sources/BEFoundation/BEFoundation.docc/BEImage_BExtension.md): `CGImage`/`CIImage` round-trips, PNG/JPEG export, pixel size, and aspect-aware resizing.
- - **Behavior change:** the `BEImage+BExtension` round-trip and data members are renamed to representation-style names — `CGImageRepresentation`, `CIImageRepresentation`, `imageFromCGImage:`, `imageFromCIImage:`, `pngRepresentation`, `jpegRepresentationWithCompressionQuality:`. Apple frameworks attach same-named category methods to `NSImage` at runtime (PencilKit adds a private `+[NSImage imageWithCGImage:]` and `-CGImage`), and which duplicate wins is undefined, so the 1.0 UIImage-parity spellings were unsafe. `pixelSize` and the `resizedTo…` members keep their names. The round-trip members are also available on iOS now, and the factories return `nil` for `NULL`/`nil` input on both platforms.
+ - **Behavior change:** the `BEImage+BExtension` round-trip and data members are renamed to representation-style names: `CGImageRepresentation`, `CIImageRepresentation`, `imageFromCGImage:`, `imageFromCIImage:`, `pngRepresentation`, `jpegRepresentationWithCompressionQuality:`. Apple frameworks attach same-named category methods to `NSImage` at runtime (PencilKit adds a private `+[NSImage imageWithCGImage:]` and `-CGImage`), and which duplicate wins is undefined, so the 1.0 UIImage-parity spellings were unsafe. `pixelSize` and the `resizedTo…` members keep their names. The round-trip members are also available on iOS now, and the factories return `nil` for `NULL`/`nil` input on both platforms.
  - [`NSPasteboard+BExtension`](Sources/BEFoundation/BEFoundation.docc/NSPasteboard_BExtension.md) (macOS): typed read/write for strings, URLs, and images.
 
 **Foundation & Networking**
@@ -189,7 +206,7 @@ BEFoundation was initially conceived and engineered by belisoful@icloud.com to r
  - [`BEFileCache`](Sources/BEFoundation/BEFoundation.docc/BEFileCache.md): persistent two-tier (memory + disk) caching with count/cost limits, crash-safe reconciliation at launch, a configurable score-driven eviction policy (`retentionCost` + `evictionBalance`), and caller-defined entry file naming (`fileNameBlock`).
  - [`BESecurityScopedURLManager`](Sources/BEFoundation/BEFoundation.docc/BESecurityScopedURLManager.md): security-scoped bookmark lifecycle management.
  - [`NSDateFormatterRFC2822`](Sources/BEFoundation/BEFoundation.docc/NSDateFormatterRFC2822.md): fixed-format RFC 2822 (Internet Message Format) date formatter for email-style dates.
- - `NSObject+Macroable`: Macro system for attaching block-based methods to a class (available on all instances) or to a specific object instance at runtime, built on `NSObject+DynamicMethods`.
+ - [`NSObject+Macroable`](Sources/BEFoundation/BEFoundation.docc/NSObject_Macroable.md): Macro system for attaching block-based methods to a class (available on all instances) or to a specific object instance at runtime, built on `NSObject+DynamicMethods`.
  - [`FxTime`](Sources/BEFoundation/BEFoundation.docc/FxTime.md) is now immutable and thread-safe. The new `FxMutableTime` subclass carries the read-write components and in-place arithmetic; code that mutated an `FxTime` must now use `FxMutableTime`. `-copy` returns an immutable `FxTime`; `-mutableCopy` returns an `FxMutableTime`.
  - **Behavior change:** `FxTime` `-compare:`/`-compareTime:` now follow the Cocoa `NSComparisonResult` convention. The result sign is inverted versus 1.0; code that compensated for the old inversion must drop the workaround.
  - **Behavior change:** `NSCoder+AtIndex.h` no longer imports `<simd/simd.h>` (it was unused). Clients that relied on the transitive include through the umbrella header must import `<simd/simd.h>` themselves.
@@ -197,9 +214,9 @@ BEFoundation was initially conceived and engineered by belisoful@icloud.com to r
 **Behavior change: category methods renamed off Apple's private selectors**
 
 Apple attaches private categories to Foundation classes at runtime, and when a BEFoundation
-category defined the same selector the runtime picked a winner by image load order. That
-surfaced as an intermittent test failure rather than a build error, and it is the cause of the
-flaky failures seen through 1.0. Every colliding selector is renamed; the behavior is unchanged.
+category defined the same selector the runtime picked a winner by image load order. The build
+emits no diagnostic; a collision surfaces as an intermittent test failure. Every colliding
+selector is renamed; the behavior is unchanged.
 
 | 1.0 | 1.1 | Collided with |
 | --- | --- | --- |
@@ -210,7 +227,7 @@ flaky failures seen through 1.0. Every colliding selector is renamed; the behavi
 | `setSet:`, `setOrderedSet:`, `setArray:` setters | `be_setSet:`, `be_setOrderedSet:`, `be_setArray:` | CoreFoundation |
 | `isMutable` (class and instance) | `hasMutability` | Foundation's private per-instance predicate on every `NSCharacterSet` |
 
-The `set`, `orderedSet`, and `array` properties keep their names — only the setter selectors
+The `set`, `orderedSet`, and `array` properties keep their names; only the setter selectors
 changed, so dot syntax (`array.set = value`) is unaffected. `Scripts/check-category-collisions.sh`
 now fails the build if any category selector reappears on an Apple class; it runs in CI.
 
@@ -224,7 +241,7 @@ also measurably slower than plain allocation under concurrent posting.
 
 **Behavior change: `NSMutableNumber` is a genuine `NSNumber` subclass**
 
-`NSMutableNumber` now inherits from `NSNumber` rather than wrapping one. `isKindOfClass:` reports
+`NSMutableNumber` now inherits from `NSNumber`. `isKindOfClass:` reports
 `NSNumber`, equality with a plain `NSNumber` is symmetric, `CFNumberRef` bridging works, and
 inherited API such as `decimalValue` returns a value instead of raising. Vendored from the
 standalone `NSMutableNumber` v1.3.0.

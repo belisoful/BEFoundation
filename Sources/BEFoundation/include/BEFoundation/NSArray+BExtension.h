@@ -52,7 +52,7 @@
  @property		set
  @abstract		Returns an NSSet containing the elements of the array.
  @discussion	Creates and returns an NSSet with the same elements as the receiver.
-				Duplicate elements will be removed as sets only contain unique objects.
+				Duplicate elements are removed.
  @result		A new NSSet containing the array's unique elements.
  */
 @property (readonly, strong, nonnull) NSSet<ObjectType> *set;
@@ -71,7 +71,7 @@
  @property		objectsClassNames
  @abstract		Returns an array of class name strings for the array's elements.
  @discussion	Iterates through the array and collects the class name of each object using
-				the -className method. The resulting array may contain duplicate strings if
+				NSStringFromClass. The resulting array may contain duplicate strings if
 				multiple elements share the same class.
  @result		A new NSArray containing NSString objects representing each element's class name.
  */
@@ -82,7 +82,6 @@
  @abstract		Returns a counted set of unique Class objects from the array's elements.
  @discussion	Iterates through the array and collects the class of each object, storing
 				them in an NSCountedSet which tracks both uniqueness and occurrence count.
-				This is useful for analyzing the distribution of object types in the array.
  @result		A new NSCountedSet containing unique Class objects with their occurrence counts.
  */
 @property (readonly, nonnull) NSCountedSet<Class> *objectsUniqueClasses;
@@ -91,8 +90,8 @@
  @property		objectsUniqueClassNames
  @abstract		Returns a counted set of unique class name strings from the array's elements.
  @discussion	Iterates through the array and collects the class name of each object using
-				the -className method, storing them in an NSCountedSet which tracks both
-				uniqueness and occurrence count. Useful for analyzing class distribution.
+				NSStringFromClass, storing them in an NSCountedSet which tracks both
+				uniqueness and occurrence count.
  @result		A new NSCountedSet containing unique class name strings with their occurrence counts.
  */
 @property (readonly, nonnull) NSCountedSet<NSString*> *objectsUniqueClassNames;
@@ -135,7 +134,8 @@
 				stop flag. The block should modify the object as needed and return YES to
 				include it in the result array, or NO to exclude it.
  @result		A new array containing the transformed elements that returned YES from the block.
-				Returns a copy of the receiver if block is nil.
+				An element the block sets to nil is dropped. Returns a copy of the receiver if
+				block is nil.
  */
 - (nonnull instancetype)mapUsingBlock:(BOOL (^_Nullable)(id _Nullable *_Nonnull obj, NSUInteger idx, BOOL *_Nonnull stop))block;
 
@@ -165,8 +165,7 @@
 /*!
  @method		-removeFirstElement
  @abstract		Removes the first object from the array if it exists.
- @discussion	Safely removes the object at index 0 if the array is not empty.
-				Does nothing if the array is empty, avoiding index out of bounds exceptions.
+ @discussion	Removes the object at index 0. Does nothing if the array is empty.
  @since			1.1
  */
 - (void)removeFirstElement;
@@ -191,10 +190,11 @@
  @abstract		Gets or sets the array's contents from an NSOrderedSet.
  @discussion	When setting, replaces the array's contents with the ordered set's array.
 				When getting, returns an NSOrderedSet containing the array's elements.
-				Setting to nil will clear the array.
+				Setting nil clears the array.
 
 				The setter selector is be_setOrderedSet: because Apple defines a private
 				setOrderedSet: on this class; dot syntax is unaffected.
+ @since		1.1 (setter selector)
  */
 @property (readwrite, strong, nullable, setter=be_setOrderedSet:) NSOrderedSet<ObjectType> *orderedSet;
 
@@ -203,11 +203,11 @@
  @abstract		Gets or sets the array's contents from an NSSet.
  @discussion	When setting, replaces the array's contents with the set's allObjects array.
 				When getting, returns an NSSet containing the array's unique elements.
-				Setting to nil will clear the array. Note that order is not preserved
-				when setting from a set.
+				Setting nil clears the array. Order is not preserved when setting from a set.
 
 				The setter selector is be_setSet: because Apple defines a private
 				setSet: on this class; dot syntax is unaffected.
+ @since		1.1 (setter selector)
  */
 @property (readwrite, strong, nullable, setter=be_setSet:) NSSet<ObjectType> *set;
 

@@ -24,7 +24,7 @@ jobs:
     timeout-minutes: 60
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Show Xcode version
         run: xcodebuild -version
@@ -56,7 +56,8 @@ jobs:
                               -scheme BEFoundation \
                               -configuration Debug \
                               -destination 'platform=macOS' \
-                              CODE_SIGNING_ALLOWED=NO
+                              CODE_SIGNING_ALLOWED=NO \
+                              OTHER_DOCC_FLAGS="--warnings-as-errors"
 
   ios-test:
     name: Tests (iOS Simulator)
@@ -64,7 +65,7 @@ jobs:
     timeout-minutes: 40
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Run unit tests (iOS)
         run: |
@@ -76,15 +77,20 @@ jobs:
           #     DEVELOPER_DIR pin is later moved to a different Xcode.
           #   * iPad — the targets build for iPhone and iPad; an iPad simulator is
           #     always present on the runner, so it is a dependable choice.
-          # A concrete id keeps the build on the active arm64 arch (the runner is
-          # Apple Silicon), avoiding the x86_64 slice that fails on the framework's
-          # NEON intrinsics. `xcodebuild -showdestinations` is not used: it returns
+          # A concrete id is required by the `test` action and keeps the build on the
+          # active arm64 arch (the runner is Apple Silicon), so the x86_64 simulator
+          # slice is not built. `xcodebuild -showdestinations` is not used: it returns
           # only placeholders on the runner. `|| true` stops an empty match from
           # aborting the step (bash runs with -e) before the diagnostics print.
           SDK_MAJOR=$(xcodebuild -showsdks 2>/dev/null \
                         | grep -oiE 'iphonesimulator[0-9]+' | grep -oE '[0-9]+' \
                         | sort -n | tail -1 || true)
           echo "Xcode iOS Simulator SDK major: ${SDK_MAJOR:-unknown}"
+          if [ -z "$SDK_MAJOR" ]; then
+            echo "No iOS Simulator SDK under DEVELOPER_DIR=$DEVELOPER_DIR"
+            xcodebuild -version
+            exit 1
+          fi
           ID=$(xcrun simctl list devices available \
                  | awk -v hdr="-- iOS ${SDK_MAJOR}" 'index($0,hdr)==1{f=1;next} /^-- /{f=0} f && /iPad/' \
                  | grep -oiE '[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}' \
@@ -110,11 +116,15 @@ jobs:
     timeout-minutes: 60
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Install Rosetta
         # macos-15 runners are Apple Silicon; the x86_64 test bundle runs under Rosetta.
-        run: softwareupdate --install-rosetta --agree-to-license
+        # The image usually ships it already; install only when the x86_64 probe fails.
+        run: |
+          if ! arch -x86_64 /usr/bin/true 2>/dev/null; then
+            softwareupdate --install-rosetta --agree-to-license
+          fi
 
       - name: Run unit tests (x86_64)
         run: |
@@ -132,7 +142,7 @@ jobs:
     timeout-minutes: 60
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Run unit tests with ASan
         run: |
@@ -145,13 +155,138 @@ jobs:
                      CODE_SIGNING_ALLOWED=NO \
                      test
 
+  release-toolchain:
+    name: Build and Test (release Xcode)
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      # Releases are built with the newest Xcode 26 (see AGENTS.md "Release Packaging"),
+      # while the jobs above pin Xcode 16.4. This job compiles and tests with the newest
+      # Xcode 26 on the image so a release-only regression surfaces before packaging.
+      - name: Select the newest Xcode 26
+        run: |
+          set -o pipefail
+          XCODE=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          if [ -z "$XCODE" ]; then
+            echo "No Xcode 26 on this image:"
+            ls -d /Applications/Xcode*.app
+            exit 1
+          fi
+          echo "RELEASE_DEVELOPER_DIR=$XCODE/Contents/Developer" >> "$GITHUB_ENV"
+          "$XCODE/Contents/Developer/usr/bin/xcodebuild" -version
+
+      - name: Run unit tests
+        # A step-level env overrides the workflow-level DEVELOPER_DIR pin.
+        env:
+          DEVELOPER_DIR: ${{ env.RELEASE_DEVELOPER_DIR }}
+        run: |
+          set -o pipefail
+          xcodebuild -version
+          xcodebuild -project BEFoundation.xcodeproj \
+                     -scheme BEFoundation \
+                     -configuration Debug \
+                     -destination 'platform=macOS' \
+                     CODE_SIGNING_ALLOWED=NO \
+                     test
+
+  xcode-27:
+    name: Build and Test (Xcode 27)
+    runs-on: macos-26
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      # The newest toolchain. Xcode 27 raised the lowest accepted deployment targets to
+      # macOS 12 / iOS 15, which the project declares, so this job runs without overrides.
+      - name: Select the newest Xcode 27
+        run: |
+          set -o pipefail
+          XCODE=$(ls -d /Applications/Xcode_27*.app 2>/dev/null | sort -V | tail -1)
+          if [ -z "$XCODE" ]; then
+            echo "No Xcode 27 on this image:"
+            ls -d /Applications/Xcode*.app
+            exit 1
+          fi
+          echo "XCODE27_DEVELOPER_DIR=$XCODE/Contents/Developer" >> "$GITHUB_ENV"
+          "$XCODE/Contents/Developer/usr/bin/xcodebuild" -version
+
+      - name: Run unit tests
+        env:
+          DEVELOPER_DIR: ${{ env.XCODE27_DEVELOPER_DIR }}
+        run: |
+          set -o pipefail
+          xcodebuild -version
+          xcodebuild -project BEFoundation.xcodeproj \
+                     -scheme BEFoundation \
+                     -configuration Debug \
+                     -destination 'platform=macOS' \
+                     CODE_SIGNING_ALLOWED=NO \
+                     test
+
+      - name: Validate documentation catalog
+        env:
+          DEVELOPER_DIR: ${{ env.XCODE27_DEVELOPER_DIR }}
+        run: |
+          set -o pipefail
+          xcodebuild docbuild -project BEFoundation.xcodeproj \
+                              -scheme BEFoundation \
+                              -configuration Debug \
+                              -destination 'platform=macOS' \
+                              CODE_SIGNING_ALLOWED=NO \
+                              OTHER_DOCC_FLAGS="--warnings-as-errors"
+
+  static-analyzer:
+    name: Static analyzer
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      # The three nullability findings in the vendored NSMutableNumber.mm are known
+      # false positives (see FIXES.md); any other analyzer warning fails the job.
+      - name: Analyze the framework
+        run: |
+          set -o pipefail
+          xcodebuild analyze -project BEFoundation.xcodeproj \
+                             -scheme BEFoundation \
+                             -configuration Debug \
+                             -destination 'platform=macOS' \
+                             CODE_SIGNING_ALLOWED=NO \
+            | tee analyze.log
+          FINDINGS=$(grep -E '^/.*: warning: ' analyze.log | grep -v 'NSMutableNumber.mm' | sort -u || true)
+          if [ -n "$FINDINGS" ]; then
+            echo "Unexpected analyzer findings:"
+            echo "$FINDINGS"
+            exit 1
+          fi
+
+  pod-lint:
+    name: CocoaPods lint
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      # Guards the podspec (source globs, license, platforms) the way swiftpm-build
+      # guards Package.swift. Static builds a local library only, without a demo app.
+      - name: Lint the podspec
+        run: |
+          set -o pipefail
+          pod lib lint BEFoundation.podspec --allow-warnings --skip-tests
+
   swiftpm-build:
     name: SwiftPM build
     runs-on: macos-15
     timeout-minutes: 60
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Show Swift version
         run: swift --version
@@ -170,7 +305,7 @@ jobs:
     timeout-minutes: 60
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       # A category method whose selector already exists on the Apple class resolves in
       # undefined load order. It presents as a flaky test rather than a build failure, so

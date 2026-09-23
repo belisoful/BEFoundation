@@ -3,7 +3,7 @@
  @copyright		-© 2025 Delicense - @belisoful. All rights released.
  @date			2025-01-01
  @author		belisoful@icloud.com
- @abstract		A comprehensive priority-based sorting framework for Foundation collections.
+ @abstract		Priority-based sorting for Foundation collections.
  @discussion	This header provides protocols and categories that enable priority-based sorting
 for Foundation collection classes. Objects can implement priority protocols to participate
 in automatic sorting operations, with fallback mechanisms for objects that don't initially
@@ -38,7 +38,7 @@ represent higher priority in the sorted result.
 @property itemPriority
 @abstract The priority value for this item.
 @discussion Returns an NSNumber representing the item's priority, or nil if no priority
-is currently assigned. When nil, the sorting system will use the default priority value.
+is currently assigned. When nil, the sort uses the default priority value.
 Lower numeric values indicate higher priority in sort order.
 */
 @property (readonly, nullable) NSNumber *itemPriority;
@@ -52,8 +52,6 @@ Lower numeric values indicate higher priority in sort order.
 @discussion This protocol is intended for objects that need to capture priority values
 during sorting operations. Objects conforming to this protocol should implement a setter
 for itemPriority that allows the sorting system to assign default priority values when needed.
-
-This protocol should only implement the setter for itemPriority, not the getter.
 */
 @protocol BEPriorityCapture
 /*!
@@ -97,8 +95,7 @@ assignment of new priority values.
 @abstract The default priority value used when objects don't specify their own priority.
 @discussion This constant defines the default priority value (0) that is assigned to objects
 during sorting operations when they don't already have a priority value set. Objects with
-priorities lower than this value will sort earlier, while objects with higher values will
-sort later.
+priorities lower than this value sort earlier; objects with higher values sort later.
 */
 extern NSInteger const BEDefaultSortedItemPriority;
 
@@ -109,8 +106,8 @@ extern NSInteger const BEDefaultSortedItemPriority;
 @class BEPriorityExtensionHelper
 @abstract Utility class providing comparator functions for priority-based sorting.
 @discussion This helper class encapsulates the core sorting logic for priority-based operations.
-It provides a reusable comparator that can handle objects conforming to the priority protocols,
-with intelligent fallback behavior for objects that don't initially have priority values.
+It provides a reusable comparator for objects conforming to the priority protocols and
+assigns the default priority to objects that have none.
 */
 @interface BEPriorityExtensionHelper : NSObject
 
@@ -156,9 +153,9 @@ NSArray *ordered = [items sortedArrayUsingItemPriority];  // ascending itemPrior
 @method sortedArrayUsingItemPriority
 @abstract Creates a new array sorted by item priorities.
 @discussion Returns a new NSArray containing the same objects as the receiver, sorted according
-to their priority values. Objects conforming to BEPriorityItem will be sorted by their priority
-values, while objects conforming to BEPriorityCapture may have default priorities assigned during
-the sorting process.
+to their priority values. Objects conforming to BEPriorityItem are sorted by their priority
+values; objects conforming to BEPriorityCapture may have default priorities assigned during
+the sort.
 
 The sort is performed using NSSortStable to preserve the relative order of objects with equal priorities.
 
@@ -183,8 +180,8 @@ first in the sorted array.
 @method sortArrayUsingItemPriority
 @abstract Sorts the mutable array in place using item priorities.
 @discussion Reorders the elements of the mutable array according to their priority values.
-Objects conforming to BEPriorityItem will be sorted by their priority values, while objects
-conforming to BEPriorityCapture may have default priorities assigned during the sorting process.
+Objects conforming to BEPriorityItem are sorted by their priority values; objects
+conforming to BEPriorityCapture may have default priorities assigned during the sort.
 
 The sort is performed using NSSortStable to preserve the relative order of objects with equal priorities.
 */
@@ -206,9 +203,9 @@ The sort is performed using NSSortStable to preserve the relative order of objec
 @method sortedArrayUsingItemPriority
 @abstract Creates a new array sorted by item priorities from the ordered set.
 @discussion Returns a new NSArray containing the objects from the ordered set, sorted according
-to their priority values. Objects conforming to BEPriorityItem will be sorted by their priority
-values, while objects conforming to BEPriorityCapture may have default priorities assigned during
-the sorting process.
+to their priority values. Objects conforming to BEPriorityItem are sorted by their priority
+values; objects conforming to BEPriorityCapture may have default priorities assigned during
+the sort.
 
 The sort is performed using NSSortStable to preserve the relative order of objects with equal priorities.
 
@@ -233,8 +230,8 @@ priority values appear first in the sorted array.
 @method sortOrderedSetUsingItemPriority
 @abstract Sorts the mutable ordered set in place using item priorities.
 @discussion Reorders the elements of the mutable ordered set according to their priority values.
-Objects conforming to BEPriorityItem will be sorted by their priority values, while objects
-conforming to BEPriorityCapture may have default priorities assigned during the sorting process.
+Objects conforming to BEPriorityItem are sorted by their priority values; objects
+conforming to BEPriorityCapture may have default priorities assigned during the sort.
 
 The sort is performed using NSSortStable to preserve the relative order of objects with equal priorities.
 */

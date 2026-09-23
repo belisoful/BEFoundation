@@ -8,11 +8,12 @@
  @abstract   Implementation of BETabView with dynamic tab visibility support.
  @discussion This implementation extends NSTabView to support hiding and showing tabs
 			 while maintaining their position in the tab order. Uses associated objects
-			 to track hidden state and synchronization to ensure thread safety.
+			 to track hidden state. Like NSTabView, it is main-thread only; the
+			 @synchronized blocks guard internal state against re-entrancy, not
+			 against concurrent use.
 			 
 			 Key implementation details:
 			 - Associated objects store hidden state on NSTabViewItem instances
-			 - @synchronized ensures thread-safe access to internal state
 			 - Delegate is temporarily disabled during hide/show to prevent unwanted callbacks
 			 - Position preservation uses display index calculation
 			 - Weak reference (hiddenTabView) prevents retain cycles
@@ -27,7 +28,7 @@
 /*!
  @class      BEWeakTabViewRef
  @abstract   A tiny box holding a zeroing-weak reference to a BETabView.
- @discussion Associated objects cannot be stored with true (zeroing) weak semantics —
+ @discussion Associated objects cannot be stored with true (zeroing) weak semantics:
 			 OBJC_ASSOCIATION_ASSIGN leaves a dangling pointer once the BETabView
 			 deallocates. We instead retain a wrapper that itself holds a __weak pointer,
 			 so the reference automatically becomes nil on dealloc (no use-after-free) and
@@ -91,7 +92,7 @@
 			 
 			 Implementation notes:
 			 - Uses isKindOfClass: instead of isMemberOfClass: to support BETabView subclasses
-			 - Raises exception for non-BETabView instances to fail fast
+			 - Raises exception for non-BETabView instances
 			 - Delegates actual hide/show to BETabView methods
  @exception  NSInternalInconsistencyException Raised if the tab is not in a BETabView.
  */
@@ -227,9 +228,9 @@
 			 tabView:didSelectTabViewItem: is sent once for the new selection.
 
 			 Number-of-items notifications:
-			 tabViewDidChangeNumberOfTabViewItems: tracks the count of ALL tabs
-			 (allTabViewItems). Adding or removing a tab — visible or hidden — changes that
-			 count and fires the notification; hiding/showing does NOT change the all-tabs
+			 tabViewDidChangeNumberOfTabViewItems: tracks the count of all tabs
+			 (allTabViewItems). Adding or removing a tab, visible or hidden, changes that
+			 count and fires the notification; hiding/showing does not change the all-tabs
 			 count and so does not fire it (use the didHide/didShow callbacks instead).
 
 			 Position preservation:
@@ -242,7 +243,7 @@
 	NSMutableArray<NSTabViewItem*> *_allTabViewItems;
 }
 
-// allTabViewItems/numberOfAllTabViewItems are implemented manually, NOT @synthesize'd: a
+// allTabViewItems/numberOfAllTabViewItems are implemented manually, not @synthesize'd: a
 // (copy) synthesized setter would store an immutable NSArray in the NSMutableArray ivar.
 
 #pragma mark - Initialization
@@ -287,7 +288,7 @@
 			 and each item's hiddenTabView back-pointer are established. Without this override,
 			 correct setup would depend solely on awakeFromNib being invoked.
 
-			 Note: per-item hidden state is stored in associated objects and is NOT archived,
+			 Note: per-item hidden state is stored in associated objects and is not archived,
 			 so tabs hidden at runtime do not persist across encode/decode. There is no
 			 design-time mechanism to mark a tab hidden in Interface Builder.
  @return     An initialized BETabView instance.
@@ -398,20 +399,16 @@
 {
 	NSInteger count = (NSInteger)_allTabViewItems.count;
 	
-	// Validate index range
-	// Allow index == count only when inserting (for appending)
 	if (index < 0 || index > count || (index == count && !insertMode)) {
 		return NSNotFound;
 	}
 	
-	// In non-insert mode, return NSNotFound for hidden tabs
 	if (!insertMode && index < count && _allTabViewItems[index].hidden) {
 		return NSNotFound;
 	}
 	
 	NSInteger visibleCountBefore = 0;
 	
-	// Count visible tab items before the specified index
 	for (NSInteger i = 0; i < index && i < count; i++) {
 		NSTabViewItem *item = _allTabViewItems[i];
 		if (!item.hidden) {
@@ -490,7 +487,7 @@
 			
 			[super insertTabViewItem:tabViewItem atIndex:displayIndex];
 		} else {
-			// Manually notify delegate for hidden tabs
+			// super is not called for a hidden tab, so the count-change notification is sent here.
 			id<BETabViewDelegate> delegate = (id<BETabViewDelegate>)self.delegate;
 			
 			if ([delegate respondsToSelector:@selector(tabViewDidChangeNumberOfTabViewItems:)]) {
@@ -597,7 +594,6 @@
 		// delegate during the structural removal below, so we report the change ourselves.
 		NSTabViewItem *previouslySelected = self.selectedTabViewItem;
 
-		// Notify delegate before hiding
 		if ([delegate respondsToSelector:@selector(tabView:willHideTabViewItem:)]) {
 			[delegate tabView:self willHideTabViewItem:tabViewItem];
 		}
@@ -608,10 +604,8 @@
 		[super removeTabViewItem:tabViewItem];
 		self.delegate = savedDelegate;
 
-		// Mark as hidden using associated object
 		objc_setAssociatedObject(tabViewItem, @selector(hidden), @(YES), OBJC_ASSOCIATION_RETAIN);
 
-		// Notify delegate after hiding
 		if ([delegate respondsToSelector:@selector(tabView:didHideTabViewItem:)]) {
 			[delegate tabView:self didHideTabViewItem:tabViewItem];
 		}
@@ -720,12 +714,10 @@
 		
 		id<BETabViewDelegate> delegate = (id<BETabViewDelegate>)self.delegate;
 		
-		// Notify delegate before showing
 		if ([delegate respondsToSelector:@selector(tabView:willShowTabViewItem:)]) {
 			[delegate tabView:self willShowTabViewItem:tabViewItem];
 		}
 		
-		// Calculate where to insert the tab
 		NSInteger displayIndex = [self displayIndexAtIndex:index insertMode:YES];
 		
 		// Temporarily remove delegate to prevent unwanted callbacks during insertion
@@ -734,10 +726,8 @@
 		[super insertTabViewItem:tabViewItem atIndex:displayIndex];
 		self.delegate = savedDelegate;
 		
-		// Mark as not hidden using associated object
 		objc_setAssociatedObject(tabViewItem, @selector(hidden), @(NO), OBJC_ASSOCIATION_RETAIN);
 		
-		// Notify delegate after showing
 		if ([delegate respondsToSelector:@selector(tabView:didShowTabViewItem:)]) {
 			[delegate tabView:self didShowTabViewItem:tabViewItem];
 		}
@@ -935,9 +925,7 @@
  @discussion Searches allTabViewItems linearly for a tab whose identifier matches
 			 using isEqual:. This searches both visible and hidden tabs.
 			 
-			 Performance note: This is a linear search. For large numbers of tabs with
-			 frequent identifier lookups, consider maintaining a separate dictionary
-			 mapping identifiers to tabs.
+			 The search is linear.
 			 
 			 Returns NSNotFound if identifier is nil to provide safe behavior.
  @return     The index in allTabViewItems (0-based), or NSNotFound if not found or

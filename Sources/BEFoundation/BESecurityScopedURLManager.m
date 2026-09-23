@@ -22,8 +22,9 @@
 
 #pragma mark - Constants
 
-static NSString * const kBEDefaultCatalogKey = @"BESecurityScopedURLManagerCatalog";
-static NSString * const kBECacheFilename = @"BESecurityScopedURLManager_Catalog.archive";
+static NSString * const kBEDefaultStorageIdentifier = @"BESecurityScopedURLManager";
+static NSString * const kBEUserDefaultsKeySuffix = @"Catalog";
+static NSString * const kBECacheFilenameSuffix = @"_Catalog.archive";
 
 // Logging prefix
 static NSString * const kBELogPrefix = @"[BESecurityScopedURLManager]";
@@ -76,8 +77,7 @@ static NSString * const kBELogPrefix = @"[BESecurityScopedURLManager]";
  @abstract      Updates the entry's urlString (its catalog key) under the entry lock.
  @discussion    Used only by the manager's handleBookmarkRelocationFromPath:toPath:, which
 				runs on the access queue. Keeping this change on the access queue (together
-				with moving the catalog dictionary key) — rather than mutating _urlString
-				directly inside -updateStaleBookmark off-queue — keeps the dictionary key and
+				with moving the catalog dictionary key) keeps the dictionary key and
 				the entry's own urlString consistent. The entry lock guards _urlString against
 				concurrent lazy -url resolution.
  @param         newURLString The new canonical key for this entry.
@@ -109,9 +109,43 @@ static NSString * const kBELogPrefix = @"[BESecurityScopedURLManager]";
 /*! @property accessQueue Serial dispatch queue for thread-safe catalog and reference count access. */
 @property (nonatomic, strong) dispatch_queue_t accessQueue;
 
-/*! @property cacheFilePath Lazily computed per-instance path to the cache archive file.
-    Stored as a readwrite ivar so each instance gets its own copy (no global dispatch_once). */
+/*! @property cacheFilePath Lazily computed path to this instance's cache archive file. */
 @property (nonatomic, strong) NSString *cacheFilePath;
+
+/*! @property userDefaultsKey The NSUserDefaults key for this instance's catalog, derived from storageIdentifier. */
+@property (nonatomic, readonly) NSString *userDefaultsKey;
+
+/*!
+ @method        acquireAccessForResolvedURL:
+ @abstract      Adds one reference for a resolved URL, starting security-scoped access on the 0→1 transition.
+ @discussion    refCounts matches by URL equality, but the security scope belongs to the NSURL instance
+				that started access. When an equal URL is already tracked, the reference goes to that
+				tracked instance and no OS call is made. Must only be called on self.accessQueue.
+ @param         resolvedURL The URL to reference.
+ @return        The tracked instance that holds the scope, or nil if access could not be started.
+ */
+- (nullable NSURL *)acquireAccessForResolvedURL:(nullable NSURL *)resolvedURL;
+
+/*!
+ @method        releaseAllAccessForURL:
+ @abstract      Drops every reference held for a URL and stops access on the tracked instance once.
+ @discussion    Must only be called on self.accessQueue.
+ @param         url A URL equal to the tracked one. nil is ignored.
+ @return        The number of references released; 0 when the URL was not tracked.
+ */
+- (NSUInteger)releaseAllAccessForURL:(nullable NSURL *)url;
+
+/*!
+ @method        transferAccessFromURL:toURL:
+ @abstract      Moves every reference held for one URL onto another.
+ @discussion    Stops access on the instance tracked for fromURL and starts access on toURL (or adds to
+				the instance already tracked for it). When toURL cannot be started the references are
+				dropped and an error is logged. Must only be called on self.accessQueue.
+ @param         fromURL The URL whose references move. nil or an untracked URL transfers nothing.
+ @param         toURL The URL that receives the references.
+ @return        The tracked instance now holding the references, or nil when nothing was transferred.
+ */
+- (nullable NSURL *)transferAccessFromURL:(nullable NSURL *)fromURL toURL:(nullable NSURL *)toURL;
 
 /*!
  @method        saveCatalogSynchronously:
@@ -148,7 +182,7 @@ static NSString * const kBELogPrefix = @"[BESecurityScopedURLManager]";
 /*!
  @method        startAccessingURLInternal:
  @abstract      Non-dispatching core implementation of reference-counted access start.
- @discussion    Performs the same access logic as startAccessingURL: but does NOT call dispatch_sync.
+ @discussion    Performs the same access logic as startAccessingURL: but does not call dispatch_sync.
 				Must only be called from within a block already executing on self.accessQueue.
 				This prevents the dispatch-within-dispatch deadlock that occurs in startAccessingAllURLs.
  @param         url The URL for which to start access.
@@ -159,7 +193,7 @@ static NSString * const kBELogPrefix = @"[BESecurityScopedURLManager]";
 /*!
  @method        endAccessingAllURLsInternal
  @abstract      Non-dispatching core implementation of bulk access teardown.
- @discussion    Performs the same teardown logic as endAccessingAllURLs but does NOT call dispatch_sync.
+ @discussion    Performs the same teardown logic as endAccessingAllURLs but does not call dispatch_sync.
 				Must only be called from within a block already executing on self.accessQueue.
 				This prevents the dispatch-within-dispatch deadlock that occurs in clearCatalog.
  */
@@ -169,7 +203,7 @@ static NSString * const kBELogPrefix = @"[BESecurityScopedURLManager]";
  @method        saveCatalogInternal
  @abstract      Non-dispatching core implementation of catalog persistence.
  @discussion    Archives and writes long-lived bookmarks to all configured storage locations.
-				Does NOT call dispatch_sync. Must only be called from within a block already executing
+				Does not call dispatch_sync. Must only be called from within a block already executing
 				on self.accessQueue. This prevents the dispatch-within-dispatch deadlock that occurs
 				in removeURLFromCatalog:.
  */
@@ -190,7 +224,7 @@ static NSString * const kIsSecurityScopedKey = @"isSecurityScoped";
 
 // The catalog snapshot hands entries to arbitrary threads while the manager mutates them, so the
 // accessors for mutable-after-creation state are serialized on a per-entry @synchronized(self)
-// lock — the same lock used by -url, -updateStaleBookmark, and -applyRelocatedURLString:. These
+// lock, the same lock used by -url, -updateStaleBookmark, and -applyRelocatedURLString:. These
 // @synthesize lines keep the backing ivars now that those properties have custom accessors.
 // Init-only state (createdAt, lifetime, isDirectory, isSecurityScoped) is never mutated after
 // construction and keeps its synthesized accessors.
@@ -227,8 +261,7 @@ static NSString * const kIsSecurityScopedKey = @"isSecurityScoped";
 		_isSecurityScoped = NO;
 		_bookmarkError = nil;
 		
-		// Create the security-scoped bookmark.
-		// Use typed temp variables instead of nil literals — passing nil literals
+		// Typed temp variables stand in for nil literals: passing nil literals
 		// directly to nonnull-annotated parameters triggers a Clang nonnull assertion.
 		NSArray  *nilResourceKeys = nil;
 		NSURL    *nilRelativeURL  = nil;
@@ -263,7 +296,6 @@ static NSString * const kIsSecurityScopedKey = @"isSecurityScoped";
 		
 		_isSecurityScoped = (resolved != nil && resolutionError == nil);
 		
-		// Check if it's a directory.
 		NSNumber *isDirectory     = nil;
 		NSError  *dirCheckError   = nil;
 		if ([url getResourceValue:&isDirectory forKey:NSURLIsDirectoryKey error:&dirCheckError]) {
@@ -350,7 +382,7 @@ static NSString * const kIsSecurityScopedKey = @"isSecurityScoped";
  */
 - (NSURL *)url {
 	// The public `catalog` snapshot exposes entries to arbitrary threads, and this lazy
-	// getter mutates ivars — so guard it. The lock is on the entry, never the access queue,
+	// getter mutates ivars, so guard it. The lock is on the entry, never the access queue,
 	// so it cannot deadlock against queue operations.
 	@synchronized (self) {
 		if (_url) {
@@ -510,16 +542,28 @@ static NSString * const kIsSecurityScopedKey = @"isSecurityScoped";
 
 /*!
  @method        init
- @abstract      Designated initializer for the manager.
- @discussion    Initializes an instance with default storage options (UserDefaults and Cache).
-				Sets up the internal access queue for thread-safe operations and loads any existing
-				bookmarks from persistence. This method should rarely be called directly; use
-				sharedManager for the singleton instance instead.
+ @abstract      Creates a manager that uses the default storage identifier.
+ @discussion    Equivalent to -initWithStorageIdentifier: with the default identifier, so the instance
+				shares the shared manager's NSUserDefaults key and Caches file.
  @return        A new BESecurityScopedURLManager instance.
  */
 - (instancetype)init {
+	return [self initWithStorageIdentifier:kBEDefaultStorageIdentifier];
+}
+
+/*!
+ @method        initWithStorageIdentifier:
+ @abstract      Designated initializer for the manager.
+ @discussion    Initializes an instance with default storage options (UserDefaults and Cache), records
+				the identifier that names its persistent stores, sets up the internal access queue, and
+				loads any bookmarks persisted under the identifier. An empty identifier selects the default.
+ @param         storageIdentifier The identifier that names this manager's persistent stores.
+ @return        A new BESecurityScopedURLManager instance.
+ */
+- (instancetype)initWithStorageIdentifier:(NSString *)storageIdentifier {
 	self = [super init];
 	if (self) {
+		_storageIdentifier = (storageIdentifier.length > 0) ? [storageIdentifier copy] : kBEDefaultStorageIdentifier;
 		_storageOptions = BESecurityScopedURLStorageAll;
 		_mutableCatalog = [NSMutableDictionary dictionary];
 		_refCounts = [NSCountedSet new];
@@ -584,29 +628,27 @@ static NSString * const kIsSecurityScopedKey = @"isSecurityScoped";
 
 /*!
  @method        cacheFilePath
- @abstract      Returns the full path to the bookmark archive file in the Caches directory.
- @discussion    This path is computed once on first access using dispatch_once and cached for efficiency.
-				Returns nil if the Caches directory cannot be determined. This property is used internally
-				for persisting long-lived bookmarks to disk.
+ @abstract      Returns the full path to this instance's bookmark archive file in the Caches directory.
+ @discussion    The file name is `<storageIdentifier>_Catalog.archive`. The path is computed on first
+				access and cached. Returns nil if the Caches directory cannot be determined.
  @return        The full file system path to the cache file, or nil if unavailable.
  */
 - (NSString *)cacheFilePath {
-	// A global dispatch_once token would share one cache-file path across every
-	// BESecurityScopedURLManager instance — both the shared singleton and any private
-	// instances created via -init — so concurrent instances would clobber each other's
-	// persisted bookmarks. A per-instance nil-check computes the path once per instance.
-	// cacheFilePath is only ever called from within a dispatch_sync/dispatch_async block
-	// on self.accessQueue (a serial queue), so there is no multi-thread race on the ivar
-	// for a given instance.
+	// Read and written only on the serial accessQueue; the lazy nil-check needs no further guard.
 	if (!_cacheFilePath) {
 		NSURL *cacheDir = [[NSFileManager defaultManager]
 						  URLsForDirectory:NSCachesDirectory inDomains:NSUserDomainMask].firstObject;
 		if (cacheDir) {
-			NSString *path = [[cacheDir URLByAppendingPathComponent:kBECacheFilename] path];
+			NSString *fileName = [self.storageIdentifier stringByAppendingString:kBECacheFilenameSuffix];
+			NSString *path = [[cacheDir URLByAppendingPathComponent:fileName] path];
 			_cacheFilePath = [path stringByStandardizingPath];
 		}
 	}
 	return _cacheFilePath;
+}
+
+- (NSString *)userDefaultsKey {
+	return [self.storageIdentifier stringByAppendingString:kBEUserDefaultsKeySuffix];
 }
 
 #pragma mark - Catalog Persistence
@@ -624,10 +666,10 @@ static NSString * const kIsSecurityScopedKey = @"isSecurityScoped";
 	dispatch_async(self.accessQueue, ^{
 		NSData *archivedData = nil;
 		
-		// Try UserDefaults FIRST (primary storage location)
+		// UserDefaults is the primary storage location and is tried first.
 		if (self.storageOptions & BESecurityScopedURLStorageUserDefaults) {
 			NSData *userDefaultsData = [[NSUserDefaults standardUserDefaults]
-									   objectForKey:kBEDefaultCatalogKey];
+									   objectForKey:self.userDefaultsKey];
 			if (userDefaultsData) {
 				archivedData = userDefaultsData;
 			}
@@ -729,9 +771,9 @@ static NSString * const kIsSecurityScopedKey = @"isSecurityScoped";
 		// Always save/clear UserDefaults (even with nil/empty data) to keep in sync
 		if (self.storageOptions & BESecurityScopedURLStorageUserDefaults) {
 			if (archivedData) {
-				[[NSUserDefaults standardUserDefaults] setObject:archivedData forKey:kBEDefaultCatalogKey];
+				[[NSUserDefaults standardUserDefaults] setObject:archivedData forKey:self.userDefaultsKey];
 			} else {
-				[[NSUserDefaults standardUserDefaults] removeObjectForKey:kBEDefaultCatalogKey];
+				[[NSUserDefaults standardUserDefaults] removeObjectForKey:self.userDefaultsKey];
 			}
 			// No -synchronize: deprecated/no-op on macOS 12+; NSUserDefaults persists automatically.
 		}
@@ -765,10 +807,11 @@ static NSString * const kIsSecurityScopedKey = @"isSecurityScoped";
 /*!
  @method        addURLToCatalog:lifetime:
  @abstract      Creates a security-scoped bookmark for the given URL and adds it to the catalog.
- @discussion    If the URL is already in the catalog, its bookmark data and metadata are updated.
-				The URL must be a valid file URL. This method verifies the resource can be bookmarked
-				before adding it. Long-lived bookmarks are persisted asynchronously to configured storage.
-				Short-lived bookmarks exist only in memory for the current session.
+ @discussion    If the URL is already in the catalog, its bookmark data and metadata are replaced and every
+				active access session for it is ended. The URL must be a valid file URL. This method
+				verifies the resource can be bookmarked before adding it. Long-lived bookmarks are
+				persisted asynchronously to configured storage. Short-lived bookmarks exist only in
+				memory for the current session.
  @param         url The file URL to bookmark. Must be a valid file URL (not nil).
  @param         lifetime The persistence option: short-lived (session-only) or long-lived (persisted).
  @return        YES if the bookmark was created and added successfully, NO if URL is invalid or
@@ -791,28 +834,16 @@ static NSString * const kIsSecurityScopedKey = @"isSecurityScoped";
 	
 	__block BOOL success = NO;
 	dispatch_sync(self.accessQueue, ^{
-		// End any existing access for this URL before replacing.
-		// IMPORTANT: refCounts holds the *resolved* URL produced by URLByResolvingBookmarkData:,
-		// which may differ from `url` due to symlink expansion (e.g. /var/... → /private/var/...).
-		// We must look up the existing catalog entry and resolve it via the catalog to obtain the
-		// same URL form that was stored in refCounts, then call endAccessingURLInternal: on that
-		// resolved form so the ref-count lookup matches. Fall back to `url` only when the catalog
-		// has no pre-existing entry or resolution returns nil.
 		BESecurityScopedURLBookmarkEntry *existingEntry = self.mutableCatalog[entry.urlString];
 		if (existingEntry) {
-			NSURL *existingResolvedURL = [self urlFromCatalogWithAbsolutePathInternal:existingEntry.urlString];
-			if (existingResolvedURL) {
-				// If the resolved (canonical) URL isn't in refCounts, fall back to the
-				// raw url — refCounts may hold a pre-resolution (symlink) form.
-				if (![self endAccessingURLInternal:existingResolvedURL]) {
-					[self endAccessingURLInternal:url];
-				}
-			} else {
-				[self endAccessingURLInternal:url];
-			}
+			// Access may be tracked under the recorded resolved form, the catalog-resolved form
+			// (bookmark resolution expands symlinks such as /var → /private/var), or the raw URL.
+			[self releaseAllAccessForURL:self.resolvedAccessURLByKey[entry.urlString]];
+			[self releaseAllAccessForURL:[self urlFromCatalogWithAbsolutePathInternal:existingEntry.urlString]];
+			[self releaseAllAccessForURL:url];
+			[self.resolvedAccessURLByKey removeObjectForKey:entry.urlString];
 		}
 
-		// Add the new entry
 		self.mutableCatalog[entry.urlString] = entry;
 		success = YES;
 	});
@@ -829,9 +860,9 @@ static NSString * const kIsSecurityScopedKey = @"isSecurityScoped";
  @method        removeURLFromCatalog:
  @abstract      Removes the bookmark associated with the given URL from the catalog and persistence.
  @discussion    This is the canonical removal method; removeAbsolutePathFromCatalog: converts its
-				path to an NSURL and calls it. Removes the catalog entry keyed by the URL, ends any
-				active reference-counted access sessions, and persists the removal.
-				This is a thread-safe operation.
+				path to an NSURL and calls it. Removes the catalog entry keyed by the URL, ends every
+				active access session for it regardless of how many references are held, and persists
+				the removal. This is a thread-safe operation.
  @param         url The file URL whose bookmark should be removed. If nil, this method returns without error.
  */
 - (void)removeURLFromCatalog:(NSURL *)url {
@@ -862,18 +893,10 @@ static NSString * const kIsSecurityScopedKey = @"isSecurityScoped";
 		
 		BESecurityScopedURLBookmarkEntry *entry = self.mutableCatalog[catalogKey];
 		if (entry) {
-			// End any active security-scoped access using the entry's stored urlString.
-			// We deliberately avoid calling entry.url here: that triggers lazy bookmark
-			// resolution which could call handleBookmarkRelocationFromPath: dispatching
-			// async onto this queue while we are already holding it synchronously.
-			// refCounts is keyed by the resolved (symlink-normalized) URL, so ending access
-			// on the raw stored URL leaves the scope open. Prefer the recorded resolved form
-			// and fall back to the stored one.
-			NSURL *resolved = self.resolvedAccessURLByKey[catalogKey];
-			NSURL *storedURL = [NSURL URLWithString:entry.urlString];
-			if (!(resolved && [self endAccessingURLInternal:resolved]) && storedURL) {
-				[self endAccessingURLInternal:storedURL];
-			}
+			// entry.url is not read here: lazy resolution could relocate the entry mid-removal.
+			// Access may be tracked under the recorded resolved form or the stored key.
+			[self releaseAllAccessForURL:self.resolvedAccessURLByKey[catalogKey]];
+			[self releaseAllAccessForURL:[NSURL URLWithString:entry.urlString]];
 			[self.resolvedAccessURLByKey removeObjectForKey:catalogKey];
 			[self.mutableCatalog removeObjectForKey:catalogKey];
 		}
@@ -927,7 +950,7 @@ static NSString * const kIsSecurityScopedKey = @"isSecurityScoped";
  @abstract      Resolves a URL from the catalog, handling staleness and directory containment.
  @discussion    If the provided URL matches a direct bookmark or is contained within a bookmarked directory,
 				the resolved URL is returned. Stale bookmarks are automatically updated and the delegate is
-				notified of relocations. This method does NOT start access; use startAccessingURLWithAbsolutePath:
+				notified of relocations. This method does not start access; use startAccessingURLWithAbsolutePath:
 				for reference-counted access. This is a thread-safe operation.
  @param         url The URL to resolve, which may be stale or contained within a bookmarked directory.
 				Must be a file URL or nil.
@@ -949,11 +972,11 @@ static NSString * const kIsSecurityScopedKey = @"isSecurityScoped";
 				urlFromCatalogWithAbsolutePathInternal:, which is the single source of truth
 				for Tier 1–4 URL resolution.
 
-				All resolution behaviour — direct catalog match, refCounts lookup,
-				directory containment, and filename search — is documented on
+				All resolution behavior (direct catalog match, refCounts lookup,
+				directory containment, and filename search) is documented on
 				urlFromCatalogWithAbsolutePathInternal:.
 
-				This method does NOT prompt the user. For stale bookmarks that can't be
+				This method does not prompt the user. For stale bookmarks that cannot be
 				resolved, use startAccessingURL: which invokes the delegate.
 				This is a thread-safe operation.
  @param         absolutePathString The canonical absolute string of the URL in the catalog.
@@ -968,7 +991,7 @@ static NSString * const kIsSecurityScopedKey = @"isSecurityScoped";
 	// in a single dispatch_sync so any calling thread gets a consistent, thread-safe
 	// view of the catalog and refCounts. urlFromCatalogWithAbsolutePathInternal: is
 	// the single source of truth for all Tier 1-4 resolution; this public method
-	// adds only the queue barrier — nothing more.
+	// adds only the queue barrier.
 	__block NSURL *resolvedURL = nil;
 	dispatch_sync(self.accessQueue, ^{
 		resolvedURL = [self urlFromCatalogWithAbsolutePathInternal:absolutePathString];
@@ -1015,37 +1038,22 @@ static NSString * const kIsSecurityScopedKey = @"isSecurityScoped";
 	}
 	
 	__block NSURL *resolvedURL = nil;
-	__block BOOL success = NO;
 	__block BESecurityScopedURLBookmarkEntry *entry = nil;
-	
+
 	// Use the non-dispatching internal resolver so this dispatch_sync does not nest a second
 	// dispatch_sync onto the same serial queue. The public urlFromCatalogWithAbsolutePath:
 	// itself calls dispatch_sync(self.accessQueue), which would deadlock the serial queue.
 	dispatch_sync(self.accessQueue, ^{
-		resolvedURL = [self urlFromCatalogWithAbsolutePathInternal:url.absoluteString];
-		
-		if (!resolvedURL) {
-			// Resolution failed - get the entry for delegate callback
-			entry = self.mutableCatalog[url.absoluteString];
-			return;
-		}
-		
-		// Start access if not already started
-		if (![self.refCounts containsObject:resolvedURL]) {
-			success = [resolvedURL startAccessingSecurityScopedResource];
-		} else {
-			success = YES;
-		}
-		
-		if (success) {
-			[self.refCounts addObject:resolvedURL];
-			// Remember the resolved form keyed by the catalog key, so relocation can transfer
+		NSURL *candidate = [self urlFromCatalogWithAbsolutePathInternal:url.absoluteString];
+		resolvedURL = [self acquireAccessForResolvedURL:candidate];
+
+		if (resolvedURL) {
+			// Remember the tracked instance keyed by the catalog key, so relocation can transfer
 			// the count even when the key (url.absoluteString) and the resolved form differ.
 			self.resolvedAccessURLByKey[url.absoluteString] = resolvedURL;
 		} else {
-			// Access failed (likely stale bookmark) - prepare for delegate callback
+			// Resolution or access failed - get the entry for the delegate callback
 			entry = self.mutableCatalog[url.absoluteString];
-			resolvedURL = nil;
 		}
 	});
 	
@@ -1054,8 +1062,8 @@ static NSString * const kIsSecurityScopedKey = @"isSecurityScoped";
 	// launch): the main thread blocks forever on the semaphore because the only block that
 	// can signal it is queued on that same frozen main thread. So the main thread does not
 	// block; the semaphore + async pattern runs only on background threads, where blocking is
-	// safe. The relocation is applied by -finishRelocationForURL:entry:delegateURL: — from the
-	// completion handler on the main thread, or after the wait on a background thread — so a
+	// safe. The relocation is applied by -finishRelocationForURL:entry:delegateURL:, from the
+	// completion handler on the main thread, or after the wait on a background thread, so a
 	// delegate that answers asynchronously on the main thread still completes the relocation.
 	if (!resolvedURL && [self.delegate respondsToSelector:@selector(securityScopedURLManager:accessFailedForURL:entry:completionHandler:)]) {
 		if ([NSThread isMainThread]) {
@@ -1083,7 +1091,7 @@ static NSString * const kIsSecurityScopedKey = @"isSecurityScoped";
 						   @"handler is eventually called.", url.absoluteString);
 			}
 		} else {
-			// Background thread — safe to block here while the delegate shows UI.
+			// Background thread: safe to block here while the delegate shows UI.
 			__block NSURL *delegateURL = nil;
 			dispatch_semaphore_t delegateSemaphore = dispatch_semaphore_create(0);
 
@@ -1097,11 +1105,11 @@ static NSString * const kIsSecurityScopedKey = @"isSecurityScoped";
 				}];
 			});
 
-			// Wait indefinitely — the delegate controls when it calls the completion handler
+			// Wait indefinitely: the delegate controls when it calls the completion handler
 			// (e.g. after the user dismisses an NSOpenPanel). Imposing a timeout would force
 			// the background thread to continue before the user has made a choice, which is
-			// never the right behaviour. The delegate contract requires exactly one call to
-			// the completion handler — failing to call it will permanently block this thread,
+			// never the right behavior. The delegate contract requires exactly one call to
+			// the completion handler; failing to call it permanently blocks this thread,
 			// which is the correct signal that the delegate implementation is broken.
 			dispatch_semaphore_wait(delegateSemaphore, DISPATCH_TIME_FOREVER);
 
@@ -1122,7 +1130,7 @@ static NSString * const kIsSecurityScopedKey = @"isSecurityScoped";
 				delegate's completion handler itself. When the delegate answers asynchronously
 				on the main thread, -startAccessingURL: has already returned; running the work
 				here rather than after the delegate call is what keeps that relocation from
-				being lost. MUST NOT be called while already executing on accessQueue — it
+				being lost. Must not be called while already executing on accessQueue; it
 				dispatch_syncs onto that serial queue.
  @param         url The original catalog key whose access failed.
  @param         entry The bookmark entry for @p url, or nil if it was not in the catalog.
@@ -1139,23 +1147,18 @@ static NSString * const kIsSecurityScopedKey = @"isSecurityScoped";
 	// delegate was consulted, so the queue is not already held on this call stack.
 	dispatch_sync(self.accessQueue, ^{
 		// The queue was free during the (possibly long) delegate call: a concurrent
-		// clear/remove/add may have replaced the entry. Don't resurrect a stale entry —
-		// only re-key if it's still the live catalog entry. (Access is still granted.)
+		// clear/remove/add may have replaced the entry. Do not resurrect a stale entry;
+		// only re-key if it is still the live catalog entry. (Access is still granted.)
 		BOOL entryStillValid = (entry != nil && self.mutableCatalog[url.absoluteString] == entry);
 
-		if (![self.refCounts containsObject:delegateURL]) {
-			success = [delegateURL startAccessingSecurityScopedResource];
-		} else {
-			success = YES;
-		}
+		granted = [self acquireAccessForResolvedURL:delegateURL];
+		success = (granted != nil);
 
 		if (success) {
-			[self.refCounts addObject:delegateURL];
-			granted = delegateURL;
 			NSString *catalogKey = entryStillValid ? url.absoluteString : nil;
 
 			// If the relocated URL differs from the original, refresh the bookmark
-			// and move the catalog entry to the new key — but only if the entry is
+			// and move the catalog entry to the new key, but only if the entry is
 			// still the live catalog entry (not removed/replaced during the gap).
 			if (entryStillValid && ![delegateURL.absoluteString isEqualToString:url.absoluteString]) {
 				NSError *bookmarkError = nil;
@@ -1168,7 +1171,7 @@ static NSString * const kIsSecurityScopedKey = @"isSecurityScoped";
 
 				if (!bookmarkError && newBookmarkData) {
 					entry.bookmarkData = newBookmarkData;
-					entry.url = delegateURL;
+					entry.url = granted;
 					entry.isStale = NO;
 					// A relocation that leaves the previous failure recorded keeps the
 					// entry unresolvable through the catalog.
@@ -1183,15 +1186,8 @@ static NSString * const kIsSecurityScopedKey = @"isSecurityScoped";
 						[self.mutableCatalog removeObjectForKey:url.absoluteString];
 						self.mutableCatalog[newAbsolutePath] = entry;
 
-						// Transfer counts held under the old key's resolved form so an
-						// earlier access session survives the re-key (mirrors
-						// handleBookmarkRelocationFromPath:toPath:).
-						NSURL *oldResolved = self.resolvedAccessURLByKey[url.absoluteString];
-						NSUInteger transferCount = oldResolved ? [self.refCounts countForObject:oldResolved] : 0;
-						for (NSUInteger i = 0; i < transferCount; i++) {
-							[self.refCounts removeObject:oldResolved];
-							[self.refCounts addObject:delegateURL];
-						}
+						// An earlier access session under the old key survives the re-key.
+						[self transferAccessFromURL:self.resolvedAccessURLByKey[url.absoluteString] toURL:granted];
 						[self.resolvedAccessURLByKey removeObjectForKey:url.absoluteString];
 						catalogKey = newAbsolutePath;
 					}
@@ -1204,7 +1200,7 @@ static NSString * const kIsSecurityScopedKey = @"isSecurityScoped";
 
 			if (catalogKey) {
 				// Track the resolved form under the live catalog key for relocation transfer.
-				self.resolvedAccessURLByKey[catalogKey] = delegateURL;
+				self.resolvedAccessURLByKey[catalogKey] = granted;
 			}
 		}
 	});
@@ -1228,14 +1224,14 @@ static NSString * const kIsSecurityScopedKey = @"isSecurityScoped";
 /*!
  @method        urlFromCatalogWithAbsolutePathInternal:
  @abstract      Single source of truth for all Tier 1–4 URL resolution. No dispatch.
- @discussion    Contains ALL resolution logic. The public urlFromCatalogWithAbsolutePath:
+ @discussion    Contains all resolution logic. The public urlFromCatalogWithAbsolutePath:
 				is a thin dispatch_sync wrapper around this method and contains no other
 				logic, eliminating code duplication while preserving thread safety.
 				Callers that already hold the accessQueue (startAccessingURL:,
 				startAccessingAllURLs, endAccessingURLWithAbsolutePath:) call this method
 				directly to avoid the dispatch-within-dispatch deadlock that would result
 				from calling the public wrapper.
-				This method MUST only be called from within a block already executing
+				This method must only be called from within a block already executing
 				on self.accessQueue.
  @param         absolutePathString The canonical absolute string of the URL to resolve.
  @return        The resolved URL, or nil if not found in the catalog or bookmarked directories.
@@ -1262,8 +1258,8 @@ static NSString * const kIsSecurityScopedKey = @"isSecurityScoped";
 		return [self.refCounts member:checkURL];
 	}
 	
-	// TIER 3: Directory containment — input path is inside a bookmarked directory.
-	// Compare FILESYSTEM paths, not URL strings: derive the input's path (via -[NSURL path],
+	// TIER 3: Directory containment: input path is inside a bookmarked directory.
+	// Compare filesystem paths, not URL strings: derive the input's path (via -[NSURL path],
 	// which also percent-decodes) so it has the same form as directoryURL.path. A
 	// "file:///…" absoluteString does not match a "/…" directory path, so a URL-string
 	// comparison resolves no directory containment.
@@ -1331,66 +1327,56 @@ static NSString * const kIsSecurityScopedKey = @"isSecurityScoped";
 /*!
  @method        startAccessingURLInternal:
  @abstract      Non-dispatching core implementation of reference-counted access start.
- @discussion    Resolves the URL via urlFromCatalogWithAbsolutePathInternal: and calls
-				startAccessingSecurityScopedResource if the URL is not already in refCounts.
-				If startAccessingSecurityScopedResource returns NO (the URL is outside the
-				current security scope), the method returns nil without modifying refCounts.
-				If the URL is already in refCounts (a second caller acquiring access to the
-				same resource), the method increments the count and returns the URL directly
-				without making a second OS call.
-				This method MUST only be called from within a block already executing on
+ @discussion    Resolves the URL via urlFromCatalogWithAbsolutePathInternal: and adds one reference
+				through acquireAccessForResolvedURL:, which calls startAccessingSecurityScopedResource
+				only on the 0→1 transition. If that call returns NO (the URL is outside the current
+				security scope), the method returns nil without modifying refCounts. A second caller
+				acquiring the same resource increments the count and receives the instance that
+				started access, without a second OS call.
+				This method must only be called from within a block already executing on
 				self.accessQueue. It contains no dispatch calls.
  @param         url The URL for which to start access.
- @return        The resolved URL if access was successfully started, nil otherwise.
+ @return        The tracked resolved URL if access was successfully started, nil otherwise.
  */
 - (nullable NSURL *)startAccessingURLInternal:(NSURL *)url {
 	if (!url) {
 		return nil;
 	}
 
-	NSURL *resolvedURL = [self urlFromCatalogWithAbsolutePathInternal:url.absoluteString];
-	if (!resolvedURL) {
+	NSURL *candidate = [self urlFromCatalogWithAbsolutePathInternal:url.absoluteString];
+	NSURL *tracked = [self acquireAccessForResolvedURL:candidate];
+	if (!tracked) {
 		return nil;
 	}
 
-	if (![self.refCounts containsObject:resolvedURL]) {
-		if (![resolvedURL startAccessingSecurityScopedResource]) {
-			return nil;
-		}
-	}
-
-	[self.refCounts addObject:resolvedURL];
-	// Remember the resolved form keyed by the catalog key, so relocation can transfer the
+	// Remember the tracked instance keyed by the catalog key, so relocation can transfer the
 	// count even when the key (url.absoluteString) and the resolved form differ.
-	self.resolvedAccessURLByKey[url.absoluteString] = resolvedURL;
-	return resolvedURL;
+	self.resolvedAccessURLByKey[url.absoluteString] = tracked;
+	return tracked;
 }
 
 /*!
  @method        endAccessingAllURLsInternal
  @abstract      Non-dispatching core implementation of bulk access teardown.
  @discussion    Drains refCounts completely and calls stopAccessingSecurityScopedResource
-				on each unique URL.  This method MUST only be called from within a block
+				on each unique URL.  This method must only be called from within a block
 				already executing on self.accessQueue.  clearCatalog calls it from inside its
 				own dispatch_sync(accessQueue) block, where invoking endAccessingAllURLs (a
 				dispatch_sync onto the same serial queue) would re-enter the queue and deadlock.
  */
 - (void)endAccessingAllURLsInternal {
-	NSArray<NSURL *> *activeURLs = self.refCounts.allObjects;
-	for (NSURL *url in activeURLs) {
-		NSUInteger count = [self.refCounts countForObject:url];
-		for (NSUInteger i = 0; i < count; i++) {
-			[self.refCounts removeObject:url];
-		}
-		[url stopAccessingSecurityScopedResource];
+	// allObjects yields the tracked instances, so each stop lands on the instance that started.
+	for (NSURL *url in self.refCounts.allObjects) {
+		[self releaseAllAccessForURL:url];
 	}
+	[self.resolvedAccessURLByKey removeAllObjects];
 }
 
 /*!
  @method        saveCatalogInternal
  @abstract      Non-dispatching core implementation of catalog persistence.
  @discussion    Archives long-lived bookmarks and writes to all configured storage locations
-				(UserDefaults and/or the Caches directory).  This method MUST only be called
+				(UserDefaults and/or the Caches directory).  This method must only be called
 				from within a block already executing on self.accessQueue.  removeURLFromCatalog:
 				calls it from inside its own dispatch_sync(accessQueue) block, where invoking
 				saveCatalogSynchronously:YES (a dispatch_sync onto the same serial queue) would
@@ -1421,9 +1407,9 @@ static NSString * const kIsSecurityScopedKey = @"isSecurityScoped";
 	// Always write (or clear) UserDefaults to keep it in sync
 	if (self.storageOptions & BESecurityScopedURLStorageUserDefaults) {
 		if (archivedData) {
-			[[NSUserDefaults standardUserDefaults] setObject:archivedData forKey:kBEDefaultCatalogKey];
+			[[NSUserDefaults standardUserDefaults] setObject:archivedData forKey:self.userDefaultsKey];
 		} else {
-			[[NSUserDefaults standardUserDefaults] removeObjectForKey:kBEDefaultCatalogKey];
+			[[NSUserDefaults standardUserDefaults] removeObjectForKey:self.userDefaultsKey];
 		}
 		// No -synchronize: deprecated/no-op on macOS 12+; NSUserDefaults persists automatically.
 	}
@@ -1447,29 +1433,80 @@ static NSString * const kIsSecurityScopedKey = @"isSecurityScoped";
 
 #pragma mark - Internal Helper Methods
 
+- (nullable NSURL *)acquireAccessForResolvedURL:(nullable NSURL *)resolvedURL {
+	if (!resolvedURL) {
+		return nil;
+	}
+
+	NSURL *tracked = [self.refCounts member:resolvedURL];
+	if (!tracked) {
+		if (![resolvedURL startAccessingSecurityScopedResource]) {
+			return nil;
+		}
+		tracked = resolvedURL;
+	}
+
+	[self.refCounts addObject:tracked];
+	return tracked;
+}
+
+- (NSUInteger)releaseAllAccessForURL:(nullable NSURL *)url {
+	NSURL *tracked = url ? [self.refCounts member:url] : nil;
+	if (!tracked) {
+		return 0;
+	}
+
+	NSUInteger count = [self.refCounts countForObject:tracked];
+	for (NSUInteger i = 0; i < count; i++) {
+		[self.refCounts removeObject:tracked];
+	}
+	[tracked stopAccessingSecurityScopedResource];
+	return count;
+}
+
+- (nullable NSURL *)transferAccessFromURL:(nullable NSURL *)fromURL toURL:(nullable NSURL *)toURL {
+	NSURL *tracked = fromURL ? [self.refCounts member:fromURL] : nil;
+	if (!tracked) {
+		return nil;
+	}
+	if (toURL && [tracked isEqual:toURL]) {
+		return tracked;
+	}
+
+	NSUInteger count = [self releaseAllAccessForURL:tracked];
+	NSURL *target = [self acquireAccessForResolvedURL:toURL];
+	if (!target) {
+		BELogError(@"Could not start access for %@ while relocating %@; %lu reference(s) dropped",
+				   toURL.absoluteString, tracked.absoluteString, (unsigned long)count);
+		return nil;
+	}
+	for (NSUInteger i = 1; i < count; i++) {
+		[self.refCounts addObject:target];
+	}
+	return target;
+}
+
 /*!
  @method        endAccessingURLInternal:
  @abstract      Internal implementation of endAccessingURL without dispatch_sync.
- @discussion    This helper prevents deadlock by not calling dispatch_sync on self.accessQueue.
-				Called directly from within dispatch_sync blocks.
- @param         url The URL for which to end access.
+ @discussion    Removes one reference for the tracked URL equal to @p url and stops access on the
+				tracked instance when the count reaches zero. The caller's instance may differ from
+				the one that started access; the scope belongs to the tracked instance, so the stop
+				call is made on it. Called directly from within dispatch_sync blocks.
+ @param         url A URL equal to the one for which access was started.
  @return        YES if access was successfully ended, NO otherwise.
  */
 - (BOOL)endAccessingURLInternal:(NSURL *)url {
-	if (!url) {
+	NSURL *tracked = url ? [self.refCounts member:url] : nil;
+	if (!tracked) {
 		return NO;
 	}
-	
-	if (![self.refCounts containsObject:url]) {
-		return NO;
+
+	if ([self.refCounts countForObject:tracked] == 1) {
+		[tracked stopAccessingSecurityScopedResource];
 	}
-	
-	// Only stop access if this is the last reference
-	if ([self.refCounts countForObject:url] == 1) {
-		[url stopAccessingSecurityScopedResource];
-	}
-	
-	[self.refCounts removeObject:url];
+
+	[self.refCounts removeObject:tracked];
 	return YES;
 }
 
@@ -1601,18 +1638,7 @@ static NSString * const kIsSecurityScopedKey = @"isSecurityScoped";
  */
 - (void)endAccessingAllURLs {
 	dispatch_sync(self.accessQueue, ^{
-		NSArray<NSURL *> *activeURLs = self.refCounts.allObjects;
-		
-		for (NSURL *url in activeURLs) {
-			// Remove all reference counts for this URL
-			NSUInteger count = [self.refCounts countForObject:url];
-			for (NSUInteger i = 0; i < count; i++) {
-				[self.refCounts removeObject:url];
-			}
-			
-			// Stop access
-			[url stopAccessingSecurityScopedResource];
-		}
+		[self endAccessingAllURLsInternal];
 	});
 }
 
@@ -1627,10 +1653,12 @@ static NSString * const kIsSecurityScopedKey = @"isSecurityScoped";
 				(on the main thread). This is an asynchronous operation on the accessQueue.
  @param         oldPath The original catalog key (stale path).
  @param         newPath The new catalog key after relocation.
- @note          Active reference counts are keyed in refCounts by the symlink-resolved URL form
-				captured at access-start (tracked in resolvedAccessURLByKey).  The transfer looks up
-				that resolved form for oldPath, so counts move to newPath even when the catalog key
-				and its resolved form differ (e.g. /var/... vs /private/var/...).
+ @note          Active reference counts are held in refCounts by the NSURL instance that started
+				access, recorded per catalog key in resolvedAccessURLByKey. The security scope belongs
+				to that instance, so the transfer stops it and starts the entry's newly resolved URL,
+				then moves the counts onto that instance. The old instance is looked up by its
+				resolved form, so counts move even when the catalog key and its resolved form differ
+				(e.g. /var/... vs /private/var/...).
  */
 - (void)handleBookmarkRelocationFromPath:(NSString *)oldPath toPath:(NSString *)newPath {
 	dispatch_async(self.accessQueue, ^{
@@ -1644,24 +1672,18 @@ static NSString * const kIsSecurityScopedKey = @"isSecurityScoped";
 		// Change the entry's urlString together with its dictionary key, here on the queue.
 		[entry applyRelocatedURLString:newPath];
 
-		// Transfer any reference counts.  refCounts is keyed by the symlink-resolved URL
-		// captured at access-start, which may differ from the catalog key oldPath (e.g.
-		// /var/… resolves to /private/var/…).  Look up the resolved form so active counts
-		// actually transfer; fall back to oldPath when no access was started.
+		// Capture the URL on the queue; the main-thread block must not read mutableCatalog off-queue.
+		NSURL *relocatedURL = entry.url;
+
+		// entry.url is nil only when resolution failed; the key URL then keeps the bookkeeping intact.
 		NSURL *oldResolved = self.resolvedAccessURLByKey[oldPath] ?: [NSURL URLWithString:oldPath];
-		NSUInteger refCount = [self.refCounts countForObject:oldResolved];
-		if (refCount > 0) {
-			NSURL *newURL = [NSURL URLWithString:newPath];
-			for (NSUInteger i = 0; i < refCount; i++) {
-				[self.refCounts removeObject:oldResolved];
-				[self.refCounts addObject:newURL];
-			}
-			self.resolvedAccessURLByKey[newPath] = newURL;
+		NSURL *target = [self transferAccessFromURL:oldResolved
+											  toURL:(relocatedURL ?: [NSURL URLWithString:newPath])];
+		if (target) {
+			self.resolvedAccessURLByKey[newPath] = target;
 		}
 		[self.resolvedAccessURLByKey removeObjectForKey:oldPath];
 
-		// Capture the URL on the queue; the main-thread block must not read mutableCatalog off-queue.
-		NSURL *relocatedURL = entry.url;
 		if (relocatedURL &&
 			[self.delegate respondsToSelector:@selector(securityScopedURLManager:didRelocateURL:toURL:)]) {
 			NSURL *oldURL = [NSURL URLWithString:oldPath];
@@ -1693,7 +1715,19 @@ static NSString * const kIsSecurityScopedKey = @"isSecurityScoped";
 	// NSDictionary fast-enumeration yields keys (NSString), not values. The contract
 	// "for (BESecurityScopedURLBookmarkEntry *entry in manager)" requires enumerating the
 	// dictionary values (the entry objects), so enumerate allValues rather than the keys.
-	return [self.catalog.allValues countByEnumeratingWithState:state objects:buffer count:len];
+	//
+	// One snapshot serves the whole loop: an array's NSFastEnumerationState is valid only for
+	// the array that produced it. The snapshot is autoreleased into the caller's pool and kept
+	// unretained in state->extra[0], a slot NSArray leaves untouched.
+	NSArray<BESecurityScopedURLBookmarkEntry *> *snapshot = nil;
+	if (state->state == 0) {
+		snapshot = self.catalog.allValues;
+		CFAutorelease(CFBridgingRetain(snapshot));
+		state->extra[0] = (unsigned long)(__bridge void *)snapshot;
+	} else {
+		snapshot = (__bridge NSArray<BESecurityScopedURLBookmarkEntry *> *)(void *)state->extra[0];
+	}
+	return [snapshot countByEnumeratingWithState:state objects:buffer count:len];
 }
 
 @end

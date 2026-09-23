@@ -6,7 +6,7 @@
   </defs>
   <rect x="1" y="1" width="738" height="558" rx="14" fill="#FCFCFE" stroke="#D2D2D7"/>
   <text x="28" y="40" font-size="20" font-weight="700" fill="#1D1D1F">Dynamic selector resolution</text>
-  <text x="28" y="62" font-size="13" fill="#6E6E73">How a selector resolves through the dynamic-methods system.</text>
+  <text x="28" y="62" font-size="13" fill="#6E6E73">The order isDynamicMethod: checks a selector.</text>
 
   <!-- start -->
   <rect x="120" y="84" width="240" height="40" rx="20" fill="#1D1D1F"/>

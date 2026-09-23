@@ -114,7 +114,6 @@
 #pragma mark Cascade Close Logic
 
 - (void)testCascadeCloseClosesChildWindows {
-	// Create parent & children
 	NSWindow *parentWindow = [[NSWindow alloc] init];
 	TestManagerdWindowController *parent = [[TestManagerdWindowController alloc] initWithWindow:parentWindow];
 	parentWindow.windowController = parent;
@@ -124,13 +123,11 @@
 	childWindow.windowController = child;
 	child.parentController = parent; // establish relationship
 
-	// Add both to manager
 	[[NSNotificationCenter defaultCenter] postNotificationName:BEWindowDidLoadNotification object:parentWindow];
 	[[NSNotificationCenter defaultCenter] postNotificationName:BEWindowDidLoadNotification object:childWindow];
 
 	XCTAssertEqual(self.manager.windowControllers.count, 2);
 
-	// Trigger cascade close
 	[[NSNotificationCenter defaultCenter] postNotificationName:NSWindowWillCloseNotification object:parentWindow];
 
 	XCTAssertTrue(child.didClose, @"Child should close when parent closes.");
@@ -315,7 +312,7 @@
 	childWindow.windowController = child;
 	child.parentController = untrackedParent;
 
-	// Track ONLY the child, not the parent.
+	// Track only the child, not the parent.
 	[[NSNotificationCenter defaultCenter] postNotificationName:BEWindowDidLoadNotification object:childWindow];
 	XCTAssertTrue([self.manager.windowControllers containsObject:child]);
 

@@ -36,12 +36,10 @@
 - (void)testFullStringCountUnicode {
 	NSString *testString = @"Test: 👩‍👩‍👧‍👦, 👍, and Z͑ͫ̓ͣ"; // Family emoji, thumbs up, Zalgo text
 	
-	// 1. Test for emoji
 	NSCharacterSet *emojiSet = [NSCharacterSet characterSetWithCharactersInString:@"👍"];
 	NSUInteger count = [testString countCharactersInSet:emojiSet];
 	XCTAssertEqual(count, 0, @"emojis don't work in NSCharacterSet.");
 	
-	// 2. Test for letters
 	NSCharacterSet *letterSet = [NSCharacterSet letterCharacterSet];
 	count = [testString countCharactersInSet:letterSet];
 	// Should count T, e, s, t, a, n, d, Z

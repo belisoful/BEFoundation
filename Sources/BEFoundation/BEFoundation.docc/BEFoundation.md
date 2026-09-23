@@ -4,10 +4,12 @@
 
 ## Overview
 
-BEFoundation extends the utility of Foundation classes to assist in project development. The framework provides many primary functions organized into distinct categories:
+The framework provides these components:
 
-- **Stack and Queue Operations** — [NSMutableArray](doc:NSArray_BExtension) and NSMutableOrderedSet extensions for LIFO/FIFO data structures
-- **Object Registry** — [BEObjectRegistry](doc:BEObjectRegistry) for managing object instances by UUID with thread-safe operations
+- **Stack and Queue Operations** — [BEStackExtensions](doc:BEStackExtensions) on NSMutableArray and NSMutableOrderedSet for LIFO/FIFO data structures
+- **Priority Ordering** — [BEPriorityExtensions](doc:BEPriorityExtensions) for sorting NSArray and NSOrderedSet by item priority
+- **Object Registry** — [BEObjectRegistry](doc:BEObjectRegistry) for managing object instances by UUID with thread-safe operations, and [NSObject+GlobalRegistry](doc:NSObject_GlobalRegistry) for the shared global registry
+- **Runtime Helpers** — [BERuntime](doc:BERuntime) for class and method introspection
 - **Singleton Pattern** — [BESingleton](doc:BESingleton) protocol and backing implementation for thread-safe singletons
 - **Coder Extensions** — [NSCoder+AtIndex](doc:NSCoder_AtIndex) for index-based encoding, [NSCoder+HalfFloat](doc:NSCoder_HalfFloat) for 16-bit float support
 - **File System Monitoring** — [BEPathWatcher](doc:BEPathWatcher) using GCD dispatch sources
@@ -16,7 +18,7 @@ BEFoundation extends the utility of Foundation classes to assist in project deve
 - **Number Math** — [NSNumber+BExtension](doc:NSNumber_BExtension) for arithmetic operations between NSNumber instances
 - **Dynamic Methods** — [NSObject+DynamicMethods](doc:NSObject_DynamicMethods) for runtime method injection using blocks
 - **Macros** — [NSObject+Macroable](doc:NSObject_Macroable) for Laravel-style block macros on classes and instances
-- **Priority Notifications** — [NSPriorityNotificationCenter](doc:PriorityNotifications) for priority-ordered notification delivery
+- **Priority Notifications** — [NSPriorityNotificationCenter](doc:NSPriorityNotificationCenter) and [NSPriorityNotification](doc:NSPriorityNotification) for priority-ordered delivery, with [NSNotification+ExtraProperties](doc:NSNotification_ExtraProperties) and [NSNotification+MutableUserInfo](doc:NSNotification_MutableUserInfo)
 - **String Utilities** — [NSString+BExtension](doc:NSString_BExtension) for type checking and stringValue alignment with NSNumber
 - **Time Handling** — [FxTime](doc:FxTime) encapsulating CMTime with arithmetic and comparison operations
 - **Collection Protocols** — [BEMutable](doc:BEMutable) system for mutability detection and recursive copying
@@ -27,9 +29,10 @@ BEFoundation extends the utility of Foundation classes to assist in project deve
 - **Set Extensions** — [NSSet+BExtension](doc:NSSet_BExtension) and [NSOrderedSet+BExtension](doc:NSOrderedSet_BExtension) with mapping and filtering
 - **Image Processing** — [CIImage+BExtension](doc:CIImage_BExtension) for text rendering and alpha compositing
 - **Metal Utilities** — [BEMetalHelper](doc:BEMetalHelper) for texture-to-image conversion
-- **Cross-Platform UI** — [BEPlatformTypes](doc:BEPlatformTypes) aliases plus [BEColor](doc:BEColor_BExtension) hex/appearance colors, [BEView](doc:BEView_BExtension) Auto Layout helpers, [BEImage](doc:BEImage_BExtension) round-trips/resize, and the [BEDotView](doc:BEDotView) status dot that build on both macOS and iOS
+- **Cross-Platform UI** — [BEPlatformTypes](doc:BEPlatformTypes) aliases plus [BEColor](doc:BEColor_BExtension) hex/appearance colors, the [BEWebColor](doc:BEColor_BEWebColor) CSS keyword palette, [BEView](doc:BEView_BExtension) Auto Layout helpers, [BEImage](doc:BEImage_BExtension) round-trips/resize, and the [BEDotView](doc:BEDotView) status dot that build on both macOS and iOS
+- **AppKit (macOS)** — [BEPathControl](doc:BEPathControl), [BETabView](doc:BETabView), [BEWindowController](doc:BEWindowController), and [BEWindowControllerManager](doc:BEWindowControllerManager)
 - **Typed Pasteboard** — [NSPasteboard+BExtension](doc:NSPasteboard_BExtension) for one-call string, URL, and image read/write
-- **Web Data** — [BEWebData](doc:BEWebData) for data URLs, [NSData+URLDownload](doc:NSData_URLDownload) for async downloads
+- **Web Data** — [BEWebData](doc:BEWebData) for loading data, http(s), and file URLs, [NSData+URLDownload](doc:NSData_URLDownload) for async downloads
 - **URL Extensions** — [NSURL+Data](doc:NSURL_Data) for data URL creation and parsing
 - **File Caching** — [BEFileCache](doc:BEFileCache) for persistent file-backed caching
 - **Security Scoped URLs** — [BESecurityScopedURLManager](doc:BESecurityScopedURLManager) for bookmark lifecycle management, with [NSOpenPanel integration](doc:NSOpenPanel_BESecurityScopedURLManager) on macOS
@@ -66,6 +69,7 @@ BEFoundation extends the utility of Foundation classes to assist in project deve
 - <doc:NSOrderedSet_BExtension>
 - <doc:BEMutable>
 - <doc:BEStackExtensions>
+- <doc:BEPriorityExtensions>
 
 ### Character Sets
 
@@ -77,7 +81,6 @@ BEFoundation extends the utility of Foundation classes to assist in project deve
 
 - <doc:Predicates>
 - <doc:BEPredicateRule>
-- <doc:BEPriorityExtensions>
 
 ### Notifications
 
@@ -110,7 +113,6 @@ BEFoundation extends the utility of Foundation classes to assist in project deve
 - <doc:ImagesAndMetal>
 - <doc:CIImage_BExtension>
 - <doc:BEMetalHelper>
-- <doc:BEImage_BExtension>
 
 ### Web and Networking
 

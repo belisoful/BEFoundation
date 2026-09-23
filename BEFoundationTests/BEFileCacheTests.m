@@ -25,9 +25,9 @@
 #import "BEFileCache.h"
 
 // ---------------------------------------------------------------------------
-// Testing category — re-exposes private properties for white-box assertions.
+// Testing category: re-exposes private properties for white-box assertions.
 // No changes to production code are required; the compiler accepts this because
-// the properties are already synthesised in BEFileCache.m.  Declared here so
+// the properties are already synthesized in BEFileCache.m.  Declared here so
 // tests can read diskCount, diskTotalCost, and memoryCache without making them
 // public in the production header.
 // ---------------------------------------------------------------------------
@@ -121,7 +121,7 @@
 	if ((self = [super init])) {
 		_value = [coder decodeObjectOfClass:[NSString class] forKey:@"value"];
 		// Round-trip the access flag so a deserialized object can model an inaccessible
-		// (discarded) state — this is what lets the disk-hit beginContentAccess==NO branch
+		// (discarded) state; this is what lets the disk-hit beginContentAccess==NO branch
 		// be tested. Defaults to YES when the key is absent (preserves prior behavior).
 		_shouldSucceedBeginAccess = [coder containsValueForKey:@"succeed"]
 									? [coder decodeBoolForKey:@"succeed"]
@@ -207,6 +207,31 @@
 @end
 
 // ---------------------------------------------------------------------------
+#pragma mark - BEInitProbeCache  (redirects -init away from the real default directory)
+// ---------------------------------------------------------------------------
+
+/** The directory every BEInitProbeCache opens, whatever directory its initializer receives. */
+static NSString *BEInitProbeRedirectDirectory;
+
+/**
+ * Records whether the designated initializer received a nil directory and opens
+ * @c BEInitProbeRedirectDirectory instead, so a test of @c -init never creates or
+ * reconciles the real <NSCachesDirectory>/BEFileCache.
+ */
+@interface BEInitProbeCache : BEFileCache
+@property (nonatomic, assign, readonly) BOOL receivedNilDirectory;
+@end
+
+@implementation BEInitProbeCache
+- (instancetype)initWithCacheDirectory:(NSString *)directory {
+	if ((self = [super initWithCacheDirectory:BEInitProbeRedirectDirectory])) {
+		_receivedNilDirectory = (directory == nil);
+	}
+	return self;
+}
+@end
+
+// ---------------------------------------------------------------------------
 #pragma mark - BEFileCacheTests
 // ---------------------------------------------------------------------------
 
@@ -222,7 +247,6 @@
 - (void)setUp {
 	[super setUp];
 
-	// Create a unique temporary directory for each test so tests are isolated.
 	NSString *base = NSTemporaryDirectory();
 	_tempDir = [base stringByAppendingPathComponent:
 				[[NSUUID UUID] UUIDString]];
@@ -251,7 +275,7 @@
  */
 - (void)waitForDiskQueue {
 	// objectForKey: always calls dispatch_sync(_diskQueue, …) internally,
-	// so this call will not return until any pending async blocks complete.
+	// so this call does not return until any pending async blocks complete.
 	(void)[_cache objectForKey:@"__flush__"];
 }
 
@@ -279,25 +303,40 @@
 // ---------------------------------------------------------------------------
 
 /**
- * nil → default directory under NSCachesDirectory.
+ * -init forwards a nil directory to the designated initializer.  The probe subclass
+ * redirects the cache into the test's temporary directory.
  */
-- (void)testInit_nilDirectory_usesDefaultSubdirectory {
-	BEFileCache *c = [[BEFileCache alloc] init];
-	NSString *caches = NSSearchPathForDirectoriesInDomains(
-		NSCachesDirectory, NSUserDomainMask, YES).firstObject;
-	NSString *expected = [caches stringByAppendingPathComponent:@"BEFileCache"];
-	XCTAssertEqualObjects(c.cacheDirectory, expected);
+- (void)testInit_forwardsNilDirectoryToDesignatedInitializer {
+	BEInitProbeRedirectDirectory = _tempDir;
+	BEInitProbeCache *c = [[BEInitProbeCache alloc] init];
+	XCTAssertTrue(c.receivedNilDirectory);
+	XCTAssertEqualObjects(c.cacheDirectory, _tempDir);
 }
 
 /**
- * Empty string → same as nil (default subdirectory).
+ * nil and an empty string resolve to <NSCachesDirectory>/BEFileCache.  NSCachesDirectory
+ * cannot be redirected, so this is the one test that opens the real default directory;
+ * it drains both caches and removes the directory when it did not exist beforehand.
  */
-- (void)testInit_emptyString_usesDefaultSubdirectory {
-	BEFileCache *c = [[BEFileCache alloc] initWithCacheDirectory:@""];
+- (void)testInit_nilOrEmptyDirectory_resolvesToDefaultSubdirectory {
+	NSFileManager *fm = NSFileManager.defaultManager;
 	NSString *caches = NSSearchPathForDirectoriesInDomains(
 		NSCachesDirectory, NSUserDomainMask, YES).firstObject;
 	NSString *expected = [caches stringByAppendingPathComponent:@"BEFileCache"];
-	XCTAssertEqualObjects(c.cacheDirectory, expected);
+	BOOL existedBefore = [fm fileExistsAtPath:expected];
+
+	@autoreleasepool {
+		BEFileCache *fromNil   = [[BEFileCache alloc] init];
+		BEFileCache *fromEmpty = [[BEFileCache alloc] initWithCacheDirectory:@""];
+		XCTAssertEqualObjects(fromNil.cacheDirectory, expected);
+		XCTAssertEqualObjects(fromEmpty.cacheDirectory, expected);
+		(void)[fromNil   objectForKey:@"__flush__"];
+		(void)[fromEmpty objectForKey:@"__flush__"];
+	}
+
+	if (!existedBefore) {
+		[fm removeItemAtPath:expected error:nil];
+	}
 }
 
 /**
@@ -317,7 +356,6 @@
 		NSCachesDirectory, NSUserDomainMask, YES).firstObject;
 	NSString *expected = [caches stringByAppendingPathComponent:name];
 	XCTAssertEqualObjects(c.cacheDirectory, expected);
-	// Clean up
 	[[NSFileManager defaultManager] removeItemAtPath:expected error:nil];
 }
 
@@ -327,7 +365,7 @@
 - (void)testInit_createsDirectoryOnDisk {
 	NSString *path = [NSTemporaryDirectory()
 						stringByAppendingPathComponent:[[NSUUID UUID] UUIDString]];
-	// Directory must NOT exist before init.
+	// Directory must not exist before init.
 	[[NSFileManager defaultManager] removeItemAtPath:path error:nil];
 
 	BEFileCache *c = [[BEFileCache alloc] initWithCacheDirectory:path];
@@ -458,7 +496,6 @@
 	[_cache setObject:obj forKey:@"memOnly"];
 	[self waitForDiskQueue];
 
-	// Retrievable from memory.
 	id result = [_cache objectForKey:@"memOnly"];
 	XCTAssertEqualObjects(((BETestObjectNoCoding *)result).value, @"ephemeral");
 
@@ -585,7 +622,7 @@
 	NSString *indexPath = [_tempDir stringByAppendingPathComponent:@"BEFileCacheIndex"];
 	[[NSFileManager defaultManager] removeItemAtPath:indexPath error:nil];
 
-	// New instance — must scan .meta files.
+	// New instance; must scan .meta files.
 	BEFileCache *cache2 = [self freshCacheOnSameDirectory];
 	BETestObject *result = (BETestObject *)[cache2 objectForKey:@"fKey"];
 	XCTAssertEqualObjects(result.value, @"fallback");
@@ -599,7 +636,6 @@
 	[_cache setObject:obj forKey:@"cKey" cost:1];
 	[self waitForDiskQueue];
 
-	// Overwrite the index with garbage.
 	NSString *indexPath = [_tempDir stringByAppendingPathComponent:@"BEFileCacheIndex"];
 	[@"NOT_VALID_ARCHIVE" writeToFile:indexPath
 						   atomically:YES
@@ -707,7 +743,6 @@
 	[_cache setObject:updated forKey:@"ow" cost:20];
 	[self waitForDiskQueue];
 
-	// Only the new value should be returned.
 	BETestObject *result = (BETestObject *)[_cache objectForKey:@"ow"];
 	XCTAssertEqualObjects(result.value, @"v2");
 
@@ -879,7 +914,7 @@
 	// Evict from memory to force a disk hit.
 	[_cache.memoryCache removeAllObjects];
 
-	// Fetch — BEFileCache must deserialise a fresh instance from disk.
+	// Fetch; BEFileCache must deserialize a fresh instance from disk.
 	// The fresh instance's shouldSucceedBeginAccess defaults to YES (set in initWithCoder:).
 	BETestDiscardable *result = (BETestDiscardable *)[_cache objectForKey:@"ddKey"];
 	XCTAssertNotNil(result);
@@ -909,8 +944,7 @@
 - (void)testDiscardable_diskHit_beginContentAccessFails_returnsNil {
 	// Store an object whose decoded form reports its content as inaccessible (the access
 	// flag now round-trips through NSCoding). On a disk hit, BEFileCache calls
-	// beginContentAccess, gets NO, and must return nil — the branch that was previously
-	// uncovered.
+	// beginContentAccess, gets NO, and must return nil.
 	BETestDiscardable *obj = [BETestDiscardable objectWithValue:@"failing"];
 	obj.shouldSucceedBeginAccess = NO;
 	[_cache setObject:obj forKey:@"failKey"];
@@ -1059,7 +1093,7 @@
 
 	XCTAssertEqual(_cache.diskCount, 3u);
 
-	// Limit to 2 — should evict "old".
+	// Limit to 2 evicts "old".
 	_cache.countLimit = 2;
 	[self waitForDiskQueue];
 
@@ -1084,7 +1118,7 @@
 	XCTAssertNotNil([_cache objectForKey:@"old"]);
 	[self waitForDiskQueue];     // drain the async access bump
 
-	// Limit to 2 — "middle" is now least-recently-used and must be evicted.
+	// Limit to 2: "middle" is now least-recently-used and must be evicted.
 	_cache.countLimit = 2;
 	[self waitForDiskQueue];
 
@@ -1205,7 +1239,7 @@
 	[_cache setObject:[BETestObject objectWithValue:@"s"] forKey:@"s"];
 	[self waitForDiskQueue];
 
-	// Limit of 5 with only 1 entry — nothing to evict.
+	// Limit of 5 with only 1 entry; nothing to evict.
 	_cache.countLimit = 5;
 	[self waitForDiskQueue];
 
@@ -1248,7 +1282,7 @@
 	[_cache setObject:[BETestObject objectWithValue:@"expensive"] forKey:@"expensive" cost:10];
 	[self waitForDiskQueue];
 
-	// Limit to 10 — evicts the two oldest (cheap + mid = 7), leaving expensive (10).
+	// Limit to 10 evicts the two oldest (cheap + mid = 7), leaving expensive (10).
 	_cache.totalCostLimit = 10;
 	[self waitForDiskQueue];
 
@@ -1292,7 +1326,7 @@
 	[_cache setObject:[BETestObject objectWithValue:@"b"] forKey:@"b" cost:10];
 	[self waitForDiskQueue];
 
-	// Limit to 5 — both entries (cost 10 each) must be evicted.
+	// Limit to 5: both entries (cost 10 each) must be evicted.
 	_cache.totalCostLimit = 5;
 	[self waitForDiskQueue];
 
@@ -1365,7 +1399,7 @@
 	XCTAssertNotNil([_cache objectForKey:@"cn"],
 					@"Newest entry survives");
 
-	// 2 evictions total — one per pass.
+	// 2 evictions total, one per pass.
 	XCTAssertEqual(del.willEvictCount, 2u);
 }
 
@@ -1578,7 +1612,6 @@
 	XCTAssertEqualObjects(((BETestObject *)[_cache objectForKey:evil]).value, @"x",
 						  @"Path-like key must round-trip correctly.");
 
-	// Non-string key.
 	[_cache setObject:[BETestObject objectWithValue:@"num"] forKey:@42];
 	[self waitForDiskQueue];
 	[_cache.memoryCache removeAllObjects];
@@ -1593,7 +1626,6 @@
 	[_cache setObject:[BETestObject objectWithValue:@"v"] forKey:@"corruptKey"];
 	[self waitForDiskQueue];
 
-	// Overwrite every .cache payload file with garbage.
 	NSArray *files = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:_tempDir error:NULL];
 	for (NSString *f in files) {
 		if ([f.pathExtension isEqualToString:BE_FILE_CACHE_EXTENSION]) {
@@ -1629,7 +1661,7 @@
 	XCTAssertNotNil(metaBytes);
 
 	// Remove the entry (deletes the files and drops it from the index), then
-	// re-create the pair on disk WITHOUT updating the index.
+	// re-create the pair on disk without updating the index.
 	[_cache removeObjectForKey:@"orphanKey"];
 	[self waitForDiskQueue];
 	[cacheBytes writeToFile:cachePath atomically:YES];
@@ -1785,7 +1817,7 @@
 	[_cache setObject:[BETestObject objectWithValue:@"V"] forKey:@"k" cost:1];
 	[self waitForDiskQueue];
 
-	// The relaunched instance has NO block: the entry must still resolve,
+	// The relaunched instance has no block: the entry must still resolve,
 	// proving lookups go through the index rather than recomputing names.
 	BEFileCache *cache2 = [self freshCacheOnSameDirectory];
 	BETestObject *out = [cache2 objectForKey:@"k"];
@@ -1911,8 +1943,7 @@
 
 - (void)testFileNameBlock_composedUnicodeNameStaysSingleEntryAcrossRelaunch {
 	// Composed (NFC) "café": the file system stores and lists the decomposed
-	// form, which previously made reconciliation re-adopt the pair as a
-	// second entry and a later overwrite delete the live files.
+	// form, so reconciliation must not re-adopt the pair as a second entry.
 	NSString *nfc = [@"café-" stringByAppendingString:@"x"];
 	_cache.fileNameBlock = ^NSString *(id<NSCopying, NSSecureCoding> key,
 									   NSString *hashName) {
@@ -1927,8 +1958,7 @@
 	XCTAssertEqual(cache2.diskCount, 1u,
 				   @"Reconciliation must not adopt the pair a second time.");
 
-	// Overwrite through a third instance with the same block: the live pair
-	// must survive (deleting it through a normalization alias was the bug).
+	// Overwrite through a third instance with the same block: the live pair must survive.
 	BEFileCache *cache3 = [self freshCacheOnSameDirectory];
 	cache3.fileNameBlock = _cache.fileNameBlock;
 	[cache3 setObject:[BETestObject objectWithValue:@"v2"] forKey:@"k" cost:1];
@@ -1969,6 +1999,115 @@
 				   @"One key must never be counted twice.");
 	XCTAssertEqual([self entryFilesOnDisk].count, 2u,
 				   @"The losing duplicate pair must be deleted.");
+}
+
+// ---------------------------------------------------------------------------
+#pragma mark - Secure payload decoding
+// ---------------------------------------------------------------------------
+
+/** Archives @p object as the cache archives payloads and sidecars. */
+static NSData *BESecureArchive(id<NSSecureCoding> object) {
+	return [NSKeyedArchiver archivedDataWithRootObject:object
+								 requiringSecureCoding:YES
+												 error:NULL];
+}
+
+/**
+ * Rewrites the single entry's sidecar without a recorded class and deletes the
+ * index, leaving the entry as a pre-1.2.0 cache left it.
+ */
+- (void)downgradeSidecarToLegacyForKey:(id<NSCopying, NSSecureCoding>)key {
+	BEFileCacheItem *legacy = [[BEFileCacheItem alloc] initWithKey:key cost:0];
+	XCTAssertNil(legacy.objectClassName);
+	[BESecureArchive(legacy)
+		writeToFile:[self firstFileInDirWithExtension:BE_FILE_CACHE_META_EXTENSION]
+		 atomically:YES];
+	[NSFileManager.defaultManager removeItemAtPath:
+		[_tempDir stringByAppendingPathComponent:@"BEFileCacheIndex"] error:nil];
+}
+
+- (void)testAllowedClasses_defaultsToNilAndRoundTrips {
+	XCTAssertNil(_cache.allowedClasses);
+	NSSet *classes = [NSSet setWithObject:BETestObject.class];
+	_cache.allowedClasses = classes;
+	XCTAssertEqualObjects(_cache.allowedClasses, classes);
+	_cache.allowedClasses = nil;
+	XCTAssertNil(_cache.allowedClasses);
+}
+
+- (void)testDiskFiles_sidecarRecordsPayloadRootClass {
+	[_cache setObject:[BETestObject objectWithValue:@"V"] forKey:@"k"];
+	[self waitForDiskQueue];
+
+	NSData *metaBytes = [NSData dataWithContentsOfFile:
+						 [self firstFileInDirWithExtension:BE_FILE_CACHE_META_EXTENSION]];
+	BEFileCacheItem *item = [NSKeyedUnarchiver unarchivedObjectOfClass:BEFileCacheItem.class
+															  fromData:metaBytes
+																 error:NULL];
+	XCTAssertEqualObjects(item.objectClassName, NSStringFromClass(BETestObject.class));
+}
+
+- (void)testSecureDecoding_customClassRoundTripsAcrossRelaunchViaRecordedClass {
+	[_cache setObject:[BETestObject objectWithValue:@"custom"] forKey:@"k"];
+	[self waitForDiskQueue];
+
+	BEFileCache *cache2 = [self freshCacheOnSameDirectory];
+	XCTAssertNil(cache2.allowedClasses);
+	XCTAssertEqualObjects([(BETestObject *)[cache2 objectForKey:@"k"] value], @"custom");
+}
+
+- (void)testSecureDecoding_customClassRoundTripsAfterIndexRebuildViaRecordedClass {
+	[_cache setObject:[BETestObject objectWithValue:@"custom"] forKey:@"k"];
+	[self waitForDiskQueue];
+	[NSFileManager.defaultManager removeItemAtPath:
+		[_tempDir stringByAppendingPathComponent:@"BEFileCacheIndex"] error:nil];
+
+	BEFileCache *cache2 = [self freshCacheOnSameDirectory];
+	XCTAssertEqualObjects([(BETestObject *)[cache2 objectForKey:@"k"] value], @"custom",
+						  @"The .meta scan must carry the recorded class into the rebuilt index.");
+}
+
+- (void)testSecureDecoding_tamperedPayloadOfUnadmittedClassReturnsNil {
+	[_cache setObject:[BETestObject objectWithValue:@"V"] forKey:@"k"];
+	[self waitForDiskQueue];
+
+	// Replace the payload with an archive of a secure-coding class the entry did not
+	// record and the cache does not allow.
+	NSString *cachePath = [self firstFileInDirWithExtension:BE_FILE_CACHE_EXTENSION];
+	[BESecureArchive([BETestDiscardable objectWithValue:@"planted"])
+		writeToFile:cachePath atomically:YES];
+	[_cache.memoryCache removeAllObjects];
+
+	XCTAssertNil([_cache objectForKey:@"k"],
+				 @"A payload whose root class is not admitted must not instantiate.");
+
+	// The same bytes decode once the class is allowed, so the nil above came from
+	// the class check and not from the archive.
+	_cache.allowedClasses = [NSSet setWithObject:BETestDiscardable.class];
+	XCTAssertEqualObjects([(BETestDiscardable *)[_cache objectForKey:@"k"] value], @"planted");
+}
+
+- (void)testSecureDecoding_legacyEntryWithoutRecordedClassLoadsPlistPayload {
+	[_cache setObject:@"plain string" forKey:@"legacy"];
+	[self waitForDiskQueue];
+	[self downgradeSidecarToLegacyForKey:@"legacy"];
+
+	BEFileCache *cache2 = [self freshCacheOnSameDirectory];
+	XCTAssertEqualObjects([cache2 objectForKey:@"legacy"], @"plain string");
+}
+
+- (void)testSecureDecoding_legacyCustomClassEntryLoadsOnlyWhenAllowed {
+	[_cache setObject:[BETestObject objectWithValue:@"V"] forKey:@"legacy"];
+	[self waitForDiskQueue];
+	[self downgradeSidecarToLegacyForKey:@"legacy"];
+
+	BEFileCache *strict = [self freshCacheOnSameDirectory];
+	XCTAssertNil([strict objectForKey:@"legacy"],
+				 @"Without a recorded class or allowedClasses, a custom class is not admitted.");
+
+	BEFileCache *widened = [self freshCacheOnSameDirectory];
+	widened.allowedClasses = [NSSet setWithObject:BETestObject.class];
+	XCTAssertEqualObjects([(BETestObject *)[widened objectForKey:@"legacy"] value], @"V");
 }
 
 @end

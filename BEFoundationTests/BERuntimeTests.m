@@ -43,13 +43,11 @@
 - (void)testMetaclassGetClass_WithNilParameter {
 	Class nilClass = nil;
 	
-	// Test Path 1: metaClass is nil
 	Class result = metaclass_getClass(nilClass);
 	XCTAssertNil(result, @"Should return nil when metaClass parameter is nil");
 }
 
 - (void)testMetaclassGetClass_WithValidMetaclass {
-	// Test Path 2: Valid metaclass that should return the corresponding class
 	Class testClass = [RuntimeTestClass class];
 	Class testMetaclass = object_getClass(testClass);
 	
@@ -58,7 +56,6 @@
 }
 
 - (void)testMetaclassGetClass_WithNSObjectMetaclass {
-	// Test with NSObject metaclass
 	Class nsObjectClass = [NSObject class];
 	Class nsObjectMetaclass = object_getClass(nsObjectClass);
 	
@@ -67,7 +64,6 @@
 }
 
 - (void)testMetaclassGetClass_WithCustomClass {
-	// Test with custom empty class
 	Class emptyClass = [EmptyRuntimeTestClass class];
 	Class emptyMetaclass = object_getClass(emptyClass);
 	
@@ -76,16 +72,11 @@
 }
 
 - (void)testMetaclassGetClass_WithInvalidMetaclass {
-	// Test Path 3: Test with a class that doesn't have a name or can't be found
-	// This is harder to test directly, but we can simulate by creating a scenario
-	// where the metaclass exists but the class lookup fails
 	
-	// Create a dynamic class and test it works first
 	Class dynamicClass = objc_allocateClassPair([NSObject class], "DynamicTestClass", 0);
 	objc_registerClassPair(dynamicClass);
 	Class dynamicMetaclass = object_getClass(dynamicClass);
 	
-	// Test that it works first
 	Class result = metaclass_getClass(dynamicMetaclass);
 	XCTAssertEqual(result, dynamicClass, @"Should return the dynamic class");
 	
@@ -99,7 +90,6 @@
 	// This is difficult to test directly as it would require corrupting runtime data
 	// Instead, we test with the root metaclass which has special behavior
 	
-	// Test with NSObject's metaclass - this should return NSObject
 	Class nsObjectClass = [NSObject class];
 	Class nsObjectMetaclass = object_getClass(nsObjectClass);
 	
@@ -116,7 +106,6 @@
 	// This is difficult to test directly as it would require corrupting runtime data
 	// Instead, we test with edge cases
 	
-	// Test with root metaclass
 	Class rootMetaclass = object_getClass([NSObject class]);
 	Class rootMetaMetaclass = object_getClass(rootMetaclass);
 	
@@ -125,8 +114,6 @@
 }
 
 - (void)testMetaclassGetClass_WithNonMetaclass {
-	// Test Path 5: Test scenario where object_getClass(candidate) != metaClass
-	// This tests the final validation check
 	
 	Class testClass = [RuntimeTestClass class];
 	
@@ -143,7 +130,6 @@
 - (void)testClassHasMethod_WithNilClass {
 	Class nilClass = nil;
 	
-	// Test Path 1: cls is nil
 	SEL testSelector = @selector(testMethod);
 	BOOL result = class_hasMethod(nilClass, testSelector);
 	XCTAssertFalse(result, @"Should return NO when class is nil");
@@ -152,7 +138,6 @@
 - (void)testClassHasMethod_WithNilSelector {
 	SEL nilSelector = nil;
 	
-	// Test Path 2: selector is nil
 	Class testClass = [RuntimeTestClass class];
 	BOOL result = class_hasMethod(testClass, nilSelector);
 	XCTAssertFalse(result, @"Should return NO when selector is nil");
@@ -162,13 +147,11 @@
 	Class nilClass = nil;
 	SEL nilSelector = nil;
 	
-	// Test Path 3: Both cls and selector are nil
 	BOOL result = class_hasMethod(nilClass, nilSelector);
 	XCTAssertFalse(result, @"Should return NO when both class and selector are nil");
 }
 
 - (void)testClassHasMethod_WithExistingMethod {
-	// Test Path 4: Method exists in class
 	Class testClass = [RuntimeTestClass class];
 	SEL testSelector = @selector(testMethod);
 	
@@ -177,7 +160,6 @@
 }
 
 - (void)testClassHasMethod_WithNonexistentMethod {
-	// Test Path 5: Method doesn't exist in class
 	Class testClass = [RuntimeTestClass class];
 	SEL nonexistentSelector = NSSelectorFromString(@"nonexistentMethod");
 	
@@ -186,7 +168,6 @@
 }
 
 - (void)testClassHasMethod_WithMultipleMethods {
-	// Test Path 6: Class with multiple methods, test each one
 	Class testClass = [RuntimeTestClass class];
 	SEL testSelector1 = @selector(testMethod);
 	SEL testSelector2 = @selector(anotherTestMethod);
@@ -199,7 +180,6 @@
 }
 
 - (void)testClassHasMethod_WithEmptyClass {
-	// Test Path 7: Class with no methods (besides inherited ones)
 	Class emptyClass = [EmptyRuntimeTestClass class];
 	SEL testSelector = @selector(testMethod);
 	
@@ -208,7 +188,6 @@
 }
 
 - (void)testClassHasMethod_WithNSObjectMethod {
-	// Test Path 8: Check for NSObject methods
 	Class testClass = [RuntimeTestClass class];
 	SEL initSelector = @selector(init);
 	
@@ -219,7 +198,6 @@
 }
 
 - (void)testClassHasMethod_WithClassMethod {
-	// Test Path 9: Test with class methods (metaclass)
 	Class testMetaclass = object_getClass([RuntimeTestClass class]);
 	SEL allocSelector = @selector(alloc);
 	
@@ -229,13 +207,10 @@
 }
 
 - (void)testClassHasMethod_WithDynamicMethod {
-	// Test Path 10: Add a method dynamically and test
 	Class dynamicClass = objc_allocateClassPair([NSObject class], "DynamicMethodTestClass", 0);
 	
-	// Add a method dynamically
 	SEL dynamicSelector = NSSelectorFromString(@"dynamicMethod");
 	IMP dynamicIMP = imp_implementationWithBlock(^{
-		// Empty implementation
 	});
 	
 	class_addMethod(dynamicClass, dynamicSelector, dynamicIMP, "v@:");
@@ -244,12 +219,10 @@
 	BOOL result = class_hasMethod(dynamicClass, dynamicSelector);
 	XCTAssertTrue(result, @"Should find dynamically added method");
 	
-	// Test with non-existent method
 	SEL nonexistentSelector = NSSelectorFromString(@"nonexistentDynamicMethod");
 	BOOL result2 = class_hasMethod(dynamicClass, nonexistentSelector);
 	XCTAssertFalse(result2, @"Should not find non-existent method in dynamic class");
 	
-	// Clean up
 	objc_disposeClassPair(dynamicClass);
 }
 
@@ -264,15 +237,12 @@
 	BOOL result = class_hasMethod(emptyClass, testSelector);
 	XCTAssertFalse(result, @"Should handle empty method list correctly");
 	
-	// Clean up
 	objc_disposeClassPair(emptyClass);
 }
 
 - (void)testClassHasMethod_EdgeCaseWithSameMethodNames {
-	// Test Path 12: Ensure exact selector matching
 	Class testClass = [RuntimeTestClass class];
 	
-	// Create a similar but different selector
 	SEL exactSelector = @selector(testMethod);
 	SEL differentSelector = NSSelectorFromString(@"testMethod2");
 	

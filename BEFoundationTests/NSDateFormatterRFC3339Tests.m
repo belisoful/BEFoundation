@@ -15,11 +15,9 @@
 
 - (void)setUp {
 	[super setUp];
-	// Put setup code here. This method is called before the invocation of each test method in the class.
 }
 
 - (void)tearDown {
-	// Put teardown code here. This method is called after the invocation of each test method in the class.
 	[super tearDown];
 }
 
@@ -54,7 +52,6 @@
  */
 - (void)testRfc3339DateFormatterSetsCorrectTimeZone {
 	NSDateFormatter *formatter = [NSDateFormatter rfc3339DateFormatter];
-	// Check if the timeZone is UTC/GMT with 0 seconds from GMT
 	XCTAssertEqualObjects(formatter.timeZone, [NSTimeZone timeZoneForSecondsFromGMT:0], @"The RFC3339 date formatter time zone should be UTC/GMT.");
 	XCTAssertEqual(formatter.timeZone.secondsFromGMT, 0, @"The RFC3339 date formatter time zone should have 0 seconds from GMT.");
 }
@@ -65,7 +62,6 @@
 - (void)testRfc3339DateFormatterFormatsDateCorrectly {
 	NSDateFormatter *formatter = [NSDateFormatter rfc3339DateFormatter];
 
-	// Create a known date in UTC
 	NSDateComponents *components = [[NSDateComponents alloc] init];
 	components.year = 2025;
 	components.month = 6;
@@ -142,7 +138,6 @@
 	NSDateFormatter *formatter = NSDateFormatter.new;
 	[formatter rfc3339Format]; // Apply the RFC3339 format
 
-	// Create a known date in UTC
 	NSDateComponents *components = [[NSDateComponents alloc] init];
 	components.year = 2025;
 	components.month = 6;

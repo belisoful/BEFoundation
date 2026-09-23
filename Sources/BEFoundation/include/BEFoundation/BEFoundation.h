@@ -14,8 +14,6 @@ FOUNDATION_EXPORT double BEFoundationVersionNumber;
 //! Project version string for BEFoundation.
 FOUNDATION_EXPORT const unsigned char BEFoundationVersionString[];
 
-// In this header, you should import all the public headers of your framework using statements like #import <BEFoundation/PublicHeader.h>
-
 #import <BEFoundation/NSNotification+ExtraProperties.h>
 #import <BEFoundation/NSNotification+MutableUserInfo.h>
 #import <BEFoundation/NSPriorityNotification.h>

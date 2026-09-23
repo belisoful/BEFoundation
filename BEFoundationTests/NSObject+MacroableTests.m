@@ -29,11 +29,18 @@
 @implementation MacroableTestObject
 @end
 
-/// Direct subclass – used to verify that class macros are NOT automatically
+/// Direct subclass, used to verify that class macros are not automatically
 /// inherited by subclasses.
 @interface MacroableTestObjectSubclass : MacroableTestObject
 @end
 @implementation MacroableTestObjectSubclass
+@end
+
+/// Dedicated class for the registration-versus-dispatch race so a failure cannot wedge the
+/// classes the other tests share.
+@interface MacroableRaceObject : NSObject
+@end
+@implementation MacroableRaceObject
 @end
 
 // ---------------------------------------------------------------------------
@@ -124,8 +131,6 @@ static id invokeClassMacroOneArg(id target, SEL sel, id arg)
 
 - (void)testBEMacroMeta_selectorProperty_IsReadOnly
 {
-	// Verify selector is accessible after init (compile-time check covered by
-	// the readonly property declaration; this confirms it is set correctly).
 	BEMacroMeta *meta = [[BEMacroMeta alloc] initWithSelector:@selector(hash) block:nil];
 	XCTAssertEqual(meta.selector, @selector(hash));
 }
@@ -427,8 +432,6 @@ static id invokeClassMacroOneArg(id target, SEL sel, id arg)
 
 - (void)testMacroInvocation_SelfArgumentIsCorrectInstance
 {
-	// The first argument the block receives should be the instance the macro
-	// is invoked on.
 	SEL sel = NSSelectorFromString(@"testMacroSelfArg");
 	__block id capturedSelf = nil;
 	[MacroableTestObject macro:sel macroBlock:^NSString*(id _self){
@@ -467,7 +470,7 @@ static id invokeClassMacroOneArg(id target, SEL sel, id arg)
 - (void)testMacroInvocation_ClassDoesNotRespondToClassMacro
 {
 	// Class macros are instance-facing (via addClassMethod:block:), so the
-	// class object itself should NOT respond to the selector.
+	// class object itself should not respond to the selector.
 	SEL sel = NSSelectorFromString(@"testMacroClassLevel");
 	[MacroableTestObject macro:sel macroBlock:^NSString*(id _self){ return @""; }];
 
@@ -678,22 +681,19 @@ static id invokeClassMacroOneArg(id target, SEL sel, id arg)
 	[MacroableTestObject macro:sel macroBlock:^NSString*(id _self){ return @""; }];
 
 	MacroableTestObject *obj = MacroableTestObject.new;
-	// A class macro is instance-facing but is NOT the same as an object macro.
+	// A class macro is instance-facing but is not the same as an object macro.
 	XCTAssertFalse([obj hasObjectMacro:sel],
 				   @"A class macro must not report as an object macro on an instance");
 }
 
 - (void)testObjectMacro_OverridesClassMacroOnSpecificInstance
 {
-	// Register a class macro returning "class-v" for all instances.
 	SEL sel = NSSelectorFromString(@"testMacroOverride");
 	[MacroableTestObject macro:sel macroBlock:^NSString*(id _self){ return @"class-v"; }];
 
 	MacroableTestObject *obj = MacroableTestObject.new;
-	// Override just this instance with a different block.
 	[obj objectMacro:sel macroBlock:^NSString*(id _self){ return @"obj-v"; }];
 
-	// This instance should see the object-level override.
 	NSString *result = invokeClassMacroNoArgs(obj, sel);
 	XCTAssertEqualObjects(result, @"obj-v");
 }
@@ -707,7 +707,7 @@ static id invokeClassMacroOneArg(id target, SEL sel, id arg)
 	MacroableTestObject *obj2 = MacroableTestObject.new;
 	[obj1 objectMacro:sel macroBlock:^NSString*(id _self){ return @"obj-v"; }];
 
-	// obj2 was NOT given an object-level override; it should still see the class macro.
+	// obj2 was not given an object-level override; it should still see the class macro.
 	NSString *result = invokeClassMacroNoArgs(obj2, sel);
 	XCTAssertEqualObjects(result, @"class-v",
 						  @"Unmodified instance should still use the class macro");
@@ -769,13 +769,12 @@ static id invokeClassMacroOneArg(id target, SEL sel, id arg)
 - (void)testSubclass_DoesNotInheritParentClassMacro
 {
 	// Class macros are stored on the specific class's associated objects and are
-	// NOT automatically inherited by subclasses.
+	// not automatically inherited by subclasses.
 	SEL sel = NSSelectorFromString(@"testSubclassNoInherit");
 	[MacroableTestObject macro:sel macroBlock:^NSString*(id _self){ return @"parent"; }];
 
 	__unused MacroableTestObjectSubclass *sub = MacroableTestObjectSubclass.new;
 
-	// The subclass instance should not find the macro registered on the parent.
 	XCTAssertFalse([MacroableTestObjectSubclass hasMacro:sel],
 				   @"Subclass hasMacro: should not see the parent's class macro");
 }
@@ -809,6 +808,65 @@ static id invokeClassMacroOneArg(id target, SEL sel, id arg)
 				  @"The prior macro record must survive a rejected re-registration.");
 
 	[MacroableTestObject macro:sel macroBlock:nil];
+}
+
+#pragma mark - Regression: registration must not deadlock against dispatch
+
+/*!
+ * Registration holds the macro lock while calling into DynamicMethods; dispatch takes the
+ * DynamicMethods locks and then the class monitor. The two must never form a cycle. A deadlock
+ * shows up as a timed-out group rather than a hung test run.
+ */
+- (void)testMacroRegistration_concurrentWithDispatch_doesNotDeadlock {
+	SEL classSel = NSSelectorFromString(@"raceClassMacro");
+	SEL objectSel = NSSelectorFromString(@"raceClassObjectMacro");
+	const NSUInteger iterations = 1500;
+	dispatch_group_t group = dispatch_group_create();
+	dispatch_queue_t queue = dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0);
+
+	[MacroableRaceObject enableMacros];
+
+	dispatch_group_async(group, queue, ^{
+		for (NSUInteger i = 0; i < iterations; i++) {
+			[MacroableRaceObject macro:classSel macroBlock:^NSString *(id _self) { return @"m"; }];
+			[MacroableRaceObject hasMacro:classSel];
+		}
+	});
+	dispatch_group_async(group, queue, ^{
+		for (NSUInteger i = 0; i < iterations; i++) {
+			[MacroableRaceObject objectMacro:objectSel macroBlock:^NSString *(id _self) { return @"o"; }];
+			[MacroableRaceObject hasObjectMacro:objectSel];
+		}
+	});
+
+	for (int thread = 0; thread < 3; thread++) {
+		dispatch_group_async(group, queue, ^{
+			MacroableRaceObject *object = MacroableRaceObject.new;
+			for (NSUInteger i = 0; i < iterations; i++) {
+				[object respondsToSelector:classSel];
+				[MacroableRaceObject instancesRespondToSelector:classSel];
+				[MacroableRaceObject respondsToSelector:objectSel];
+				if ([object methodSignatureForSelector:classSel]) {
+					invokeClassMacroNoArgs(object, classSel);
+				}
+				if ([MacroableRaceObject methodSignatureForSelector:objectSel]) {
+					invokeClassMacroNoArgs(MacroableRaceObject.class, objectSel);
+				}
+			}
+		});
+	}
+
+	long timedOut = dispatch_group_wait(group, dispatch_time(DISPATCH_TIME_NOW, 60 * NSEC_PER_SEC));
+	XCTAssertEqual(timedOut, 0, @"Macro registration deadlocked against dispatch.");
+
+	if (!timedOut) {
+		MacroableRaceObject *object = MacroableRaceObject.new;
+		XCTAssertEqualObjects(invokeClassMacroNoArgs(object, classSel), @"m");
+		XCTAssertEqualObjects(invokeClassMacroNoArgs(MacroableRaceObject.class, objectSel), @"o");
+		[MacroableRaceObject flushMacros];
+		[MacroableRaceObject flushObjectMacros];
+		[MacroableRaceObject disableMacros];
+	}
 }
 
 @end

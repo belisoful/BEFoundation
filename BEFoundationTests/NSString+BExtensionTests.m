@@ -806,7 +806,7 @@
 	NSString *result = [root stringByPrependingFormat:@"abc_%d_", 11];
 	XCTAssertEqualObjects(result, @"abc_11_root");
 
-	// Intentionally an empty format with an unused arg — NS_FORMAT_FUNCTION flags it; that is the point.
+	// Intentionally an empty format with an unused arg; NS_FORMAT_FUNCTION flags it, which is the point.
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wformat"
 	result = [root stringByPrependingFormat:@"", 11];
@@ -1008,7 +1008,7 @@
 
 #pragma mark - is*Value leniency & Unicode
 
-// NSScanner skips whitespace, so the is*Value checks tolerate BOTH leading and trailing
+// NSScanner skips whitespace, so the is*Value checks tolerate both leading and trailing
 // whitespace (but not interior), since -isAtEnd treats trailing whitespace as exhausted.
 - (void)testIsValue_WhitespaceLeniency
 {

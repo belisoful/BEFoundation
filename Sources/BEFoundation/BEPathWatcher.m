@@ -322,8 +322,8 @@ unsigned long const BEPathWatcherDefaultEventMask =
 
 /**
  * Starts watching a directory and uses a target-selector for notifications.
- * @param target The object that will receive the notification. This is stored as a weak reference.
- * @param selector The selector to be called on the target. It must take one argument: the BEPathWatcher instance.
+ * @param target The object that receives the notification. This is stored as a weak reference.
+ * @param selector The selector to call on the target. It takes the watcher alone, the watcher and the event flags, or the event flags alone.
  * @return YES if watching started successfully, otherwise NO.
  */
 - (BOOL)watchWithEventMask:(unsigned long)eventMask target:(id)target selector:(SEL)selector
@@ -362,15 +362,12 @@ unsigned long const BEPathWatcherDefaultEventMask =
 			return NO;
 		}
 		
-		// Open the directory/file and get a file descriptor.
 		int newFD = open([self.path fileSystemRepresentation], O_EVTONLY);
 		if (newFD < 0) {
-			// Failed to open the directory/file, clear path and return failure.
 			_path = nil;
 			return NO;
 		}
 
-		// Create a dispatch source to monitor the directory/file for various events.
 		// DISPATCH_VNODE_WRITE: For file content changes (writing, truncating) and directory content changes (file/subdir creation/deletion/renaming).
 		// DISPATCH_VNODE_DELETE: For when the watched file/directory itself is deleted.
 		// DISPATCH_VNODE_ATTRIB: For changes to attributes (permissions, ownership, last access/modification time).
@@ -380,6 +377,10 @@ unsigned long const BEPathWatcherDefaultEventMask =
 		// DISPATCH_VNODE_REVOKE: For when access to the file descriptor is revoked (less common, but good for completeness).
 
 		dispatch_source_t newSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_VNODE, (uintptr_t)newFD, self.eventMask, dispatch_get_main_queue());
+		if (!newSource) {
+			close(newFD);
+			return NO;
+		}
 		_dispatchSource = newSource;
 
 		// Capture the source and FD in locals. The cancel handler can be queued before a new
@@ -392,17 +393,14 @@ unsigned long const BEPathWatcherDefaultEventMask =
 				return; //just in case, may never be called.
 			}
 
-			// Get the specific event flags that triggered the handler
 			unsigned long eventFlags = dispatch_source_get_data(newSource);
 			[strongSelf handleEventWithFlags:eventFlags source:newSource];
 		});
 
-		// Set the cancellation handler to close the file descriptor.
 		dispatch_source_set_cancel_handler(newSource, ^{
 			close(newFD);
 		});
 
-		// Resume the dispatch source to start monitoring.
 		dispatch_resume(newSource);
 		
 		return YES;
@@ -415,7 +413,7 @@ unsigned long const BEPathWatcherDefaultEventMask =
  */
 - (void)handleEventWithFlags:(unsigned long)flags source:(dispatch_source_t)source {
 
-	// Snapshot the callback configuration under the lock, then invoke callbacks WITHOUT holding
+	// Snapshot the callback configuration under the lock, then invoke callbacks without holding
 	// it. The callbacks are user/subclass code that may call back into the watcher (potentially
 	// from another thread), which would deadlock if the lock were held across the call-out.
 	void (^handler)(BEPathWatcher *, unsigned long) = nil;
@@ -427,16 +425,13 @@ unsigned long const BEPathWatcherDefaultEventMask =
 		selector = _selector;
 	}
 
-	// 1. Call the internal hook for subclasses.
 	if ([self respondsToSelector:@selector(pathDidChangeWithFlags:)]) {
 		[self pathDidChangeWithFlags:flags];
 	}
 
-	// 2. Trigger the appropriate public callback.
 	if (handler) {
 		handler(self, flags);
 	} else if (target && selector) {
-		// Build the invocation to safely call the selector
 		NSMethodSignature *signature = [target methodSignatureForSelector:selector];
 		if (signature) {
 			const char *argType = signature.numberOfArguments > 2 ? [signature getArgumentTypeAtIndex:2] : "";
@@ -455,8 +450,8 @@ unsigned long const BEPathWatcherDefaultEventMask =
 		}
 	}
 
-	// 3. If the watched path itself was deleted or renamed, the file descriptor becomes invalid,
-	// so we must stop monitoring — but only if this is still the active source. Callbacks run
+	// If the watched path itself was deleted or renamed, the file descriptor becomes invalid,
+	// so monitoring must stop, but only if this is still the active source. Callbacks run
 	// outside the lock, so another thread may have reconfigured the watcher (installing a new
 	// source) during the callback; the old source's delete must not cancel that new source.
 	if (flags & (DISPATCH_VNODE_DELETE | DISPATCH_VNODE_RENAME | DISPATCH_VNODE_REVOKE)) {
@@ -470,7 +465,7 @@ unsigned long const BEPathWatcherDefaultEventMask =
 
 - (void)stopMonitoring {
 	@synchronized (_lock) {
-		// If there is a dispatch source, cancel it. This will trigger the cancel handler.
+		// Cancelling the source runs the cancel handler, which closes the file descriptor.
 		if (_dispatchSource) {
 			dispatch_source_cancel(_dispatchSource);
 			_dispatchSource = nil;

@@ -15,11 +15,9 @@
 @implementation NSNumberPrimes16bTests
 
 - (void)setUp {
-    // Put setup code here. This method is called before the invocation of each test method in the class.
 }
 
 - (void)tearDown {
-    // Put teardown code here. This method is called after the invocation of each test method in the class.
 }
 
 
@@ -57,7 +55,7 @@
 	
 	XCTAssertEqual(in1, NSNotFound);
 	XCTAssertEqual(i00, NSNotFound);
-	XCTAssertEqual(i01, 0);
+	XCTAssertEqual(i01, 1);
 	XCTAssertEqual(i02, 1);
 	XCTAssertEqual(i03, 2);
 	XCTAssertEqual(i04, 3);
@@ -132,7 +130,7 @@
 	
 	XCTAssertEqual(in1, NSNotFound);
 	XCTAssertEqual(i00, NSNotFound);
-	XCTAssertEqual(i01, 0);
+	XCTAssertEqual(i01, NSNotFound);
 	XCTAssertEqual(i02, 1);
 	XCTAssertEqual(i03, 2);
 	XCTAssertEqual(i04, 2);
@@ -204,7 +202,7 @@
 	
 	XCTAssertEqual(in1, NSNotFound);
 	XCTAssertEqual(i00, NSNotFound);
-	XCTAssertEqual(i01, 0);
+	XCTAssertEqual(i01, NSNotFound);
 	XCTAssertEqual(i02, 1);
 	XCTAssertEqual(i03, 2);
 	XCTAssertEqual(i04, 3);
@@ -277,7 +275,7 @@
 	
 	XCTAssertEqual(in1, 0);
 	XCTAssertEqual(i00, 0);
-	XCTAssertEqual(i01, 1);
+	XCTAssertEqual(i01, 0);
 	XCTAssertEqual(i02, 2);
 	XCTAssertEqual(i03, 3);
 	XCTAssertEqual(i04, 5);
@@ -349,7 +347,7 @@
 	
 	XCTAssertNil(in1);
 	XCTAssertNil(i00);
-	XCTAssertEqualObjects(i01, @(1));
+	XCTAssertNil(i01);
 	XCTAssertEqualObjects(i02, @(2));
 	XCTAssertEqualObjects(i03, @(3));
 	XCTAssertEqualObjects(i04, @(5));
@@ -420,7 +418,7 @@
 	
 	XCTAssertEqual(in1, 0);
 	XCTAssertEqual(i00, 0);
-	XCTAssertEqual(i01, 1);
+	XCTAssertEqual(i01, 0);
 	XCTAssertEqual(i02, 2);
 	XCTAssertEqual(i03, 3);
 	XCTAssertEqual(i04, 3);
@@ -491,7 +489,7 @@
 	XCTAssertEqual(in1, 0);
 	XCTAssertEqual(i00, 0);
 	XCTAssertEqual(i01, 0);
-	XCTAssertEqual(i02, 1);
+	XCTAssertEqual(i02, 0);
 	XCTAssertEqual(i03, 2);
 	XCTAssertEqual(i04, 2);
 	XCTAssertEqual(i05, 3);
@@ -563,7 +561,7 @@
 	
 	XCTAssertNil(in1);
 	XCTAssertNil(i00);
-	XCTAssertEqualObjects(i01, @(1));
+	XCTAssertNil(i01);
 	XCTAssertEqualObjects(i02, @(2));
 	XCTAssertEqualObjects(i03, @(3));
 	XCTAssertEqualObjects(i04, @(3));
@@ -635,7 +633,7 @@
 	
 	XCTAssertEqual(in1, 0);
 	XCTAssertEqual(i00, 0);
-	XCTAssertEqual(i01, 1);
+	XCTAssertEqual(i01, 2);
 	XCTAssertEqual(i02, 2);
 	XCTAssertEqual(i03, 3);
 	XCTAssertEqual(i04, 5);
@@ -706,7 +704,7 @@
 	XCTAssertEqual(in1, 0);
 	XCTAssertEqual(i00, 0);
 	XCTAssertEqual(i01, 0);
-	XCTAssertEqual(i02, 1);
+	XCTAssertEqual(i02, 0);
 	XCTAssertEqual(i03, 2);
 	XCTAssertEqual(i04, 3);
 	XCTAssertEqual(i05, 3);
@@ -778,7 +776,7 @@
 	
 	XCTAssertNil(in1);
 	XCTAssertNil(i00);
-	XCTAssertEqualObjects(i01, @(1));
+	XCTAssertEqualObjects(i01, @(2));
 	XCTAssertEqualObjects(i02, @(2));
 	XCTAssertEqualObjects(i03, @(3));
 	XCTAssertEqualObjects(i04, @(5));
@@ -850,7 +848,7 @@
 	
 	XCTAssertNil(in1);
 	XCTAssertNil(i00);
-	XCTAssertEqualObjects(i01, @(1));
+	XCTAssertNil(i01);
 	XCTAssertEqualObjects(i02, @(2));
 	XCTAssertEqualObjects(i03, @(3));
 	XCTAssertEqualObjects(i04, @(5));
@@ -923,7 +921,7 @@
 	
 	XCTAssertNil(in1);
 	XCTAssertNil(i00);
-	XCTAssertEqualObjects(i01, @(1));
+	XCTAssertNil(i01);
 	XCTAssertEqualObjects(i02, @(2));
 	XCTAssertEqualObjects(i03, @(3));
 	XCTAssertEqualObjects(i04, @(3));
@@ -996,7 +994,7 @@
 	
 	XCTAssertNil(in1);
 	XCTAssertNil(i00);
-	XCTAssertEqualObjects(i01, @(1));
+	XCTAssertEqualObjects(i01, @(2));
 	XCTAssertEqualObjects(i02, @(2));
 	XCTAssertEqualObjects(i03, @(3));
 	XCTAssertEqualObjects(i04, @(5));
@@ -1036,5 +1034,52 @@
 	XCTAssertNil(u16Max3);
 }
 
+
+#pragma mark Guard Index Exclusion
+
+- (void)testIndexZeroGuardIsNeverReturnedAsPrime
+{
+	XCTAssertEqual(NSPrimeNumbers16Bit[0], 1);
+	
+	XCTAssertEqual([NSNumber ceilPrimeIndex16:1], 1);
+	XCTAssertEqual([NSNumber ceilPrimeIndex16:2], 1);
+	XCTAssertEqual([NSNumber floorPrimeIndex16:1], NSNotFound);
+	XCTAssertEqual([NSNumber roundPrimeIndex16:1], NSNotFound);
+	
+	for (NSUInteger value = 0; value <= 4; value++) {
+		XCTAssertNotEqual([NSNumber ceilPrimeValue16:value], 1, @"value %lu", (unsigned long)value);
+		XCTAssertNotEqual([NSNumber floorPrimeValue16:value], 1, @"value %lu", (unsigned long)value);
+		XCTAssertNotEqual([NSNumber roundPrimeValue16:value], 1, @"value %lu", (unsigned long)value);
+		XCTAssertNotEqualObjects([NSNumber ceilPrime16:value], @1, @"value %lu", (unsigned long)value);
+		XCTAssertNotEqualObjects([NSNumber floorPrime16:value], @1, @"value %lu", (unsigned long)value);
+		XCTAssertNotEqualObjects([NSNumber roundPrime16:value], @1, @"value %lu", (unsigned long)value);
+		XCTAssertNotEqualObjects([@(value) ceilPrime16], @1, @"value %lu", (unsigned long)value);
+		XCTAssertNotEqualObjects([@(value) floorPrime16], @1, @"value %lu", (unsigned long)value);
+		XCTAssertNotEqualObjects([@(value) roundPrime16], @1, @"value %lu", (unsigned long)value);
+	}
+	
+	XCTAssertEqual([NSNumber ceilPrimeValue16:1], 2);
+	XCTAssertEqual([NSNumber ceilPrimeValue16:2], 2);
+	XCTAssertEqualObjects([@1 ceilPrime16], @2);
+	XCTAssertEqual([NSNumber floorPrimeValue16:1], 0);
+	XCTAssertNil([@1 floorPrime16]);
+	XCTAssertEqual([NSNumber roundPrimeValue16:1], 0);
+	XCTAssertNil([@1 roundPrime16]);
+}
+
+- (void)testOffsetVariantsNeverStepOntoIndexZero
+{
+	XCTAssertEqual([NSNumber floorPrimeValue16:2 offset:-1], 0);
+	XCTAssertEqual([NSNumber floorPrimeValue16:3 offset:-2], 0);
+	XCTAssertEqual([NSNumber floorPrimeValue16:3 offset:-1], 2);
+	XCTAssertEqual([NSNumber floorPrimeValue16:11 offset:-4], 2);
+	XCTAssertEqual([NSNumber floorPrimeValue16:11 offset:-5], 0);
+	
+	XCTAssertEqual([NSNumber ceilPrimeValue16:1 offset:-1], 0);
+	XCTAssertEqual([NSNumber ceilPrimeValue16:2 offset:-1], 0);
+	XCTAssertEqual([NSNumber ceilPrimeValue16:3 offset:-2], 0);
+	XCTAssertEqual([NSNumber ceilPrimeValue16:3 offset:-1], 2);
+	XCTAssertEqual([NSNumber ceilPrimeValue16:1 offset:1], 3);
+}
 
 @end

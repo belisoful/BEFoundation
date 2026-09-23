@@ -13,10 +13,7 @@
 				NSMutableCharacterSet.
 
 				BECharacterSet and BEMutableCharacterSet restore the immutable/mutable distinction
-				that NSString vs NSMutableString provides, ensuring clear type safety and
-				mutability contracts.
- 
- @availability	macOS 10.0+, iOS 2.0+, watchOS 2.0+, tvOS 9.0+
+				that NSString and NSMutableString provide.
 */
 
 #ifndef BECharacterSet_h
@@ -50,20 +47,17 @@ typedef NS_ENUM(NSInteger, BECharacterSetEquality) {
  @class			BECharacterSet
  @superclass	NSObject
  @abstract		An immutable collection of Unicode characters for use in search operations.
- @discussion	BECharacterSet is a replacement for NSCharacterSet that provides clear differentiation
-				from its mutable counterpart BEMutableCharacterSet. This class wraps NSCharacterSet
-				functionality while maintaining type safety and providing configurable equality
-				behavior with NSCharacterSet instances.
- 
+ @discussion	BECharacterSet is a replacement for NSCharacterSet that is distinguishable
+				from its mutable counterpart BEMutableCharacterSet. This class wraps an
+				NSCharacterSet and adds configurable equality behavior with NSCharacterSet instances.
+
 				Character sets are used primarily to search for and categorize characters in strings.
-				They provide an efficient way to represent large sets of characters and perform
-				membership tests.
- 
-				BECharacterSet conforms to NSCopying, NSMutableCopying, and NSSecureCoding protocols,
-				making it suitable for use in collections, copying operations, and secure archiving.
- 
- @note			Unlike NSCharacterSet, BECharacterSet instances are guaranteed to be immutable.
-				Use BEMutableCharacterSet when you need to modify the character set after creation.
+
+				BECharacterSet conforms to NSCopying, NSMutableCopying, and NSSecureCoding.
+
+ @note			BECharacterSet declares no mutating methods; its subclass BEMutableCharacterSet adds
+				them. A value typed BECharacterSet may be a BEMutableCharacterSet instance; copy it
+				to obtain an immutable one.
  */
 @interface BECharacterSet : NSObject <NSCopying, NSMutableCopying, NSSecureCoding>
 {
@@ -88,6 +82,11 @@ typedef NS_ENUM(NSInteger, BECharacterSetEquality) {
  @discussion	This class property controls the default equality behavior for BECharacterSet instances
 				that haven't explicitly set their individual equality behavior. Individual instances
 				can override this setting using the isEqualToNSCharacterSet property.
+				
+				The value is stored per class, so BECharacterSet and BEMutableCharacterSet each
+				carry their own setting. Setting NSCharacterSetClassStyle clears the stored value;
+				an unset class reads NSCharacterSetUnequal. Values outside the enum's range are
+				clamped to NSCharacterSetAllUnequal or NSCharacterSetAllEqual.
  
  @see			isEqualToNSCharacterSet
  */
@@ -125,9 +124,11 @@ typedef NS_ENUM(NSInteger, BECharacterSetEquality) {
  @discussion	Creates a new BECharacterSet containing the same characters as the provided character set.
 				The method accepts both NSCharacterSet and BECharacterSet instances. The equality behavior
 				is set based on the current class-level setting, unless the class is configured
-				for NSCharacterSetAllUnequal or NSCharacterSetAllEqual.
+				for NSCharacterSetAllUnequal or NSCharacterSetAllEqual. A nil charSet produces an
+				empty set. The method does not return nil; the return type stays nullable for
+				source compatibility.
  
- @return		An initialized BECharacterSet instance, or nil if initialization fails.
+ @return		An initialized BECharacterSet instance.
  */
 - (nullable instancetype)initWithSet:(id)charSet NS_DESIGNATED_INITIALIZER;
 
@@ -149,7 +150,12 @@ typedef NS_ENUM(NSInteger, BECharacterSetEquality) {
  @discussion	This designated initializer supports secure decoding of BECharacterSet instances
 				from archived data. The method properly handles both BECharacterSet and
 				BEMutableCharacterSet encoded data.
- 
+
+				Archives written before 1.2.0 use a different key layout; both layouts decode.
+				The decoded equality setting is clamped to the BECharacterSetEquality range.
+				An archive without a bitmap representation fails the decode with
+				NSCoderReadCorruptError.
+
  @return		An initialized BECharacterSet instance, or nil if decoding fails.
  */
 - (nullable instancetype)initWithCoder:(NSCoder *)coder NS_DESIGNATED_INITIALIZER;
@@ -170,9 +176,9 @@ typedef NS_ENUM(NSInteger, BECharacterSetEquality) {
  @method		copyWithZone:
  @param			zone The memory zone to allocate the copy in, or NULL to use the default zone.
  @abstract		Creates an immutable copy of the character set.
- @discussion	Returns a BECharacterSet instance containing the same characters as the receiver.
-				If the receiver is already a BECharacterSet, this may return the receiver itself
-				since immutable objects can safely share references.
+ @discussion	Returns a new BECharacterSet instance containing the same characters as the receiver.
+				The receiver's per-instance equality override (isEqualToNSCharacterSet) is copied
+				to the new instance.
  
  @return		A BECharacterSet instance containing the same characters as the receiver.
  */
@@ -428,9 +434,7 @@ typedef NS_ENUM(NSInteger, BECharacterSetEquality) {
  @param			data A bitmap representation of a character set.
  @abstract		Returns a character set created from a bitmap representation.
  @discussion	Creates a character set from binary data representing character membership.
-				This method is useful for recreating character sets from saved data or
-				external sources.
- 
+
 				A bitmap representation consists of:
 				- First 8192 bytes: Basic Multilingual Plane (BMP) coverage
 				- Additional segments: Each additional Unicode plane (1 byte plane index + 8192 bytes data)
@@ -456,9 +460,8 @@ typedef NS_ENUM(NSInteger, BECharacterSetEquality) {
 				The file must contain a valid bitmap representation as created by the
 				bitmapRepresentation property.
  
-				This method doesn't cache character sets, so loading the same file multiple
-				times will create separate instances. Consider implementing your own caching
-				mechanism if you need to load the same character set repeatedly.
+				This method does not cache character sets; loading the same file twice creates
+				two instances.
  
  @return		A BECharacterSet read from the file, or nil if the file cannot be read or contains invalid data.
  @see			characterSetWithBitmapRepresentation:
@@ -542,8 +545,8 @@ typedef NS_ENUM(NSInteger, BECharacterSetEquality) {
  @property		invertedSet
  @abstract		A character set containing all characters not in the receiver.
  @discussion	Returns a new character set that contains exactly those characters that are
-				not in the receiver. This operation is efficient for immutable character sets.
- 
+				not in the receiver.
+
  @return		A BECharacterSet containing the inverse of the receiver's characters.
  @note			Using invertedSet on an immutable character set is more efficient than
 				using the invert method on a mutable character set.

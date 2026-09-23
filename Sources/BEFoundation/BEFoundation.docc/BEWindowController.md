@@ -20,8 +20,8 @@ This class provides a default, built-in implementation for both the parent and c
 
 ### Constants
 
-- [BEWindowDidLoadNotification](doc:BEWindowController/BEWindowDidLoadNotification)
-- [kBEIsPrimaryWindowControllerKey](doc:BEWindowController/kBEIsPrimaryWindowControllerKey)
+- ``BEWindowDidLoadNotification``
+- ``kBEIsPrimaryWindowControllerKey``
 
 ## Examples
 
@@ -67,12 +67,12 @@ mainWindowController.isPrimaryWindowController = YES;
 ### isPrimaryWindowController
 
 ```objc
-@property (assign) BOOL isPrimaryWindowController;
+@property (nonatomic, assign) BOOL isPrimaryWindowController;
 ```
 
 Indicates that this is the "primary" window for a document.
 
-When the primary window controller is closed (via its `close` method), it will trigger `closeDocumentWindowControllers` to close all other window controllers associated with the same document.
+When the primary window controller is closed (via its `close` method), it triggers `closeDocumentWindowControllers` to close all other window controllers associated with the same document.
 
 ## Methods
 
@@ -132,7 +132,7 @@ APPKIT_EXTERN NSNotificationName const BEWindowDidLoadNotification;
 
 A notification posted after the window has loaded, the delegate has been notified, and super has been called.
 
-This supplements the standard `NSWindowDelegate` methods, allowing for observers to react to the window's load. The `object` of the notification is the `NSWindow` instance that has loaded.
+This supplements the standard `NSWindowDelegate` methods, allowing for observers to react to the window's load. The `object` of the notification is the `NSWindow` instance that has loaded. It is also re-posted when a previously closed window is shown again via `-showWindow:`, so observers such as `BEWindowControllerManager` can re-register the controller; the `windowDidLoad:` delegate callback is not repeated on a re-show.
 
 ### kBEIsPrimaryWindowControllerKey
 

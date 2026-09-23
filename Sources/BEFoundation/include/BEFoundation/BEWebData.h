@@ -18,14 +18,26 @@
 
 /*!
  @var			BEDataReadingAsynchronous
- @abstract		Adds asynch url fetching of web based URLs.
+ @abstract		Adds asynchronous url fetching of web based URLs.
  @discussion	This bit mask is possibly subject to change of bit fields in `NSDataReadingOptions`.
- 				Use this variable and not any hard coded bits for reading data asynch.
+ 				Use this variable and not any hard coded bits for reading data asynchronously.
  */
 extern NSDataReadingOptions const BEDataReadingAsynchronous;
+
+/*!
+ @const      BEDataReadingSynchronous
+ @abstract   The reading option for a synchronous load; the value is 0, so it is the default
+             when BEDataReadingAsynchronous is not set.
+ */
 extern NSDataReadingOptions const BEDataReadingSynchronous;
 
-
+/*!
+ @typedef    BEWebDataCompletionBlock
+ @abstract   The completion block of an asynchronous load.
+ @param      data     The received data, or nil on failure.
+ @param      response The URL response, or nil when none was received.
+ @param      error    The error, or nil on success.
+ */
 typedef void(^BEWebDataCompletionBlock)(NSData * _Nullable data, NSURLResponse * _Nullable response, NSError * _Nullable error);
 
 /*!
@@ -46,7 +58,7 @@ typedef void(^BEWebDataCompletionBlock)(NSData * _Nullable data, NSURLResponse *
 
 			 For data URLs and file URLs the data and metadata are fully populated by the time the
 			 initializer returns. For HTTP/HTTPS URLs they are filled in asynchronously by the data
-			 task's completion handler — read them only after isComplete is YES (or from the
+			 task's completion handler; read them only after isComplete is YES (or from the
 			 completion handler / a synchronous download).
 
 			 Example usage:
@@ -62,9 +74,10 @@ typedef void(^BEWebDataCompletionBlock)(NSData * _Nullable data, NSURLResponse *
 
 /*!
  @property   MIMEType
- @abstract   The MIME type extracted from the data URL.
- @discussion Contains the MIME type if this instance was loaded from a data URL,
-			 otherwise nil. Defaults to "text/plain" if not specified in the URL.
+ @abstract   The MIME type extracted from the data URL or HTTP response.
+ @discussion Contains the MIME type when this instance was loaded from a data URL or from an
+			 HTTP response with a Content-Type header, otherwise nil. A data URL that names
+			 no MIME type defaults to "text/plain".
 			 Common values include "text/html", "application/json", "image/png", etc.
  */
 @property (nullable, readonly, copy) NSString *MIMEType;
@@ -72,8 +85,11 @@ typedef void(^BEWebDataCompletionBlock)(NSData * _Nullable data, NSURLResponse *
 /*!
  @property   charset
  @abstract   The character set extracted from the data URL.
- @discussion Contains the charset parameter if this instance was loaded from a data URL,
-			 otherwise nil. Defaults to "US-ASCII" if not specified in the URL.
+ @discussion Contains the charset parameter if this instance was loaded from a data URL or
+			 an HTTP response, otherwise nil. When a data URL declares no charset:
+			 - text-based MIME type (text/-, -/json, -+json, -/xml, -+xml, -/javascript) → "US-ASCII"
+			 - any other MIME type → nil
+
 			 Common values include "utf-8", "iso-8859-1", "windows-1252", etc.
  */
 @property (nullable, readonly, copy) NSString *charset;
@@ -81,9 +97,9 @@ typedef void(^BEWebDataCompletionBlock)(NSData * _Nullable data, NSURLResponse *
 /*!
  @property   stringEncoding
  @abstract   The NSStringEncoding corresponding to the charset.
- @discussion The encoding value derived from the charset parameter. Can be used
-			 to convert the data to a string. Returns 0 if not loaded from a data URL.
-			 Example: NSUTF8StringEncoding for "utf-8" charset.
+ @discussion The encoding value derived from the charset parameter of a data URL or an
+			 HTTP Content-Type. Can be used to convert the data to a string. Returns 0 when
+			 charset is nil. Example: NSUTF8StringEncoding for "utf-8" charset.
  */
 @property (readonly, assign, nonatomic) NSStringEncoding stringEncoding;
 
@@ -107,14 +123,14 @@ typedef void(^BEWebDataCompletionBlock)(NSData * _Nullable data, NSURLResponse *
  @abstract   the task of the data download.
  @discussion contains the `NSURLSessionDataTask` of the task downloading the data when downloading.  nil when a fileURL or dataURL.
 			Synchronous downloads are blocking, but still contain the dataTask until complete; after which its set to nil.
-			For asynch download use the method with `options:error:` and add the bit `BEDataReadingAsynchronous`.
+			For asynchronous download use the method with `options:error:` and add the bit `BEDataReadingAsynchronous`.
  */
 @property (readonly, nullable) NSURLSessionDataTask *dataTask;
 
 /*!
  @property   dataTaskSemaphore
  @abstract   The semaphore used to block the synchronous download path until completion.
- @discussion Created for HTTP/HTTPS downloads and signalled from the data task's completion
+ @discussion Created for HTTP/HTTPS downloads and signaled from the data task's completion
 			handler. It is exposed for inspection only; callers should not wait on or signal it.
  */
 @property (readonly, nullable) dispatch_semaphore_t dataTaskSemaphore;
@@ -133,6 +149,13 @@ typedef void(^BEWebDataCompletionBlock)(NSData * _Nullable data, NSURLResponse *
  */
 @property (readonly, nullable) NSError *dataTaskError;
 
+/*!
+ @property   dataTaskCompletionHandler
+ @abstract   The block called once when an asynchronous load completes.
+ @discussion Set by the asynchronous initializers from their completion argument. The
+             accessors take the instance lock, and the handler is cleared as it is taken for
+             the call, so it runs exactly once.
+ */
 @property (nullable, nonatomic, copy) BEWebDataCompletionBlock dataTaskCompletionHandler;
 
 #pragma mark - Class Methods
@@ -143,7 +166,7 @@ typedef void(^BEWebDataCompletionBlock)(NSData * _Nullable data, NSURLResponse *
  @discussion When @c nil (the default), loads use @c +[NSURLSession sharedSession]. Set a
 			 configuration to route loads through a custom @c NSURLSession, for example to
 			 inject a mock @c NSURLProtocol in tests.
- @note       Introduced in 1.1.
+ @since      1.1
  */
 @property (class, nullable, copy) NSURLSessionConfiguration *defaultSessionConfiguration;
 
@@ -198,13 +221,19 @@ typedef void(^BEWebDataCompletionBlock)(NSData * _Nullable data, NSURLResponse *
 			 
 			 Parsing follows RFC 2397 format:
 			 data:[<mediatype>][;charset=<charset>][;base64],<data>
-			 
+
+			 Parsing and decoding run through the NSURL (Data) category, so the results match
+			 the NSURL properties for the same URL: parameter names and the base64 token are
+			 case-insensitive and whitespace-trimmed, a quoted charset value is unquoted, and
+			 base64 decoding ignores characters outside the base64 alphabet.
+
 			 Default values when not specified:
 			 - MIME type: "text/plain"
-			 - Charset: "US-ASCII"
+			 - Charset: "US-ASCII" for a text-based MIME type, nil otherwise
 			 - Base64: NO (percent-encoding)
-			 
-			 All output parameters are optional (can be NULL).
+
+			 All output parameters are optional (can be NULL). They are left untouched when
+			 decoding fails.
  @return     The decoded NSData, or nil if the URL is not a data URL or parsing fails.
  */
 + (nullable NSData *)decodeDataURL:(nonnull NSURL *)url
@@ -219,8 +248,8 @@ typedef void(^BEWebDataCompletionBlock)(NSData * _Nullable data, NSURLResponse *
  @method     initWithContentsOfURL:
  @abstract   Initializes a BEWebData instance from a URL.
  @param      url The URL to load data from (supports data URLs and regular URLs).
- @discussion Designated initializer. If url is a data URL, parses and decodes it.
-			 If url is a regular URL, loads data using standard NSData methods.
+ @discussion Calls initWithContentsOfURL:options:error: with no options. If url is a data URL,
+			 parses and decodes it. If url is a regular URL, loads data using standard NSData methods.
  @return     An initialized BEWebData instance, or nil if loading fails.
  */
 - (nullable instancetype)initWithContentsOfURL:(nonnull NSURL *)url;

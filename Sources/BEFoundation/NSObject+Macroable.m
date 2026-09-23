@@ -14,6 +14,37 @@
 
 static void *BEMacroMetaKey = &BEMacroMetaKey;
 static void *BEObjectMacroMetaKey = &BEObjectMacroMetaKey;
+static void *BEMacroLockKey = &BEMacroLockKey;
+
+/*!
+ @function		BEMacroLockForOwner
+ @abstract		Returns the monitor that guards the macro records of a class or object.
+ @discussion	The monitor is a private associated object that NSObject+DynamicMethods never
+				acquires. Registration holds it while calling into DynamicMethods, so it must not be a
+				monitor DynamicMethods also takes on its dispatch path (the class object, or the
+				instance) or the two paths acquire the same pair of locks in opposite orders.
+ */
+static NSObject *BEMacroLockForOwner(id owner)
+{
+	static NSObject *creationLock = nil;
+	static dispatch_once_t onceToken;
+	dispatch_once(&onceToken, ^{
+		creationLock = [NSObject new];
+	});
+
+	NSObject *lock = objc_getAssociatedObject(owner, BEMacroLockKey);
+	if (lock) {
+		return lock;
+	}
+	@synchronized (creationLock) {
+		lock = objc_getAssociatedObject(owner, BEMacroLockKey);
+		if (!lock) {
+			lock = [NSObject new];
+			objc_setAssociatedObject(owner, BEMacroLockKey, lock, OBJC_ASSOCIATION_RETAIN);
+		}
+	}
+	return lock;
+}
 
 @implementation BEMacroMeta
 
@@ -55,7 +86,7 @@ static void *BEObjectMacroMetaKey = &BEObjectMacroMetaKey;
 
 + (nonnull NSMutableDictionary<NSString*, BEMacroMeta*> *)macroMetaDictionary
 {
-	@synchronized (self.class) {
+	@synchronized (BEMacroLockForOwner(self.class)) {
 		NSMutableDictionary *dict = objc_getAssociatedObject(self.class, BEMacroMetaKey);
 		if (!dict) {
 			dict = [NSMutableDictionary dictionary];
@@ -77,7 +108,7 @@ static void *BEObjectMacroMetaKey = &BEObjectMacroMetaKey;
 
 	NSString *selectorString = NSStringFromSelector(selector);
 
-	@synchronized (self.class) {
+	@synchronized (BEMacroLockForOwner(self.class)) {
 		NSMutableDictionary<NSString*, BEMacroMeta*> *dict = [self macroMetaDictionary];
 
 		if (macroBlock) {
@@ -112,7 +143,7 @@ static void *BEObjectMacroMetaKey = &BEObjectMacroMetaKey;
 	}
 
 	NSString *selectorString = NSStringFromSelector(selector);
-	@synchronized (self.class) {
+	@synchronized (BEMacroLockForOwner(self.class)) {
 		return [[self macroMetaDictionary] objectForKey:selectorString] != nil;
 	}
 }
@@ -125,7 +156,7 @@ static void *BEObjectMacroMetaKey = &BEObjectMacroMetaKey;
 
 	NSString *selectorString = NSStringFromSelector(selector);
 
-	@synchronized (self.class) {
+	@synchronized (BEMacroLockForOwner(self.class)) {
 		BEMacroMeta *meta = [[self macroMetaDictionary] objectForKey:selectorString];
 		if (!meta) {
 			return NO;
@@ -139,7 +170,7 @@ static void *BEObjectMacroMetaKey = &BEObjectMacroMetaKey;
 
 + (void)flushMacros
 {
-	@synchronized (self.class) {
+	@synchronized (BEMacroLockForOwner(self.class)) {
 		NSMutableDictionary<NSString*, BEMacroMeta*> *dict = [self macroMetaDictionary];
 		for (NSString *selectorString in dict.allKeys) {
 			SEL selector = NSSelectorFromString(selectorString);
@@ -153,7 +184,7 @@ static void *BEObjectMacroMetaKey = &BEObjectMacroMetaKey;
 
 - (nonnull NSMutableDictionary<NSString*, BEMacroMeta*> *)objectMacroMetaDictionary
 {
-	@synchronized (self) {
+	@synchronized (BEMacroLockForOwner(self)) {
 		NSMutableDictionary *dict = objc_getAssociatedObject(self, BEObjectMacroMetaKey);
 		if (!dict) {
 			dict = [NSMutableDictionary dictionary];
@@ -175,7 +206,7 @@ static void *BEObjectMacroMetaKey = &BEObjectMacroMetaKey;
 
 	NSString *selectorString = NSStringFromSelector(selector);
 
-	@synchronized (self) {
+	@synchronized (BEMacroLockForOwner(self)) {
 		NSMutableDictionary<NSString*, BEMacroMeta*> *dict = [self objectMacroMetaDictionary];
 
 		if (macroBlock) {
@@ -208,7 +239,7 @@ static void *BEObjectMacroMetaKey = &BEObjectMacroMetaKey;
 	}
 
 	NSString *selectorString = NSStringFromSelector(selector);
-	@synchronized (self) {
+	@synchronized (BEMacroLockForOwner(self)) {
 		return [[self objectMacroMetaDictionary] objectForKey:selectorString] != nil;
 	}
 }
@@ -221,7 +252,7 @@ static void *BEObjectMacroMetaKey = &BEObjectMacroMetaKey;
 
 	NSString *selectorString = NSStringFromSelector(selector);
 
-	@synchronized (self) {
+	@synchronized (BEMacroLockForOwner(self)) {
 		BEMacroMeta *meta = [[self objectMacroMetaDictionary] objectForKey:selectorString];
 		if (!meta) {
 			return NO;
@@ -235,7 +266,7 @@ static void *BEObjectMacroMetaKey = &BEObjectMacroMetaKey;
 
 - (void)flushObjectMacros
 {
-	@synchronized (self) {
+	@synchronized (BEMacroLockForOwner(self)) {
 		NSMutableDictionary<NSString*, BEMacroMeta*> *dict = [self objectMacroMetaDictionary];
 		for (NSString *selectorString in dict.allKeys) {
 			SEL selector = NSSelectorFromString(selectorString);

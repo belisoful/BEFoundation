@@ -27,7 +27,7 @@ typedef struct {
 - (void)setUp {
 	[super setUp];
 	// To ensure our blending math matches the output, we create a CIContext
-	// that does NOT perform color management (no gamma correction). This makes
+	// that does not perform color management (no gamma correction). This makes
 	// the blending calculations linear and predictable.
 	self.ciContext = [CIContext contextWithOptions:@{
 		kCIContextWorkingColorSpace: [NSNull null],
@@ -53,11 +53,9 @@ typedef struct {
 	size_t width = (size_t)size.width;
 	size_t height = (size_t)size.height;
 	
-	// Allocate memory for the bitmap.
 	NSMutableData *bitmap = [NSMutableData dataWithLength:width * height * 4];
 	
-	// Render the CIImage into the bitmap buffer.
-	// CGColorSpaceCreateDeviceRGB follows the Create rule — release it (below).
+	// CGColorSpaceCreateDeviceRGB follows the Create rule; release it (below).
 	CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
 	[self.ciContext
 	 		   render:image
@@ -86,7 +84,6 @@ typedef struct {
 #pragma mark - createImageText Tests
 
 - (void)testCreateImageText_BasicCreation {
-	// Test case: Verify that an image is created with default parameters.
 	NSString *testText = @"Test";
 	BEColor *testColor = [BEColor redColor];
 	CIImage *image = [CIImage createImageText:testText
@@ -102,7 +99,6 @@ typedef struct {
 }
 
 - (void)testCreateImageText_WithRotation {
-	// Test case: Verify that rotation is applied by checking the extent.
 	CIImage *unrotatedImage = [CIImage createImageText:@"Rotate" fontName:@"Times New Roman" fontSize:40 angle:0 color:[BEColor greenColor] blur:0 position:CGPointMake(0, 0)];
 	CIImage *rotatedImage = [CIImage createImageText:@"Rotate" fontName:@"Times New Roman" fontSize:40 angle:90 color:[BEColor greenColor] blur:0 position:CGPointMake(0, 0)];
 	
@@ -113,20 +109,16 @@ typedef struct {
 }
 
 - (void)testCreateImageText_WithPosition {
-	// Test case: Verify that the position offset is applied.
 	CGFloat xPos = 50;
 	CGFloat yPos = 100;
 	CIImage *image = [CIImage createImageText:@"Position" fontName:@"Helvetica" fontSize:20 angle:0 color:[BEColor blackColor] blur:0 position:CGPointMake(xPos, yPos)];
 	
 	XCTAssertNotNil(image, @"The positioned image should not be nil.");
-	// The origin of the image's extent should match the specified position.
 	XCTAssertEqualWithAccuracy(image.extent.origin.x, xPos, 0.01, @"Image X origin should match the specified position.");
 	XCTAssertEqualWithAccuracy(image.extent.origin.y, yPos, 0.01, @"Image Y origin should match the specified position.");
 }
 
 - (void)testCreateImageText_PixelContentAndAntialiasing {
-	// Test case: Render text onto a black background and inspect all pixels
-	// to verify correct color rendering and account for anti-aliasing.
 	CGSize canvasSize = CGSizeMake(100, 50);
 	BEColor *textColor = [BEColor colorWithRed:0.0 green:1.0 blue:0.0 alpha:1.0]; // Pure Green
 	CIImage *textImage = [CIImage createImageText:@"Text"
@@ -141,7 +133,6 @@ typedef struct {
 	CIImage *backgroundImage = [self createSolidColorImage:[BEColor blackColor] size:canvasSize];
 	CIImage *finalImage = [textImage imageByCompositingOverImage:backgroundImage];
 
-	// Render the entire image to a bitmap
 	NSData *bitmapData = [self getBitmapFromImage:finalImage size:canvasSize];
 	RGBAPixel *pixels = (RGBAPixel *)bitmapData.bytes;
 	
@@ -164,7 +155,6 @@ typedef struct {
 		}
 	}
 	
-	// Assert that at least some pixels are the pure text color.
 	XCTAssertGreaterThan(textColorPixelCount, 0, @"At least some pixels must exactly match the text color.");
 	
 	// Assert that the number of non-black pixels is greater than the pure-color pixels.
@@ -173,7 +163,6 @@ typedef struct {
 }
 
 - (void)testCreateImageText_WithBlur {
-	// Test case: Verify that blur causes intermediate pixel colors and no pure-color pixels.
 	CGSize canvasSize = CGSizeMake(100, 50);
 	BEColor *textColor = [BEColor colorWithRed:1.0 green:1.0 blue:0.0 alpha:1.0]; // Pure Yellow
 	CIImage *textImage = [CIImage createImageText:@"Blur"
@@ -219,7 +208,6 @@ typedef struct {
 	CIImage *combinedImage = [CIImage combineImage:topImage alpha:alpha withImage:bottomImage];
 	XCTAssertNotNil(combinedImage, @"Combined image should not be nil.");
 	
-	// Render the entire combined image.
 	NSData *bitmapData = [self getBitmapFromImage:combinedImage size:imageSize];
 	RGBAPixel *pixels = (RGBAPixel *)bitmapData.bytes;
 
@@ -235,7 +223,6 @@ typedef struct {
 	uint8_t expectedG = (uint8_t)round((topG * alpha + botG * (1 - alpha)) * 255.0);
 	uint8_t expectedB = (uint8_t)round((topB * alpha + botB * (1 - alpha)) * 255.0);
 	
-	// Check every pixel in the resulting image.
 	long pixelCount = imageSize.width * imageSize.height;
 	for (int i = 0; i < pixelCount; i++) {
 		RGBAPixel p = pixels[i];
@@ -248,29 +235,24 @@ typedef struct {
 }
 
 - (void)testCombineImage_AlphaOne {
-	// Test case: Alpha = 1.0 (top image is fully opaque). Result should be pure top color.
 	[self runCombineImageTestWithTopColor:[BEColor redColor] bottomColor:[BEColor blueColor] alpha:1.0];
 }
 
 - (void)testCombineImage_AlphaZero {
-	// Test case: Alpha = 0.0 (top image is fully transparent). Result should be pure bottom color.
 	[self runCombineImageTestWithTopColor:[BEColor redColor] bottomColor:[BEColor blueColor] alpha:0.0];
 }
 
 - (void)testCombineImage_AlphaPartial_0_25 {
-	// Test case: Alpha = 0.25. Result should be 25% top color, 75% bottom color.
 	[self runCombineImageTestWithTopColor:[BEColor redColor] bottomColor:[BEColor blueColor] alpha:0.25];
 }
 
 - (void)testCombineImage_AlphaPartial_0_50 {
-	// Test case: Alpha = 0.50. Result should be 50% top color, 50% bottom color.
 	[self runCombineImageTestWithTopColor:[BEColor colorWithRed:1 green:1 blue:0 alpha:1]  // Yellow
 							  bottomColor:[BEColor colorWithRed:0 green:0 blue:1 alpha:1]  // Blue
 									alpha:0.50];
 }
 
 - (void)testCombineImage_AlphaPartial_0_75 {
-	// Test case: Alpha = 0.75. Result should be 75% top color, 25% bottom color.
 	[self runCombineImageTestWithTopColor:[BEColor cyanColor] bottomColor:[BEColor magentaColor] alpha:0.75];
 }
 

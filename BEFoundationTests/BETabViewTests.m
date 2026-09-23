@@ -1113,7 +1113,7 @@
 	XCTAssertEqualObjects(t1.hiddenTabView, self.tabView, @"Setter must set the back-pointer.");
 	XCTAssertEqualObjects(t2.hiddenTabView, self.tabView);
 
-	// The result must still be mutable (no immutable-array regression).
+	// The result must still be mutable.
 	NSTabViewItem *t3 = [self createTabWithIdentifier:@"c" label:@"C"];
 	XCTAssertNoThrow([self.tabView addTabViewItem:t3]);
 	XCTAssertEqual(self.tabView.numberOfAllTabViewItems, 3);
@@ -1142,7 +1142,7 @@
 	XCTAssertEqual(self.tabView.numberOfAllTabViewItems, 2, @"Duplicates must collapse to one each.");
 	XCTAssertEqual(self.tabView.numberOfTabViewItems, 2);
 
-	// And the result is still mutable (no immutable-array regression).
+	// And the result is still mutable.
 	NSTabViewItem *t3 = [self createTabWithIdentifier:@"c" label:@"C"];
 	XCTAssertNoThrow([self.tabView addTabViewItem:t3]);
 	XCTAssertEqual(self.tabView.numberOfAllTabViewItems, 3);
@@ -1206,8 +1206,8 @@
 }
 
 - (void)testNumberChangeNotificationSemantics {
-	// Documented contract: tabViewDidChangeNumberOfTabViewItems: tracks the count of ALL
-	// tabs. Add/remove (visible OR hidden) change that count and fire; hide/show do not.
+	// Documented contract: tabViewDidChangeNumberOfTabViewItems: tracks the count of all
+	// tabs. Add/remove (visible or hidden) change that count and fire; hide/show do not.
 	NSTabViewItem *t1 = [self createTabWithIdentifier:@"a" label:@"A"];
 	NSTabViewItem *t2 = [self createTabWithIdentifier:@"b" label:@"B"];
 

@@ -22,7 +22,6 @@
 
 
 - (void)testStaticInitializers {
-	// Test static initializers
 	FxTime *validTime = [FxTime time:CMTimeMake(10, 1)];
 	XCTAssertTrue(CMTimeGetSeconds(validTime.time) == 10.0);
 	
@@ -43,7 +42,6 @@
 }
 
 - (void)testClassInitializers {
-	// Test class initializers
 	FxTime *timeWithCMTime = [[FxTime alloc] initWithCMTime:CMTimeMake(20, 2)];
 	XCTAssertTrue(CMTimeGetSeconds(timeWithCMTime.time) == 10.0);
 	XCTAssertEqual(timeWithCMTime.epoch, 0);
@@ -75,7 +73,6 @@
 }
 
 - (void)testNSCoding {
-	// Test NSCoding
 	FxTime *time = [FxTime time:CMTimeMake(100, 10)];
 	NSData *data = [NSKeyedArchiver archivedDataWithRootObject:time requiringSecureCoding:YES error:nil];
 	FxTime *decodedTime = [NSKeyedUnarchiver unarchivedObjectOfClass:[FxTime class] fromData:data error:nil];
@@ -83,14 +80,12 @@
 }
 
 - (void)testCopying {
-	// Test copying
 	FxTime *time = [FxTime time:CMTimeMake(200, 20)];
 	FxTime *copiedTime = [time copy];
 	XCTAssertTrue(CMTimeCompare(time.time, copiedTime.time) == 0);
 }
 
 - (void)testEquality {
-	// Test equality
 	FxTime *time1 = [FxTime time:CMTimeMake(300, 30)];
 	FxTime *time2 = [FxTime time:CMTimeMake(300, 30)];
 	FxTime *time3 = [FxTime time:CMTimeMake(400, 40)];
@@ -102,7 +97,7 @@
 }
 
 - (void)testAccessorUtilities {
-	// Test accessor utilities. Component setters now live on FxMutableTime.
+	// Component setters live on FxMutableTime.
 	FxMutableTime *time = [FxMutableTime time:CMTimeMake(500, 50)];
 
 	XCTAssertTrue(time.value == 500);
@@ -146,7 +141,6 @@
 }
 
 - (void)testShow {
-	// Test NSCoding
 	FxTime *time = [FxTime time:CMTimeMake(100, 10)];
 	[time show];
 }
@@ -183,7 +177,7 @@
 	[time multiplyByRatio:3 divisor:2];
 	XCTAssertTrue(CMTimeGetSeconds(time.time) == 15.0);
 	
-	// compare: now follows the Cocoa NSComparisonResult convention (result describes the
+	// compare: follows the Cocoa NSComparisonResult convention (result describes the
 	// receiver relative to the argument). time == 15s here.
 	FxTime *time3 = [FxTime time:CMTimeMake(2000, 100)]; // 20s
 	XCTAssertTrue([time compare:time3] == -1);           // 15 < 20
@@ -249,7 +243,6 @@
 }
 
 - (void)testRationalize32 {
-	// Test rationalize
 	SRational32 rational;
 	
 	rational = [FxTime rationalize:0.5];
@@ -438,6 +431,50 @@
 		XCTAssertNotEqual(f.divisor, 0,
 						  @"divisor must never be 0 (input %g)", values[i]);
 	}
+}
+
+
+#pragma mark - Malformed archives
+
+/*! The archive of a real instance of timeClass with its byte payload replaced by a shorter one. */
+- (NSData *)archiveWithShortPayloadOfClass:(Class)timeClass
+{
+	NSData *archive = [NSKeyedArchiver archivedDataWithRootObject:[timeClass time:CMTimeMake(100, 10)] requiringSecureCoding:YES error:nil];
+	NSMutableDictionary *plist = [NSPropertyListSerialization propertyListWithData:archive
+																		   options:NSPropertyListMutableContainersAndLeaves
+																			format:NULL
+																			 error:nil];
+	BOOL replaced = NO;
+	for (id object in plist[@"$objects"]) {
+		if (![object isKindOfClass:NSMutableDictionary.class]) {
+			continue;
+		}
+		for (NSString *key in [object allKeys]) {
+			if ([object[key] isKindOfClass:NSData.class]) {
+				object[key] = [NSData dataWithBytes:"\0\0\0\0" length:4];
+				replaced = YES;
+			}
+		}
+	}
+	XCTAssertTrue(replaced, @"the archive must carry the CMTime bytes");
+	return [NSPropertyListSerialization dataWithPropertyList:plist format:NSPropertyListBinaryFormat_v1_0 options:0 error:nil];
+}
+
+- (void)testInitWithCoderRejectsShortPayload {
+	NSError *error = nil;
+	FxTime *decoded = [NSKeyedUnarchiver unarchivedObjectOfClass:FxTime.class fromData:[self archiveWithShortPayloadOfClass:FxTime.class] error:&error];
+	XCTAssertNil(decoded);
+	XCTAssertNotNil(error);
+	XCTAssertEqual(error.code, NSCoderReadCorruptError);
+}
+
+- (void)testInitWithCoderRejectsShortPayloadForMutableTime {
+	NSError *error = nil;
+	FxMutableTime *decoded = [NSKeyedUnarchiver unarchivedObjectOfClasses:[NSSet setWithObjects:FxTime.class, FxMutableTime.class, nil]
+																  fromData:[self archiveWithShortPayloadOfClass:FxMutableTime.class]
+																	 error:&error];
+	XCTAssertNil(decoded);
+	XCTAssertNotNil(error);
 }
 
 @end

@@ -3,14 +3,13 @@
  @copyright		-© 2025 Delicense - @belisoful. All rights released.
  @date			2025-01-01
  @author		belisoful@icloud.com
- @abstract
- @discussion
+ @abstract		Implements FxTime and FxMutableTime.
+ @discussion	FxTime wraps a CMTime; FxMutableTime mutates the inherited _time ivar in place.
 */
 
 #import "BE_ARC.h"
 #import "FxTime.h"
 #import <math.h>
-// $(PROJECT_DIR)/$(PROJECT_NAME)/Plugin/GuruFx-Swift-Bridging-Header.h
 
 
 @implementation FxTime
@@ -47,7 +46,7 @@
 	return [self time:kCMTimePositiveInfinity];
 }
 
-//negativeInfinity is already taken 😕
+// Named minusInfinity: Apple already defines a negativeInfinity selector.
 + (instancetype)minusInfinity
 {
 	return [self time:kCMTimeNegativeInfinity];
@@ -139,12 +138,18 @@
 	if (self != nil)
 	{
 		NSUInteger size = 0;
-		void *data = [aDecoder decodeBytesWithReturnedLength:&size];
-		if (size == sizeof(CMTime)) {
-			memcpy(&_time, data, size);
+		const void *data = [aDecoder decodeBytesWithReturnedLength:&size];
+		if (data == NULL || size != sizeof(CMTime)) {
+			NSString *reason = [NSString stringWithFormat:@"FxTime payload is %lu bytes; expected %lu",
+								(unsigned long)size, (unsigned long)sizeof(CMTime)];
+			[aDecoder failWithError:[NSError errorWithDomain:NSCocoaErrorDomain
+														code:NSCoderReadCorruptError
+													userInfo:@{NSDebugDescriptionErrorKey: reason}]];
+			return nil;
 		}
+		memcpy(&_time, data, size);
 	}
-	
+
 	return self;
 }
 
@@ -273,7 +278,6 @@
 #pragma mark -
 #pragma mark Math Functions (non-mutating)
 
-// Creates the multiplier and divisor from a float
 + (SRational32)rationalize:(Float64)number
 {
 	const double DEFAULT_TOLERANCE = 1.0e-6;

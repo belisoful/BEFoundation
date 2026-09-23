@@ -52,7 +52,7 @@ BOOL has = [object hasObjectMacro:@selector(tag)];
 
 ### Enabling and Disabling
 
-`enableMacros` is optional — `macro:macroBlock:` enables support automatically on first use.
+`enableMacros` is optional; `macro:macroBlock:` enables support automatically on first use.
 Disabling keeps macros registered but not callable until macros are re-enabled:
 
 ```objc

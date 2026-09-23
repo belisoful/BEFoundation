@@ -50,10 +50,6 @@
  `-dateWithStyle:timeStyle:`: Parses the string as a date and time of the given styles.
 
  `-dateWithFormat:`: Parses the string as a date conforming to the format.
- 
- 
- These methods aim to make string parsing and validation easier, especially in scenarios where the format or
- content of the string matters, such as user input validation or conversion tasks.
  */
 @implementation NSString (BExtension)
 
@@ -78,9 +74,6 @@
  				using the `NSCharacterSet` class to check for membership in the
  				`decimalDigitCharacterSet`.
 				Numeric characters include Indic scripts and Arabic decimal digits.
- 
- 				This is useful for checking if a string represents a whole number
-				without any spaces, punctuation, or other characters.
  @result		Returns `YES` if the string contains only digits, `NO` otherwise.
  */
 - (BOOL)isDigits
@@ -316,8 +309,7 @@
 	
 	[formatter setDateStyle:dateStyle];
 	[formatter setTimeStyle:timeStyle];
-	
-	// Returns the parsed date, or nil if the string does not match the format.
+
 	return [formatter dateFromString:self];
 }
 
@@ -335,22 +327,19 @@
 - (NSDate*)dateWithFormat:(nullable NSString *)strFormat
 {
 	NSDateFormatter *formatter = [[NSDateFormatter alloc] init];
-	
-	// Use the provided format or the system's default if format is nil
+
 	if (strFormat) {
 		[formatter setDateFormat:strFormat];
 	} else {
-		// Use the system's default date format
 		[formatter setDateStyle:NSDateFormatterShortStyle];
 		[formatter setTimeStyle:NSDateFormatterNoStyle];
 	}
-	
-	// Attempt to parse the string as a date
+
 	return [formatter dateFromString:self];
 }
 
 /*!
- @method		-objectAtIndexedSubscript
+ @method		-objectAtIndexedSubscript:
  @abstract		Provides Indexed Subscript for easy access to individual
 				characters.
  @param			index The index of the character to access.
@@ -416,7 +405,7 @@
 @implementation NSMutableString (BExtension)
 
 /*!
- @method		-prependString
+ @method		-prependString:
  @abstract		Adds to the start of the receiver the characters of a given string.
  @param			aString The string to prepend to the receiver. aString must not be nil
  */
@@ -436,7 +425,7 @@
 
 
 /*!
- @method		-prependFormat
+ @method		-prependFormat:
  @abstract		Adds a constructed string to the start of the receiver.
  @param			format	A format string. See Formatting String Objects for more
  						information. This value must not be nil.
@@ -464,7 +453,7 @@
 }
 
 /*!
- @method		-deleteAllCharacters
+ @method		-deleteAll
  @abstract		Removes all the characters and resets the string to @""
  */
 - (void)deleteAll
@@ -474,7 +463,7 @@
 
 
 /*!
- @method		-deleteAtIndex
+ @method		-deleteAtIndex:
  @abstract		Deletes the character in the string at the index
  @param			index The index of the character to delete.
  */
@@ -495,7 +484,7 @@
  @method        countCharactersInSet:
  @abstract      Counts the total number of characters in the receiver that are members of a given set.
  @discussion    Iterates by composed character sequence and tests the first unichar of each for
-				membership (astral-plane members are not reliably matched — see the category note).
+				membership (astral-plane members are not reliably matched; see the category note).
  @param         set The set of characters to count.
  @result        The total number of characters found in the string that are members of the set.
 */
@@ -508,7 +497,7 @@
  @method        countCharactersInSet:range:
  @abstract      Counts the number of characters within a specific range of the receiver that are members of a given set.
  @discussion    Iterates by composed character sequence within the range and tests the first unichar
-				of each for membership (astral-plane members are not reliably matched — see the category note).
+				of each for membership (astral-plane members are not reliably matched; see the category note).
  @param         characterSet The set of characters to count.
  @param         range The range of the string to search within.
  @result        The total number of characters found in the specified range that are members of the set. Returns 0 if the range is invalid.
@@ -521,16 +510,11 @@
 
 	__block NSUInteger count = 0;
 
-	// Enumerate over the string by composed character sequences.
-	// This is the correct way to handle Unicode, as it treats emoji and other
-	// multi-byte sequences as a single "character" (substring).
 	[self enumerateSubstringsInRange:range
 							 options:NSStringEnumerationByComposedCharacterSequences
 						  usingBlock:^(NSString * _Nullable substring, NSRange substringRange, NSRange enclosingRange, BOOL * _Nonnull stop) {
-		
-		// Check if the *first* character of the composed sequence is in the set.
-		// A composed character sequence (like an emoji) might contain multiple
-		// unichars, but we only check the primary one.
+
+		// Only the first unichar of a composed sequence is tested; see the category note.
 		if (substring.length > 0) {
 			unichar firstChar = [substring characterAtIndex:0];
 			if ([characterSet characterIsMember:firstChar]) {

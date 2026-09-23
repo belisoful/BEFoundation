@@ -3,8 +3,9 @@
  @copyright		-© 2025 Delicense - @belisoful. All rights released.
  @date			2025-01-01
  @author		belisoful@icloud.com
- @abstract
- @discussion
+ @abstract		A notification center that delivers to observers in priority order.
+ @discussion	Implements NSPriorityNotificationCenter and its private observer record. The
+				default center is bridged to NSNotificationCenter.defaultCenter in both directions.
 */
 
 #import "BE_ARC.h"
@@ -94,12 +95,11 @@ NSInteger const NSPriorityNotificationDefaultPriority = 10;
 
 - (NSInteger)ncPriority
 {
-	if ([_observer conformsToProtocol:@protocol(NSNotificationObjectPriorityItem)]) {
-		//
-		return [((id<NSNotificationObjectPriorityItem>)_observer) ncPriority:_name] + _ncPriority;
-	} else {
-		return _ncPriority;
+	id observer = self.observer;
+	if ([observer conformsToProtocol:@protocol(NSNotificationObjectPriorityItem)]) {
+		return [((id<NSNotificationObjectPriorityItem>)observer) ncPriority:self.name] + _ncPriority;
 	}
+	return _ncPriority;
 }
 
 // Queued observers run after this post returns, by which point the poster's notification may
@@ -114,103 +114,81 @@ NSInteger const NSPriorityNotificationDefaultPriority = 10;
 	return [[NSPriorityNotification alloc] initWithName:notif.name object:notif.object userInfo:notif.userInfo reverse:notif.reverse];
 }
 
+// Delivery takes no lock around the call-out. userInfo is shared by reference with every
+// observer, as NSNotificationCenter shares it, and an observer that mutates a mutable
+// userInfo synchronizes that itself.
 - (void)postNotification:(NSNotification *)notif fromSuper:(BOOL)fromSuper
 {
 	void (^ postBlock)(NSNotification * _Nonnull note) = self.suppressesPostBlock ? NULL : notif.postBlock;
-	if (_queue != nil && _block != NULL)
-	{
-		NSNotification *notifCopy = [self notificationForQueuedDelivery:notif fromSuper:fromSuper];
-		[_queue addOperationWithBlock:^{
-			if (notifCopy.userInfo) {
-				@synchronized (notifCopy.userInfo) {
-					self->_block(notifCopy);
-					if (postBlock) {
-						postBlock(notifCopy);
-					}
-				}
-			} else {
-				self->_block(notifCopy);
-				if (postBlock) {
-					postBlock(notifCopy);
-				}
-			}
-		}];
+	if (self.block != NULL) {
+		[self deliverBlockWithNotification:notif fromSuper:fromSuper postBlock:postBlock];
+	} else {
+		[self deliverSelectorWithNotification:notif fromSuper:fromSuper postBlock:postBlock];
 	}
-	else if (_block != NULL)
-	{
-		if(notif.userInfo) {
-			@synchronized (notif.userInfo) {
-				_block(notif);
-				if (postBlock) {
-					postBlock(notif);
-				}
-			}
-		} else {
-			_block(notif);
-			if (postBlock) {
-				postBlock(notif);
-			}
-		}
-	}
-	else if (_observer != nil && _selector != NULL)
-	{
-		NSMethodSignature *signature = [_observer methodSignatureForSelector:_selector];
+}
 
-		if (signature) {
-			// Create an NSInvocation instance
-			NSInvocation *invocation = [NSInvocation invocationWithMethodSignature:signature];
-			
-			// Set the selector and target for the invocation
-			[invocation setSelector:_selector];
-			[invocation setTarget:_observer];
-			
-			// Set the parameter (notif) if the method expects one argument
-			if (_queue == nil) {
-				if ([signature numberOfArguments] > 2) {  // Arguments start at index 2 (first is self, second is _cmd)
-					[invocation setArgument:&notif atIndex:2];
-				}
-				if(notif.userInfo) {
-					@synchronized (notif.userInfo) {
-						[invocation invoke];
-						if (postBlock) {
-							postBlock(notif);
-						}
-					}
-				} else {
-					[invocation invoke];
-					if (postBlock) {
-						postBlock(notif);
-					}
-				}
-			} else {
-				NSNotification *notifCopy = [self notificationForQueuedDelivery:notif fromSuper:fromSuper];
-				if ([signature numberOfArguments] > 2) {  // Arguments start at index 2 (first is self, second is _cmd)
-					[invocation setArgument:&notifCopy atIndex:2];
-				}
-				// The invocation runs asynchronously, so it must own its target and arguments;
-				// NSInvocation does not retain them by default, and the weak observer may
-				// otherwise deallocate before the operation runs (use-after-free).
-				[invocation retainArguments];
-				[_queue addOperationWithBlock:^{
-					if (notifCopy.userInfo) {
-						@synchronized (notifCopy.userInfo) {
-							[invocation invoke];
-							if (postBlock) {
-								postBlock(notifCopy);
-							}
-						}
-					} else {
-						[invocation invoke];
-						if (postBlock) {
-							postBlock(notifCopy);
-						}
-					}
-				}];
-			}
-		} else {
-			NSLog(@"Error: Method signature for selector %@ not found", NSStringFromSelector(_selector));
+- (void)deliverBlockWithNotification:(NSNotification *)notif fromSuper:(BOOL)fromSuper postBlock:(void (^ _Nullable)(NSNotification * _Nonnull note))postBlock
+{
+	void (^ block)(NSNotification * _Nonnull note) = self.block;
+	NSOperationQueue *queue = self.queue;
+	if (queue == nil) {
+		block(notif);
+		if (postBlock) {
+			postBlock(notif);
 		}
+		return;
 	}
+	NSNotification *notifCopy = [self notificationForQueuedDelivery:notif fromSuper:fromSuper];
+	[queue addOperationWithBlock:^{
+		block(notifCopy);
+		if (postBlock) {
+			postBlock(notifCopy);
+		}
+	}];
+}
+
+- (void)deliverSelectorWithNotification:(NSNotification *)notif fromSuper:(BOOL)fromSuper postBlock:(void (^ _Nullable)(NSNotification * _Nonnull note))postBlock
+{
+	// The observer is weak. One strong load keeps the same object alive from the signature
+	// lookup through the synchronous invoke.
+	id observer = self.observer;
+	SEL selector = self.selector;
+	if (observer == nil || selector == NULL) {
+		return;
+	}
+	NSMethodSignature *signature = [observer methodSignatureForSelector:selector];
+	if (signature == nil) {
+		NSLog(@"Error: Method signature for selector %@ not found", NSStringFromSelector(selector));
+		return;
+	}
+
+	NSOperationQueue *queue = self.queue;
+	NSNotification *delivered = (queue == nil) ? notif : [self notificationForQueuedDelivery:notif fromSuper:fromSuper];
+
+	NSInvocation *invocation = [NSInvocation invocationWithMethodSignature:signature];
+	invocation.selector = selector;
+	invocation.target = observer;
+	if (signature.numberOfArguments > 2) {  // index 0 is self, index 1 is _cmd
+		[invocation setArgument:&delivered atIndex:2];
+	}
+
+	if (queue == nil) {
+		[invocation invoke];
+		if (postBlock) {
+			postBlock(delivered);
+		}
+		return;
+	}
+	// The invocation runs asynchronously, so it must own its target and arguments;
+	// NSInvocation does not retain them by default, and the weak observer may
+	// otherwise deallocate before the operation runs.
+	[invocation retainArguments];
+	[queue addOperationWithBlock:^{
+		[invocation invoke];
+		if (postBlock) {
+			postBlock(delivered);
+		}
+	}];
 }
 
 @end
@@ -220,8 +198,8 @@ NSInteger const NSPriorityNotificationDefaultPriority = 10;
 #pragma mark NSPriorityNotificationCenter
 
 /*!
- @abstract		This
- @discussion	priority.
+ @abstract		A notification center that delivers to observers in priority order.
+ @discussion	At each post the observers are sorted by priority, then by registration order.
  */
 @implementation NSPriorityNotificationCenter
 {
@@ -241,31 +219,46 @@ NSInteger const NSPriorityNotificationDefaultPriority = 10;
 }
 
 
-// Normal init doesn't install with the defaultCenter
-- (id)init
+- (instancetype)init
+{
+	return [self initBridgingDefaultCenter:NO];
+}
+
+// BESingleton creates the shared instance through this initializer, so only +defaultCenter
+// is bridged to NSNotificationCenter.defaultCenter.
+- (instancetype)initForSingleton:(nullable NSDictionary *)initInfo
+{
+	return [self initBridgingDefaultCenter:YES];
+}
+
+- (instancetype)initBridgingDefaultCenter:(BOOL)bridgesDefaultCenter
 {
 	self = [super init];
 	if (self)
 	{
 		_defaultPriority = NSPriorityNotificationDefaultPriority;
 		_observers = [[NSMutableArray alloc] init];
-		
-		// Calls the super post at default priority. The observer is the center itself (a
-		// PriorityItem), so the ncPriority getter adds the center's live ncPriority
-		// (== defaultPriority). The stored offset is therefore 0 — the same net result the
-		// addObserver: PriorityItem path produces (priority -= defaultPriority) — so the
-		// super-post sits exactly at defaultPriority and tracks runtime changes to it.
-		// Passing _defaultPriority here instead would double it (offset + live == 20).
-		_superPostNotification = [[_NSPriorityNotificationObserver alloc] initWithObserver:self selector:@selector(_raiseSuperPostNotification:) name:nil object:nil queue:nil block:NULL priority:0];
-		_superPostNotification.suppressesPostBlock = YES;
-		
-		// Register self as an observer to the default notification center
-		[NSNotificationCenter.defaultCenter addObserver:self
-				  selector:@selector(_handleSuperNotification:)
-					  name:nil
-					object:nil];
+		if (bridgesDefaultCenter) {
+			[self installDefaultCenterBridge];
+		}
 	}
 	return self;
+}
+
+// Forwards this center's posts to NSNotificationCenter.defaultCenter and receives its posts.
+- (void)installDefaultCenterBridge
+{
+	// The super-post record's observer is the center itself (a PriorityItem), so the ncPriority
+	// getter adds the center's live defaultPriority. A stored offset of 0 therefore places the
+	// super-post exactly at defaultPriority and tracks runtime changes to it; passing
+	// _defaultPriority here would double it.
+	_superPostNotification = [[_NSPriorityNotificationObserver alloc] initWithObserver:self selector:@selector(_raiseSuperPostNotification:) name:nil object:nil queue:nil block:NULL priority:0];
+	_superPostNotification.suppressesPostBlock = YES;
+
+	[NSNotificationCenter.defaultCenter addObserver:self
+										   selector:@selector(_handleSuperNotification:)
+											   name:nil
+											 object:nil];
 }
 
 - (void)cleanup
@@ -323,14 +316,12 @@ NSInteger const NSPriorityNotificationDefaultPriority = 10;
 	if ([observer conformsToProtocol:@protocol(NSNotificationObjectPriorityCapture)]) {
 		[observer setNcPriority:priority name:aName];
 		if ([observer conformsToProtocol:@protocol(NSNotificationObjectPriorityItem)]) {
-			//The priority is retrieved from the observer, so set to zero
+			// The observer supplies its own priority; the stored offset is zero.
 			priority = 0;
 		}
 	} else if ([observer conformsToProtocol:@protocol(NSNotificationObjectPriorityItem)]) {
-		//If the observer is a NSNotificationObjectPriorityItem:
-		//	then the input priority is an offset from default
-		// The input priority gets added to the returned real time value returned from
-		// NSNotificationObjectPriorityItem::ncPriority when sorting observers.
+		// For an NSNotificationObjectPriorityItem observer the stored value is an offset from
+		// defaultPriority; the ncPriority getter adds it back when observers are sorted.
 		priority -= self.defaultPriority;
 	}
 	
@@ -387,9 +378,8 @@ NSInteger const NSPriorityNotificationDefaultPriority = 10;
 			}
 			// A nil aName matches every name, per the documented "nil to remove all names".
 			BOOL matchesName = (aName == nil) || [notifObserver.name isEqualToString:aName];
-			// Accept the token returned by addObserverForName:… as well as a plain observer,
-			// matching -removeObserver:; a block registration has a nil .observer, so
-			// comparing only that made its token impossible to unregister here.
+			// Match the token returned by addObserverForName:… as well as a plain observer, as
+			// -removeObserver: does; a block registration has a nil .observer.
 			BOOL matchesObserver = (notifObserver == observer || notifObserver.observer == observer);
 			return matchesObserver && matchesObject && matchesName;
 		}];
@@ -398,8 +388,7 @@ NSInteger const NSPriorityNotificationDefaultPriority = 10;
 }
 
 
-// method called when the normal defaultCenter posts notification
-// this is the notification trap to raise defaultCenter priority items.
+// Receives every NSNotificationCenter.defaultCenter post on the bridged center.
 - (void)_handleSuperNotification:(NSNotification *)notification
 {
 	if (!notification.isPriorityPost) {
@@ -407,7 +396,7 @@ NSInteger const NSPriorityNotificationDefaultPriority = 10;
 	}
 }
 
-// Inserted into a Priority postNotification when self is the singleton to post to the super
+// The bridged center's super-post record delivers here at defaultPriority.
 - (void)_raiseSuperPostNotification:(NSNotification *)notification
 {
 	if (notification.isPriorityPost) {
@@ -416,9 +405,8 @@ NSInteger const NSPriorityNotificationDefaultPriority = 10;
 	notification.isPriorityPost = YES;
 	// Clear the guard even if an observer raises, so the notification is not left flagged.
 	@try {
-		// Bridge to the center this instance actually supplements.  [super postNotification:]
-		// posts into this center's own NSNotificationCenter table, which never holds the
-		// observers registered with +defaultCenter, so the notification reached nobody.
+		// Post through NSNotificationCenter.defaultCenter: this center's own NSNotificationCenter
+		// table never holds the observers registered with +defaultCenter.
 		// isPriorityPost (set above) stops -_handleSuperNotification: re-entering.
 		[NSNotificationCenter.defaultCenter postNotification:notification];
 	} @finally {
@@ -495,20 +483,11 @@ NSInteger const NSPriorityNotificationDefaultPriority = 10;
 		[observers addObject:entry[2]];
 	}
 
-	// Invoke observers
 	NSEnumerationOptions options = notification.reverse ? NSEnumerationReverse : 0;
 	BOOL fromSuper = !fromDefault;
-	if (notification.userInfo) {
-		[observers enumerateObjectsWithOptions:options usingBlock:^(_NSPriorityNotificationObserver *observer, NSUInteger idx, BOOL *stop) {
-			@synchronized (notification.userInfo) {
-				[observer postNotification:notification fromSuper:fromSuper];
-			}
-		}];
-	} else {
-		[observers enumerateObjectsWithOptions:options usingBlock:^(_NSPriorityNotificationObserver *observer, NSUInteger idx, BOOL *stop) {
-			[observer postNotification:notification fromSuper:fromSuper];
-		}];
-	}
+	[observers enumerateObjectsWithOptions:options usingBlock:^(_NSPriorityNotificationObserver *observer, NSUInteger idx, BOOL *stop) {
+		[observer postNotification:notification fromSuper:fromSuper];
+	}];
 	NARC_RELEASE(observers);
 }
 
@@ -569,12 +548,11 @@ NSInteger const NSPriorityNotificationDefaultPriority = 10;
 #pragma mark NSNotificationObjectPriorityItem
 
 /*!
- @method		-ncPriority:
- @abstract		This is the priority of the NSPriorityNotificationCenter when being called by the normal
- 				NSNotification.
- @return		The default priority (NSInteger) forwarded to the super NSNotificationCenter record.
+ @method		ncPriority:
+ @abstract		The priority of the center's own super-post record.
+ @param			aName	Ignored.
+ @return		The center's defaultPriority.
  */
-// Priority of the super NSNotificationCenter for @c -_raiseSuperPostNotification:
 - (NSInteger)ncPriority:(nullable NSNotificationName)aName
 {
 	return self.defaultPriority;

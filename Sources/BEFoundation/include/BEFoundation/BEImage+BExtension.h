@@ -13,8 +13,7 @@
 
              The round-trip and data members use representation-style names
              (@c imageFromCGImage:, @c pngRepresentation, following the @c TIFFRepresentation
-             idiom) rather than UIImage's spellings, renamed in 1.1 from the 1.0 UIImage-parity
-             names. Apple frameworks attach private same-named category methods to these
+             idiom). Apple frameworks attach private same-named category methods to these
              classes at runtime (PencilKit, when loaded, adds @c +[NSImage imageWithCGImage:]
              and @c -CGImage), and which duplicate method wins is undefined, so a category on a
              framework class must not reuse Apple's method names. The factories return @c nil
@@ -26,6 +25,7 @@
              BEImage *thumb = [rebuilt resizedToFitSize:CGSizeMake(128, 128)];
              NSData *png = thumb.pngRepresentation;
              @endcode
+ @since      1.1
  */
 
 #ifndef BEImage_BExtension_h
@@ -74,7 +74,7 @@ NS_ASSUME_NONNULL_BEGIN
 #pragma mark - Size & resizing
 
 /*! @property pixelSize The image's size in pixels (the backing @c CGImage dimensions on macOS, or point size times scale on iOS), as opposed to its
-    logical point @c size. */
+    logical point @c size. On macOS an image with no @c CGImage representation reports its point @c size. */
 @property (nonatomic, readonly) CGSize pixelSize;
 
 /*!
@@ -88,6 +88,9 @@ NS_ASSUME_NONNULL_BEGIN
  @method     resizedToFitSize:
  @abstract   A new image scaled to fit within @c boundingSize, preserving aspect ratio
              (the whole image fits; letterboxing is the caller's concern).
+ @param      boundingSize The box the result fits inside.
+ @return     The scaled image, or @c nil when the receiver's size or @c boundingSize has a
+             zero or negative dimension.
  */
 - (nullable BEImage *)resizedToFitSize:(CGSize)boundingSize;
 
@@ -95,6 +98,9 @@ NS_ASSUME_NONNULL_BEGIN
  @method     resizedToFillSize:
  @abstract   A new image scaled to fill @c boundingSize, preserving aspect ratio
              (the image covers the box; overflow extends past it).
+ @param      boundingSize The box the result covers.
+ @return     The scaled image, or @c nil when the receiver's size or @c boundingSize has a
+             zero or negative dimension.
  */
 - (nullable BEImage *)resizedToFillSize:(CGSize)boundingSize;
 

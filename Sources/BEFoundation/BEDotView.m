@@ -1,6 +1,6 @@
 /*!
  @file       BEDotView.m
- @copyright  © 2025 Delicense - @belisoful. All rights reserved.
+ @copyright  © 2025 Delicense - @belisoful. All rights released.
  @date       2025-11-11
  @author     belisoful@icloud.com
  @abstract   A cross-platform Core Graphics port of Prado's TDot.
@@ -104,12 +104,15 @@ static BEColor *BEDotShade(double r, double g, double b, double n, BOOL styleTop
 	                         BEDotNudge(b, rgbDepth, styleTop));
 }
 
-/*! Parses "#RRGGBB" into 0..255 channels; NO on a malformed value. */
-static BOOL BEDotParseHex(NSString *hex, double *r, double *g, double *b)
+/*! Reads a color's 0..255 sRGB channels through its normalized "#RRGGBB" hexString;
+	NO when the color is nil. */
+static BOOL BEDotChannelsOfColor(BEColor *color, double *r, double *g, double *b)
 {
-	if (![hex hasPrefix:@"#"] || hex.length != 7) { return NO; }
+	NSString *hex = color.hexString;
+	if (hex.length != 7 || ![hex hasPrefix:@"#"]) { return NO; }
 	unsigned int value = 0;
-	if (![[NSScanner scannerWithString:[hex substringFromIndex:1]] scanHexInt:&value]) { return NO; }
+	NSScanner *scanner = [NSScanner scannerWithString:[hex substringFromIndex:1]];
+	if (![scanner scanHexInt:&value] || !scanner.atEnd) { return NO; }
 	*r = (value >> 16) & 0xFF;
 	*g = (value >> 8) & 0xFF;
 	*b = value & 0xFF;
@@ -274,23 +277,43 @@ static NSDictionary<NSString *, NSArray<NSString *> *> *BEDotPresets(void)
 #pragma mark - View
 
 @implementation BEDotView
+{
+	BOOL _mainColorOverridden;
+	BOOL _highlightColorOverridden;
+}
 
 - (nonnull instancetype)initWithFrame:(CGRect)frameRect
 {
 	self = [super initWithFrame:frameRect];
 	if (self != nil) {
-		_depth = (NSInteger)kBEDotDefaultDepth;
-		_shadowOpacity = 0.618;
-		_flat = NO;
-		_flatBorder = YES;
-		_flatBorderWidthFraction = 0.05;
-#if !TARGET_OS_OSX
-		self.opaque = NO;
-		self.backgroundColor = BEColor.clearColor;
-		self.contentMode = UIViewContentModeRedraw;
-#endif
+		[self beCommonInit];
 	}
 	return self;
+}
+
+- (nullable instancetype)initWithCoder:(NSCoder *)coder
+{
+	self = [super initWithCoder:coder];
+	if (self != nil) {
+		[self beCommonInit];
+	}
+	return self;
+}
+
+/*! Applies the documented defaults on every init path. The appearance properties are
+	not archived, so a decoded instance receives the same defaults as a programmatic one. */
+- (void)beCommonInit
+{
+	_depth = (NSInteger)kBEDotDefaultDepth;
+	_shadowOpacity = 0.618;
+	_flat = NO;
+	_flatBorder = YES;
+	_flatBorderWidthFraction = 0.05;
+#if !TARGET_OS_OSX
+	self.opaque = NO;
+	self.backgroundColor = BEColor.clearColor;
+	self.contentMode = UIViewContentModeRedraw;
+#endif
 }
 
 #if TARGET_OS_OSX
@@ -309,16 +332,28 @@ static NSDictionary<NSString *, NSArray<NSString *> *> *BEDotPresets(void)
 #endif
 }
 
-- (void)setColorName:(NSString *)colorName
+#if !__has_feature(objc_arc)
+- (void)dealloc
 {
 	NARC_RELEASE(_colorName);
-	_colorName = [colorName copy];
 	NARC_RELEASE(_mainColor);
 	NARC_RELEASE(_highlightColor);
-	_mainColor = nil;
-	_highlightColor = nil;
+	SUPER_DEALLOC();
+}
+#endif
 
-	NSString *trimmed = [colorName stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+- (void)setColorName:(NSString *)colorName
+{
+	// Copy before releasing: setDepth: passes the current ivar back in.
+	NSString *newColorName = [colorName copy];
+	NARC_RELEASE(_colorName);
+	_colorName = newColorName;
+	NARC_RELEASE(_mainColor);
+	NARC_RELEASE(_highlightColor);
+	_mainColorOverridden = NO;
+	_highlightColorOverridden = NO;
+
+	NSString *trimmed = [_colorName stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
 	BOOL forceStandard = [trimmed hasPrefix:@"-"];
 	if (forceStandard) {
 		trimmed = [trimmed substringFromIndex:1];
@@ -330,11 +365,12 @@ static NSDictionary<NSString *, NSArray<NSString *> *> *BEDotPresets(void)
 		_mainColor = NARC_RETAIN([BEColor colorWithHexString:preset[0]]);
 		_highlightColor = NARC_RETAIN([BEColor colorWithHexString:preset[1]]);
 	} else {
-		// The standard web colors live in BEColor (BExtension); TDot names map onto the
-		// same CSS keywords, so there is one table rather than a copy that can drift.
-		NSString *hex = [trimmed hasPrefix:@"#"] ? trimmed : [BEColor webColorNamed:key].hexString;
+		// TDot names map onto the CSS keywords, so the standard colors come from the single
+		// table in BEColor (BEWebColor).
+		// colorWithHexString: expands #RGB shorthand and rejects non-hex characters.
+		BEColor *base = [trimmed hasPrefix:@"#"] ? [BEColor colorWithHexString:trimmed] : [BEColor webColorNamed:key];
 		double r = 0, g = 0, b = 0;
-		if (hex != nil && BEDotParseHex(hex, &r, &g, &b)) {
+		if (BEDotChannelsOfColor(base, &r, &g, &b)) {
 			double depth = (double)self.depth;
 			_mainColor = NARC_RETAIN(BEDotShade(r, g, b, -depth * kBEDotMainDepthScale, YES));
 			_highlightColor = NARC_RETAIN(BEDotShade(r, g, b, depth, NO));
@@ -345,23 +381,33 @@ static NSDictionary<NSString *, NSArray<NSString *> *> *BEDotPresets(void)
 
 - (void)setMainColor:(BEColor *)mainColor
 {
+	BEColor *newMainColor = [mainColor copy];
 	NARC_RELEASE(_mainColor);
-	_mainColor = [mainColor copy];
+	_mainColor = newMainColor;
+	_mainColorOverridden = (mainColor != nil);
 	[self beMarkNeedsDisplay];
 }
 
 - (void)setHighlightColor:(BEColor *)highlightColor
 {
+	BEColor *newHighlightColor = [highlightColor copy];
 	NARC_RELEASE(_highlightColor);
-	_highlightColor = [highlightColor copy];
+	_highlightColor = newHighlightColor;
+	_highlightColorOverridden = (highlightColor != nil);
 	[self beMarkNeedsDisplay];
+}
+
+/*! YES while the pair derives from colorName alone, with no explicit main or highlight. */
+- (BOOL)beUsesComputedPair
+{
+	return _colorName != nil && !_mainColorOverridden && !_highlightColorOverridden;
 }
 
 - (void)setDepth:(NSInteger)depth
 {
 	_depth = depth < 0 ? 0 : (depth > 255 ? 255 : depth);
-	if (_colorName != nil) {
-		self.colorName = _colorName;   // recompute main/highlight at the new depth
+	if ([self beUsesComputedPair]) {
+		self.colorName = _colorName;
 	}
 }
 
@@ -516,10 +562,10 @@ static void BEDotDrawEllipticalGradient(CGContextRef ctx, CGGradientRef gradient
  @method     drawSpecularInContext:square:bodyRect:colorSpace:
  @abstract   Draws TDot's white reflection: an elliptical white gradient confined to an
              offset circle, blurred, then clipped to the ball.
- @discussion The blur is strongly anisotropic — TDot uses stdDeviation 8% of the side across
-             and 2.3% down — which is what turns the clipped circle into a wide, soft
-             reflection instead of a disc. Core Graphics has no shape blur, so the reflection
-             is rendered into its own layer and convolved before it is composited.
+ @discussion The blur is strongly anisotropic (TDot uses stdDeviation 8% of the side across
+             and 2.3% down), which turns the clipped circle into a wide, soft reflection. Core
+             Graphics has no shape blur, so the reflection is rendered into its own layer and
+             convolved before it is composited.
 */
 - (void)drawSpecularInContext:(CGContextRef)ctx square:(CGRect)square bodyRect:(CGRect)bodyRect
                    colorSpace:(CGColorSpaceRef)space

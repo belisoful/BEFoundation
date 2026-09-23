@@ -8,7 +8,7 @@ File system monitoring using Grand Central Dispatch.
 
 ## Overview
 
-[BEPathWatcher](doc:BEPathWatcher) monitors file system paths for changes using GCD's dispatch sources. It provides flexible callback mechanisms including blocks, target-action, and protocol-based notifications.
+[BEPathWatcher](doc:BEPathWatcher) monitors file system paths for changes using GCD's dispatch sources. Callbacks are delivered through blocks, target-action, or protocol methods.
 
 ![A pipeline from a file change to a kernel VNODE event, through a GCD dispatch source filtering by event mask, to your block or target-selector callback.](bepathwatcher-flow)
 
@@ -86,7 +86,7 @@ watcher.isActive = NO;    // Stop
 ### Threading and Lifecycle
 
 Callbacks (block, target-action, and the `pathDidChangeWithFlags:` subclass hook) are delivered on
-the main queue, and are invoked without the watcher's internal lock held — so a callback may safely
+the main queue, and are invoked without the watcher's internal lock held, so a callback may safely
 call back into the watcher, including from another thread. Configuration methods are safe to call
 from any thread.
 

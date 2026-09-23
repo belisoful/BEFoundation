@@ -13,7 +13,7 @@ Example usage:
 BEObjectRegistry *registry = [[BEObjectRegistry alloc] init];
 MyObject *obj = [[MyObject alloc] init];
 NSString *uuid = [registry registerObject:obj];
-// Later retrieve the object, it must be retained outside the registry or it will be deallocated
+// The registry holds obj weakly; retain it elsewhere or the lookup returns nil
 MyObject *retrievedObj = [registry registeredObjectForUUID:uuid];
 ```
 */
@@ -80,8 +80,9 @@ BOOL isRegistered = model.isGlobalRegistered; // YES
 /*!
  @method        registerGlobalInstance
  @abstract      Registers this object in the global registry.
- @discussion    Registers this object instance in the global registry, incrementing its registration count. If the object is not already registered, a new UUID is generated and assigned. Returns the UUID assigned to this object, or nil if registration fails.
- @result        The UUID assigned to this object in the global registry, or nil if registration fails.
+ @discussion    Registers this object instance in the global registry, incrementing its registration count. If the object is not already registered, a new UUID is generated and assigned. The method never returns nil; a failure raises. The return type stays nullable for source compatibility.
+ @result        The UUID assigned to this object in the global registry.
+ @exception     NSInvalidArgumentException Thrown if the object doesn't conform to BERegistryProtocol.
  */
 - (nullable NSString *)registerGlobalInstance;
 
@@ -100,11 +101,11 @@ BOOL isRegistered = model.isGlobalRegistered; // YES
 /*!
  @protocol      CustomRegistryUUID
  @abstract      Protocol for objects that provide custom UUID generation for registry purposes.
- @discussion    Objects conforming to this protocol can provide their own UUID when being registered in a BEObjectRegistry. This is useful for objects that have natural identifiers or need to maintain consistent UUIDs across different registry instances.
+ @discussion    Objects conforming to this protocol supply their own UUID when registered in a BEObjectRegistry. Objects with a natural identifier, or that need one UUID across registries, adopt it.
  
- The objectRegistryUUID: method is called by the registry when an object needs a UUID and doesn't already have one assigned. The method should return a unique string identifier for the object within the context of the given registry.
+ The registry calls objectRegistryUUID: when an object needs a UUID and has none. The method returns a string that is unique within the given registry.
  
- Objects conforming to this protocol will not have their UUIDs modified by setRegistryUUID:forObject: calls, as they are responsible for managing their own identifiers.
+ setRegistryUUID:forObject: leaves the UUID of a conforming object unchanged.
 
 Example usage:
 ```objc
@@ -143,17 +144,11 @@ extern NSExceptionName _Nonnull const NSDuplicateUUIDException;
  @abstract      A thread-safe registry for managing object instances with UUID-based identification.
  @discussion    BEObjectRegistry provides a centralized system for registering and managing object instances using UUID-based identification. The registry maintains weak references to objects to avoid retain cycles, and provides thread-safe operations for registration, lookup, and management.
  
- 				The registry provides:
- 				 - Thread-safe operations using synchronized blocks
- 				 - Weak reference storage to prevent retain cycles
-				 - Reference counting for multiple registrations of the same object
-				 - Support for custom UUID generation through protocols
-				 - Bulk operations for registry management
-					- Salt-based key generation for security
- 
-				Objects can be registered multiple times, with the registry maintaining a count of active registrations. When the count reaches zero, the object is automatically removed from the registry.
- 
- 				The registry uses NSMapTable with weak references for efficient memory management. Per-instance registration counts are stored as associated objects keyed by the registry, so they are released automatically when a registered object deallocates.
+ 				The registry counts repeated registrations of one object and removes the object when the count reaches zero. Objects that conform to CustomRegistryUUID supply their own UUID. Bulk clear operations remove groups of objects at once. All operations are synchronized.
+ 				 
+ 				 Registries that share a keySalt share one UUID namespace; a different salt isolates a registry's UUIDs from the others.
+				 
+				 Objects are stored in an NSMapTable with weak values. Per-instance registration counts are stored as associated objects keyed by the registry, so they are released when a registered object deallocates.
  */
 @interface BEObjectRegistry : NSObject
 {
@@ -256,8 +251,10 @@ extern NSExceptionName _Nonnull const NSDuplicateUUIDException;
  @method        setRegistryUUID:forObject:
  @abstract      Sets a specific UUID for an object.
  @discussion    Assigns a specific UUID to an object. If the object already has a UUID, it is updated in the registry. If the UUID is already in use by another object, an exception is thrown.
- 
+
  Objects conforming to CustomRegistryUUID cannot have their UUIDs set through this method, as they manage their own identifiers.
+
+ The UUID is stored on the object under uuidKey, which is derived from keySalt, so registries sharing a keySalt share the object's UUID. This method re-keys the receiver's table only; another registry with the same keySalt keeps its entry under the prior UUID until it unregisters the object. Registries that assign UUIDs to the same objects must use distinct keySalt values.
  @param         uuid The UUID to assign, or nil to remove the UUID.
  @param         object The object to assign the UUID to.
  @exception     NSInvalidArgumentException Thrown if the object doesn't conform to required protocols or if the UUID is invalid.
@@ -290,7 +287,7 @@ extern NSExceptionName _Nonnull const NSDuplicateUUIDException;
  
  Objects can be registered multiple times, with the registry maintaining a count of active registrations.
  @param         object The object to register.
- @result        The UUID assigned to the object.
+ @result        The UUID assigned to the object. The method never returns nil; a failure raises. The return type stays nullable for source compatibility.
  @exception     NSInvalidArgumentException Thrown if the object is nil or doesn't conform to required protocols.
  @exception     NSDuplicateUUIDException Thrown if the object's UUID conflicts with another object.
  */
@@ -333,7 +330,7 @@ extern NSExceptionName _Nonnull const NSDuplicateUUIDException;
 /*!
  @method        unregisterObject:
  @abstract      Unregisters an object from the registry.
- @discussion    Decrements the registration count for the specified object. If the count reaches zero, the object is completely removed from the registry.
+ @discussion    Decrements the registration count for the specified object. If the count reaches zero, the object is completely removed from the registry. The entry is located by the object's current UUID, or by object identity when another registry sharing this keySalt changed the UUID after registration, so no entry remains in either case.
  @param         object The object to unregister.
  @result        BEUnregisterStatus_Unregistered (3) if the object was completely removed, BEUnregisterStatus_Decremented (1) if unregistered but still has remaining registrations, BEUnregisterStatus_NotRegistered (0) if the object was not registered.
  */
@@ -351,7 +348,7 @@ extern NSExceptionName _Nonnull const NSDuplicateUUIDException;
 /*!
  @method        clearObjectsWithoutRegistryProtocol
  @abstract      Removes all objects that don't conform to BERegistryProtocol.
- @discussion    Removes all registered objects that don't conform to BERegistryProtocol from the registry. This is useful for cleaning up objects that were registered when requireRegistryProtocol was NO. Object UUIDs are preserved.
+ @discussion    Removes all registered objects that don't conform to BERegistryProtocol from the registry. Such objects can only be registered while requireRegistryProtocol is NO. Object UUIDs are preserved.
  */
 - (void)clearObjectsWithoutRegistryProtocol;
 
@@ -401,18 +398,7 @@ extern NSExceptionName _Nonnull const NSDuplicateUUIDException;
 /*!
  @class         BEUniversalObjectRegistry
  @abstract      A registry that accepts any NSObject instance regardless of protocol conformance.
- @discussion    BEUniversalObjectRegistry is a subclass of BEObjectRegistry that removes the protocol requirement restriction. Unlike the base BEObjectRegistry class, this registry can register any NSObject instance without requiring conformance to BERegistryProtocol.
- 
-				This registry is ideal for scenarios where you need to track objects that don't conform to specific protocols, such as third-party objects, system objects, or temporary objects that need centralized management.
- 
-				This registry:
-				- Accepts any NSObject instance for registration
-				- Maintains weak references to prevent retain cycles
-				- Inherits all thread-safety and reference counting features from BEObjectRegistry
-				- Can be toggled to require protocol conformance via the requireRegistryProtocol property
-				- Supports custom UUID generation through the CustomRegistryUUID protocol
- 
-				The registry maintains the same UUID generation and management features as the base class, including support for custom UUID objects and salt-based key generation for multi-registry scenarios.
+ @discussion    BEUniversalObjectRegistry is a subclass of BEObjectRegistry that registers any NSObject instance; BERegistryProtocol conformance is not required. Setting requireRegistryProtocol to YES restores the requirement. UUID generation, CustomRegistryUUID support, registration counting, and salt-keyed namespaces are inherited from BEObjectRegistry.
  
 				Example usage:
 				```objc
@@ -422,7 +408,7 @@ extern NSExceptionName _Nonnull const NSDuplicateUUIDException;
 				NSString *retrievedString = [registry registeredObjectForUUID:uuid];
 				```
  
-				Warning: Since this registry uses weak references, objects must be retained elsewhere to prevent automatic deallocation and removal from the registry.
+				The registry holds objects weakly. An object retained nowhere else deallocates and leaves the registry.
  
  @see           BEObjectRegistry
  @see           BEStorageObjectRegistry
@@ -435,7 +421,7 @@ extern NSExceptionName _Nonnull const NSDuplicateUUIDException;
  @abstract      Initializes a new universal object registry with default settings.
  @discussion    Creates a new BEUniversalObjectRegistry with requireRegistryProtocol set to NO, allowing any NSObject to be registered. The registry uses a default salt value of 0 and is immediately ready for use.
  
-				Unlike BEObjectRegistry, this registry will accept any NSObject instance without requiring BERegistryProtocol conformance of the object. The requireRegistryProtocol property can be modified at runtime to change this behavior.
+				The registry accepts any NSObject instance. Set requireRegistryProtocol to YES to require BERegistryProtocol conformance.
  
  @result        A new BEUniversalObjectRegistry instance.
  @see           BEObjectRegistry#init
@@ -450,26 +436,9 @@ extern NSExceptionName _Nonnull const NSDuplicateUUIDException;
 /*!
  @class         BEStorageObjectRegistry
  @abstract      A registry that maintains strong references to registered objects for persistent storage.
- @discussion    BEStorageObjectRegistry is a subclass of BEUniversalObjectRegistry that uses strong references instead of weak references for value storage. This registry will retain all registered objects, preventing them from being deallocated until they are explicitly unregistered or the registry is cleared.
+ @discussion    BEStorageObjectRegistry is a subclass of BEUniversalObjectRegistry that stores strong references to its values. A registered object stays alive until it is unregistered or the registry is cleared. Use it for caches, object pools, and objects that have no other strong reference.
  
-				This registry is designed for scenarios where you need guaranteed object persistence, such as:
-				- Caching systems where objects must remain available
-				- Object pools that manage reusable instances
-				- Persistent storage systems that need to maintain object lifecycles
-				- Scenarios where objects don't have other strong references
- 
-				This registry:
-				- Maintains strong references to all registered objects
-				- Prevents automatic deallocation of registered objects
-				- Inherits universal object acceptance from BEUniversalObjectRegistry
-				- Objects are only deallocated when explicitly unregistered or registry is cleared
-				- Ideal for object caching and persistent storage scenarios
- 
-				Memory management considerations:
-				- Objects will not be deallocated automatically
-				- Must explicitly unregister objects or clear the registry to free memory
-				- Can lead to memory accumulation if not properly managed
-				- Use clearAllRegisteredObjects: to bulk-remove objects when needed
+				The registry never releases an object on its own. Unregister objects, or call clearAllRegisteredObjects:, to free them.
  
 				Example usage:
 				```objc

@@ -3,7 +3,7 @@
  @copyright		-© 2025 Delicense - @belisoful. All rights released.
  @date			2025-06-10
  @author		belisoful@icloud.com
- @abstract		This provides a differentiable versions of NSCharacterSet and NSMutableCharacterSet.
+ @abstract		This provides differentiable versions of NSCharacterSet and NSMutableCharacterSet.
  @discussion	BECharacterSet is a replacement for NSCharacterSet, and BEMutableCharacterSet is a
 				replacement for NSMutableCharacterSet.
  
@@ -13,7 +13,7 @@
 				NSMutableCharacterSet.
 
 				BECharacterSet and BEMutableCharacterSet restore the immutable/mutable distinction
-				that NSString vs NSMutableString provides.
+				that NSString and NSMutableString provide.
 */
 
 
@@ -49,7 +49,7 @@
 }
 
 /*!
- @method		setIsClassEqualToNSCharacterSet
+ @method		setIsClassEqualToNSCharacterSet:
  @param			value the value to set isClassEqualToNSCharacterSet.
  @abstract		Specifies if the BECharacterSet classes should generally equate to NSCharacterSets.
  @discussion	This is used if a specific BECharacterSet is not specifically set to equate to NSCharacterSet.
@@ -70,9 +70,9 @@
 /*!
  @method		init
  @abstract		Initializes the instance.
- @discussion	This sets the characterSet if a blank NSCharacterSet is set.  This also sets the instance isEqualToNSCharacterSet to
- NSCharacterSetClassStyle unless the isClassEqualToNSCharacterSet is set to NSCharacterSetAllUnequal or NSCharacterSetAllEqual,
- in which case isEqualToNSCharacterSet is then set to NSCharacterSetUnequal or NSCharacterSetEqual, respectively.
+ @discussion	Sets characterSet to an empty NSCharacterSet when none is set. It also sets the instance isEqualToNSCharacterSet to
+ NSCharacterSetClassStyle, unless isClassEqualToNSCharacterSet is NSCharacterSetAllUnequal or NSCharacterSetAllEqual,
+ in which case isEqualToNSCharacterSet is set to NSCharacterSetUnequal or NSCharacterSetEqual, respectively.
  */
 - (id)init
 {
@@ -96,9 +96,9 @@
  @method		initWithSet:
  @param			charSet NSCharacterSet or BECharacterSet
  @abstract		Initializes the instance with a specific character set.
- @discussion	This sets the characterSet if none is set.  This also sets the instance isEqualToNSCharacterSet to
- NSCharacterSetClassStyle unless the isClassEqualToNSCharacterSet is set to NSCharacterSetAllUnequal or NSCharacterSetAllEqual,
- in which case isEqualToNSCharacterSet is then set to NSCharacterSetUnequal or NSCharacterSetEqual, respectively.
+ @discussion	Sets characterSet to a copy of charSet, or to an empty set when charSet is nil. It also sets the instance isEqualToNSCharacterSet to
+ NSCharacterSetClassStyle, unless isClassEqualToNSCharacterSet is NSCharacterSetAllUnequal or NSCharacterSetAllEqual,
+ in which case isEqualToNSCharacterSet is set to NSCharacterSetUnequal or NSCharacterSetEqual, respectively.
  */
 - (instancetype)initWithSet:(id)charSet
 {
@@ -123,7 +123,7 @@
 }
 
 /*!
- @method		supportsSecureCoding:
+ @method		supportsSecureCoding
  @abstract		Provides support for secure Coding by returning YES for the class method.
  */
 + (BOOL)supportsSecureCoding
@@ -131,19 +131,56 @@
 	return YES;
 }
 
+static NSString * const BECharacterSetCoderKeyEquality = @"BE.equality";
+static NSString * const BECharacterSetCoderKeyBitmap = @"BE.bitmap";
+
+// Archives written before 1.2.0 carry the values under the private keys that
+// -[NSNumber encodeWithCoder:] and -[NSData encodeWithCoder:] use.
+static NSString * const BECharacterSetLegacyCoderKeyEquality = @"NS.number";
+static NSString * const BECharacterSetLegacyCoderKeyBitmap = @"NS.data";
+
+static BECharacterSetEquality BECharacterSetClampEquality(NSInteger value)
+{
+	if (value < NSCharacterSetAllUnequal) {
+		return NSCharacterSetAllUnequal;
+	}
+	if (value > NSCharacterSetAllEqual) {
+		return NSCharacterSetAllEqual;
+	}
+	return (BECharacterSetEquality)value;
+}
+
 /*!
  @method		initWithCoder:
  @param			coder The coder to decode the Character Set from
  @abstract		Initializes the BECharacterSet from a coder.
+ @discussion	Reads the 1.2.0 key layout, and falls back to the layout written by earlier
+				versions. A missing bitmap fails the decode with NSCoderReadCorruptError.
  */
 - (instancetype)initWithCoder:(NSCoder *)coder
 {
 	self = [super init];
 	if (self) {
-		NSNumber *isEqualToNSCharacterSet = [[NSNumber alloc] initWithCoder:coder];
-		_isEqualToNSCharacterSet = isEqualToNSCharacterSet.intValue;
-		
-		NSData *bitmapRepresentation = [[NSData alloc] initWithCoder:coder];
+		NSInteger equality = NSCharacterSetClassStyle;
+		NSData *bitmapRepresentation = nil;
+		if ([coder containsValueForKey:BECharacterSetCoderKeyBitmap]) {
+			equality = [coder decodeIntegerForKey:BECharacterSetCoderKeyEquality];
+			bitmapRepresentation = [coder decodeObjectOfClass:NSData.class forKey:BECharacterSetCoderKeyBitmap];
+		} else if ([coder containsValueForKey:BECharacterSetLegacyCoderKeyBitmap]) {
+			equality = [coder decodeIntegerForKey:BECharacterSetLegacyCoderKeyEquality];
+			NSUInteger length = 0;
+			const uint8_t *bytes = [coder decodeBytesForKey:BECharacterSetLegacyCoderKeyBitmap returnedLength:&length];
+			if (bytes != NULL) {
+				bitmapRepresentation = [NSData dataWithBytes:bytes length:length];
+			}
+		}
+		if (bitmapRepresentation == nil) {
+			[coder failWithError:[NSError errorWithDomain:NSCocoaErrorDomain
+													 code:NSCoderReadCorruptError
+												 userInfo:@{NSDebugDescriptionErrorKey: @"BECharacterSet archive has no bitmap representation"}]];
+			return nil;
+		}
+		_isEqualToNSCharacterSet = BECharacterSetClampEquality(equality);
 		if ([self isKindOfClass:BEMutableCharacterSet.class]) {
 			_characterSet = [NSMutableCharacterSet characterSetWithBitmapRepresentation:bitmapRepresentation];
 		} else {
@@ -160,14 +197,14 @@
 				This method supports both BECharacterSet and BEMutableCharacterSet.
  */
 - (void)encodeWithCoder:(nonnull NSCoder *)coder {
-	[@(_isEqualToNSCharacterSet) encodeWithCoder:coder];
-	[_characterSet.bitmapRepresentation encodeWithCoder:coder];
+	[coder encodeInteger:_isEqualToNSCharacterSet forKey:BECharacterSetCoderKeyEquality];
+	[coder encodeObject:_characterSet.bitmapRepresentation forKey:BECharacterSetCoderKeyBitmap];
 }
 
 /*!
  @method		copyWithZone:
  @param			zone The zone to allocate memory from; may be null.
- @abstract		Copies an BECharacterSet or BEMutableCharacterSet into a BECharacterSet.
+ @abstract		Copies a BECharacterSet or BEMutableCharacterSet into a BECharacterSet.
  */
 - (id)copyWithZone:(nullable NSZone *)zone
 {
@@ -184,7 +221,7 @@
 /*!
  @method		mutableCopyWithZone:
  @param			zone The zone to allocate memory from; may be null.
- @abstract		Copies an  BEMutableCharacterSet or BECharacterSet into a BEMutableCharacterSet.
+ @abstract		Copies a BEMutableCharacterSet or BECharacterSet into a BEMutableCharacterSet.
  */
 - (id)mutableCopyWithZone:(nullable NSZone *)zone
 {
@@ -208,10 +245,10 @@
 }
 
 /*!
- @method		isEqual
+ @method		isEqual:
  @param			object The object to check against.
- @abstract		This equates BECharacterSet.characterSet and, upon setting equality, NSCharacterSet.
- @discussion	This checks for equality of the characterSet property.
+ @abstract		Compares the receiver to another BECharacterSet, or to an NSCharacterSet when the equality setting allows it.
+ @discussion	The comparison tests the characterSet property.
  */
 - (BOOL)isEqual:(id)object
 {
@@ -446,10 +483,7 @@
  @param			data A bitmap representation of a character set.
  @abstract		Returns a character set containing characters determined by a given bitmap representation.
  @return		A character set containing characters determined by data.
- @discussion	This method is useful for creating a character set object with data
-				from a file or other external data source.
- 
-				A raw bitmap representation of a character set is a byte array with the first 2^16 bits (that is, 8192 bytes) representing the code point range of the Basic Multilingual Plane (BMP), such that the value of the bit at position n represents the presence in the character set of the character with decimal Unicode value n. A bitmap representation may contain zero to sixteen additional 8192 byte segments for each additional Unicode plane containing a character in a character set, with each 8192 byte segment prepended with a single plane index byte.
+ @discussion	A raw bitmap representation of a character set is a byte array with the first 2^16 bits (that is, 8192 bytes) representing the code point range of the Basic Multilingual Plane (BMP), such that the value of the bit at position n represents the presence in the character set of the character with decimal Unicode value n. A bitmap representation may contain zero to sixteen additional 8192 byte segments for each additional Unicode plane containing a character in a character set, with each 8192 byte segment prepended with a single plane index byte.
  
  To add a character in the Basic Multilingual Plane (BMP) with decimal Unicode value n to a raw bitmap representation, you might do the following:
  ```
@@ -528,7 +562,7 @@
 }
 
 /*!
-  @method		longCharacterIsMember
+  @method		longCharacterIsMember:
   @param 		theLongChar	A UTF32 character.
   @abstract		Returns a Boolean value that indicates whether a given long character is a member of the receiver.
   @return		true if theLongChar is in the receiver, otherwise false.
@@ -540,7 +574,7 @@
 }
 
 /*!
-  @method		isSupersetOfSet
+  @method		isSupersetOfSet:
   @param 		theOtherSet	A character set.
   @abstract		Returns a Boolean value that indicates whether the receiver is a superset of another given character set.
   @return		true if the receiver is a superset of theOtherSet, otherwise false.
@@ -554,7 +588,7 @@
 }
 
 /*!
-  @method		hasMemberInPlane
+  @method		hasMemberInPlane:
   @param 		thePlane	A character plane.
   @abstract		Returns a Boolean value that indicates whether the receiver has at least one member in a given character plane.
   @return		true if the receiver has at least one member in thePlane, otherwise false.
@@ -588,7 +622,7 @@
 
 - (instancetype)initWithSet:(id)charSet
 {
-	// _characterSet is seeded BEFORE [super init] so the superclass's "fill with an
+	// _characterSet is seeded before [super init] so the superclass's "fill with an
 	// immutable default when unset" does not fire for the mutable subclass.
 	if (self) {
 		if ([charSet isKindOfClass:BECharacterSet.class]) {
@@ -607,8 +641,8 @@
  @property		characterSet
  @abstract		This is the reference to the internal NSMutableCharacterSet.
  @return		Returns the instance NSMutableCharacterSet
- @discussion	This returns the backing instance itself, not a copy: mutating the returned
-				NSMutableCharacterSet IS reflected in the BEMutableCharacterSet.
+ @discussion	This returns the backing instance. Mutating the returned NSMutableCharacterSet
+				is reflected in the BEMutableCharacterSet.
  */
 - (NSMutableCharacterSet *)characterSet {
 	return (NSMutableCharacterSet*)_characterSet;
@@ -917,10 +951,7 @@
  @param			data A bitmap representation of a character set.
  @abstract		Returns a character set containing characters determined by a given bitmap representation.
  @return		A character set containing characters determined by data.
- @discussion	This method is useful for creating a character set object with data
-				from a file or other external data source.
- 
-				A raw bitmap representation of a character set is a byte array with the first 2^16 bits (that is, 8192 bytes) representing the code point range of the Basic Multilingual Plane (BMP), such that the value of the bit at position n represents the presence in the character set of the character with decimal Unicode value n. A bitmap representation may contain zero to sixteen additional 8192 byte segments for each additional Unicode plane containing a character in a character set, with each 8192 byte segment prepended with a single plane index byte.
+ @discussion	A raw bitmap representation of a character set is a byte array with the first 2^16 bits (that is, 8192 bytes) representing the code point range of the Basic Multilingual Plane (BMP), such that the value of the bit at position n represents the presence in the character set of the character with decimal Unicode value n. A bitmap representation may contain zero to sixteen additional 8192 byte segments for each additional Unicode plane containing a character in a character set, with each 8192 byte segment prepended with a single plane index byte.
  
  To add a character in the Basic Multilingual Plane (BMP) with decimal Unicode value n to a raw bitmap representation, you might do the following:
  ```

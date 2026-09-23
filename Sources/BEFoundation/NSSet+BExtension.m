@@ -4,9 +4,9 @@
  @date			2025-01-01
  @author		belisoful@icloud.com
  @abstract		NSSet and NSMutableSet BExtension category provides mapping,
- 				filtering, and object metadata like Class and className.
- @discussion	The BExtension category provides missing functionality to the
- 				Core Foundation.
+ 				filtering, and object metadata like Class and
+				class name.
+ @discussion	The BExtension category extends Foundation's NSSet and NSMutableSet.
 */
 
 #import "NSSet+BExtension.h"
@@ -19,25 +19,21 @@
  
  The following methods are provided by this category to `NSSet`:
  
- `-mapUsingBlock:`: Maps all objects to a new set, removing `NULL` mappings and not passing.
- 
+ `-mapUsingBlock:`: Maps each object into a new set; objects mapped to `nil` or rejected by the block are dropped.
+
  `-objectsClasses`:  Gets and counts  the `Class` of the objects in the set.
  
- `-objectsClassNames`:  Gets and counts  the `className` of the objects in the set.
+ `-objectsClassNames`:  Gets and counts  the class name of the objects in the set.
  
  `-objectsUniqueClasses`:  Gets and counts  the `Class` of the objects in the set.
  
- `-objectsUniqueClassNames`:  Gets and counts  the `className` of the objects in the set.
+ `-objectsUniqueClassNames`:  Gets and counts  the class name of the objects in the set.
  
  `-toClassesFromStrings`: Converts a set of `NSString` into their `Class`.
  
  The following methods are provided by this category to `NSMutableSet`:
  
- `-filterUsingBlock:`: filters all objects to a different set, removing `NULL` mappings
- 			 and not passing.
- 
- These methods provide mapping and class conversion to `NSSet` and filter for
- `NSMutableSet`
+ `-filterUsingBlock:`: filters the set in place, removing `NULL` mappings and objects the block rejects.
  */
 @implementation NSSet (BExtension)
 
@@ -64,11 +60,11 @@
 
 /*!
  @method		-objectsClassNames
- @abstract		Gets the `className` of the objects in the set and how many of
+ @abstract		Gets the class name of the objects in the set and how many of
  				each there are.
- @discussion 	This loops through each object in the set and gets their
- 				`className`.  It adds each object className to the `NSCountedSet`.
- @result		A new `NSCountedSet<NSString*>`  of the objects' classNames and
+ @discussion 	This loops through each object in the set and gets their class name
+				(`NSStringFromClass`).  It adds each object class name to the `NSCountedSet`.
+ @result		A new `NSCountedSet<NSString*>`  of the objects' class names and
  				their count.
  */
 - (nonnull NSCountedSet<NSString*> *)objectsClassNames
@@ -98,11 +94,11 @@
 
 /*!
  @method		-objectsUniqueClassNames
- @abstract		Gets the unique `className` of the objects in the set and how
+ @abstract		Gets the unique class name of the objects in the set and how
  				many of each there are.
- @discussion 	This loops through each object in the set and gets their
- 				`className`.  It adds each object className to the NSCountedSet.
- @result		A new `NSCountedSet<NSString*>`  of the objects' classNames and
+ @discussion 	This loops through each object in the set and gets their class name
+				(`NSStringFromClass`).  It adds each object class name to the NSCountedSet.
+ @result		A new `NSCountedSet<NSString*>`  of the objects' class names and
  				their count.
  */
 - (nonnull NSCountedSet<NSString*> *)objectsUniqueClassNames
@@ -119,10 +115,10 @@
  				using the `NSClassFromString` function.
  
 				Only valid class names (strings that match registered class
- 				names) are transformed. Invalid or unknown class names will
- 				return `nil` and will not be included in the result.
- @result		A new Object of the same class as the receiver but containing
- 				the `Class` objects from to the class name objects in the set.
+ 				names) are transformed. Invalid or unknown class names map
+ 				to `nil` and are not included in the result.
+ @result		A new object of the same class as the receiver containing
+ 				the `Class` objects for the class names in the set.
  */
 - (instancetype)toClassesFromStrings
 {
@@ -185,9 +181,9 @@
  @method		-filterUsingBlock:
  @abstract		Filters the NSMutableSet by applying the block to each
  				object in the set.
- @param			filterBlock	The block is applied to each element in the set. If it
- 							returns NO, or the object is set to `nil`, to remove
- 							the element from the set.
+ @param			filterBlock	The block is applied to each element in the set. Return NO,
+ 							or set the object to `nil`, to remove the element from
+ 							the set.
  @discussion	This method applies a transformation and filtering (via `block`)
  				to each object of the set. `obj` can be dereferenced, used,
  				mutated, and the new different element returned within `obj`.

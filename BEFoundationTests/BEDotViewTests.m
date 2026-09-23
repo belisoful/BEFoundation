@@ -80,6 +80,30 @@
 	XCTAssertGreaterThan([self channel:1 of:dot.highlightColor], 0x80, @"the highlight green lightens above standard");
 }
 
+- (void)testShorthandHexExpandsToItsSixDigitForm
+{
+	BEDotView *shorthand = self.dot;
+	shorthand.colorName = @"#7F9";
+	BEDotView *full = self.dot;
+	full.colorName = @"#77FF99";
+
+	XCTAssertNotNil(shorthand.mainColor);
+	XCTAssertEqualObjects([self hexOf:shorthand.mainColor], [self hexOf:full.mainColor]);
+	XCTAssertEqualObjects([self hexOf:shorthand.highlightColor], [self hexOf:full.highlightColor]);
+}
+
+- (void)testHexWithNonHexCharactersLeavesBothColorsNil
+{
+	BEDotView *dot = self.dot;
+	dot.colorName = @"#12345Z";
+	XCTAssertNil(dot.mainColor);
+	XCTAssertNil(dot.highlightColor);
+
+	dot.colorName = @"#12345";
+	XCTAssertNil(dot.mainColor, @"five digits is not a supported digit count");
+	XCTAssertNil(dot.highlightColor);
+}
+
 - (void)testDepthWidensTheComputedSpread
 {
 	BEDotView *narrow = self.dot;
@@ -91,6 +115,63 @@
 
 	XCTAssertLessThan([self channel:0 of:wide.mainColor], [self channel:0 of:narrow.mainColor],
 					  @"a larger depth darkens the main color further");
+}
+
+- (void)testDepthRecomputesThePairWhenNoOverrideIsSet
+{
+	BEDotView *dot = self.dot;
+	dot.colorName = @"#808080";
+	int mainAt24 = [self channel:0 of:dot.mainColor];
+
+	dot.depth = 48;
+
+	XCTAssertLessThan([self channel:0 of:dot.mainColor], mainAt24);
+	XCTAssertEqualObjects(dot.colorName, @"#808080");
+}
+
+- (void)testDepthKeepsAnExplicitMainColorOverride
+{
+	BEDotView *dot = self.dot;
+	dot.colorName = @"#808080";
+	BEColor *override = [BEColor colorWithHexString:@"#123456"];
+	dot.mainColor = override;
+	NSString *highlightBefore = [self hexOf:dot.highlightColor];
+
+	dot.depth = 48;
+
+	XCTAssertEqualObjects([self hexOf:dot.mainColor], @"#123456");
+	XCTAssertEqualObjects([self hexOf:dot.highlightColor], highlightBefore);
+}
+
+- (void)testDepthKeepsAnExplicitHighlightColorOverride
+{
+	BEDotView *dot = self.dot;
+	dot.colorName = @"#808080";
+	dot.highlightColor = [BEColor colorWithHexString:@"#FEDCBA"];
+	NSString *mainBefore = [self hexOf:dot.mainColor];
+
+	dot.depth = 48;
+
+	XCTAssertEqualObjects([self hexOf:dot.highlightColor], @"#FEDCBA");
+	XCTAssertEqualObjects([self hexOf:dot.mainColor], mainBefore);
+}
+
+- (void)testSettingColorNameDiscardsExplicitOverrides
+{
+	BEDotView *dot = self.dot;
+	dot.mainColor = [BEColor colorWithHexString:@"#123456"];
+	dot.highlightColor = [BEColor colorWithHexString:@"#FEDCBA"];
+
+	dot.colorName = @"Green";
+
+	XCTAssertEqualObjects([self hexOf:dot.mainColor], @"#007000");
+	XCTAssertEqualObjects([self hexOf:dot.highlightColor], @"#00B000");
+
+	// The pair derives from colorName again, so depth recomputes it.
+	dot.colorName = @"#808080";
+	int mainAt24 = [self channel:0 of:dot.mainColor];
+	dot.depth = 48;
+	XCTAssertLessThan([self channel:0 of:dot.mainColor], mainAt24);
 }
 
 #pragma mark State
@@ -120,6 +201,34 @@
 	XCTAssertFalse(dot.flat);
 	XCTAssertTrue(dot.flatBorder);
 	XCTAssertEqualWithAccuracy(dot.flatBorderWidthFraction, 0.05, 1e-9);
+}
+
+- (void)testInitWithCoderAppliesTheDefaults
+{
+	NSError *error = nil;
+	NSData *data = [NSKeyedArchiver archivedDataWithRootObject:self.dot requiringSecureCoding:NO error:&error];
+	XCTAssertNotNil(data, @"%@", error);
+
+	NSKeyedUnarchiver *unarchiver = [[NSKeyedUnarchiver alloc] initForReadingFromData:data error:&error];
+	XCTAssertNotNil(unarchiver, @"%@", error);
+	unarchiver.requiresSecureCoding = NO;
+	BEDotView *decoded = [unarchiver decodeObjectForKey:NSKeyedArchiveRootObjectKey];
+	[unarchiver finishDecoding];
+
+	XCTAssertTrue([decoded isKindOfClass:BEDotView.class]);
+	XCTAssertEqual(decoded.depth, (NSInteger)24);
+	XCTAssertEqualWithAccuracy(decoded.shadowOpacity, 0.618, 1e-9);
+	XCTAssertFalse(decoded.flat);
+	XCTAssertTrue(decoded.flatBorder);
+	XCTAssertEqualWithAccuracy(decoded.flatBorderWidthFraction, 0.05, 1e-9);
+#if !TARGET_OS_OSX
+	XCTAssertFalse(decoded.opaque);
+	XCTAssertEqual(decoded.contentMode, UIViewContentModeRedraw);
+	XCTAssertEqualObjects(decoded.backgroundColor, UIColor.clearColor);
+#endif
+
+	decoded.colorName = @"#70FF90";
+	XCTAssertEqualObjects([self hexOf:decoded.mainColor], @"#57E379", @"the decoded depth drives the shade cascade");
 }
 
 - (void)testBothRenderModesDrawWithoutThrowing
@@ -153,6 +262,36 @@
 #endif
 		}
 	}
+}
+
+
+#pragma mark Self-assignment
+
+- (void)testAssigningTheCurrentColorNameKeepsTheComputedPair
+{
+	BEDotView *dot = self.dot;
+	dot.colorName = @"#808080";
+	NSString *main = [self hexOf:dot.mainColor];
+	NSString *highlight = [self hexOf:dot.highlightColor];
+
+	dot.colorName = dot.colorName;
+
+	XCTAssertEqualObjects(dot.colorName, @"#808080");
+	XCTAssertEqualObjects([self hexOf:dot.mainColor], main);
+	XCTAssertEqualObjects([self hexOf:dot.highlightColor], highlight);
+}
+
+- (void)testAssigningTheCurrentMainAndHighlightColorsKeepsThem
+{
+	BEDotView *dot = self.dot;
+	dot.mainColor = [BEColor colorWithHexString:@"#123456"];
+	dot.highlightColor = [BEColor colorWithHexString:@"#654321"];
+
+	dot.mainColor = dot.mainColor;
+	dot.highlightColor = dot.highlightColor;
+
+	XCTAssertEqualObjects([self hexOf:dot.mainColor], @"#123456");
+	XCTAssertEqualObjects([self hexOf:dot.highlightColor], @"#654321");
 }
 
 @end

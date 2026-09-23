@@ -4,9 +4,9 @@
  @date			2025-01-01
  @author		belisoful@icloud.com
  @abstract		Mathematical operations extension for NSNumber with type-safe arithmetic operations.
- @discussion	This header provides a category extension for NSNumber that enables type-safe mathematical operations between NSNumber instances and primitive types. The extension preserves type precision and handles overflow detection for integer operations. It includes support for basic arithmetic operations (addition, subtraction, multiplication, division), modulus operations, power operations, and bitwise XOR operations.
+ @discussion	This header provides a category extension for NSNumber that enables type-safe mathematical operations between NSNumber instances and primitive types. It includes support for basic arithmetic operations (addition, subtraction, multiplication, division), modulus operations, power operations, and bitwise XOR operations.
  
- The implementation uses a type precedence system to determine the appropriate return type based on the operands, ensuring that operations maintain the highest precision required by the input types.
+ The implementation uses a type precedence system to determine the result type from the operands. Integer operations run in 64-bit signed or unsigned arithmetic and detect overflow of that 64-bit result: an add, subtract, or multiply whose exact result does not fit the resolved 64-bit type returns NaN. The 64-bit result is then truncated to the resolved type when that type is narrower. See the NSNumber(Extension) category for the full list of edge-case results.
  */
 
 #ifndef NSNumber_BExtension_h
@@ -39,7 +39,7 @@ typedef enum NSNumberMathOperation  {
 /*!
  @function pow_int64
  @abstract Computes integer power using exponentiation by squaring for signed 64-bit integers.
- @discussion This function efficiently computes base^exponent using the exponentiation by squaring algorithm, which provides O(log n) time complexity. It includes overflow detection and returns 0 when overflow occurs. Negative exponents are not supported as they would require floating-point results.
+ @discussion This function computes base^exponent by exponentiation by squaring in O(log n) multiplications. It detects overflow and returns 0 when overflow occurs. Negative exponents are not supported.
  @param base The base value (signed 64-bit integer)
  @param exponent The exponent value (unsigned 64-bit integer)
  @return The result of base^exponent, or 0 if overflow occurs
@@ -49,7 +49,7 @@ int64_t pow_int64(int64_t base, uint64_t exponent);
 /*!
  @function pow_uint64
  @abstract Computes integer power using exponentiation by squaring for unsigned 64-bit integers.
- @discussion This function efficiently computes base^exponent using the exponentiation by squaring algorithm for unsigned integers. It includes overflow detection and returns 0 when overflow occurs.
+ @discussion This function computes base^exponent by exponentiation by squaring for unsigned integers. It detects overflow and returns 0 when overflow occurs.
  @param base The base value (unsigned 64-bit integer)
  @param exponent The exponent value (unsigned 64-bit integer)
  @return The result of base^exponent, or 0 if overflow occurs
@@ -73,7 +73,16 @@ int64_t floatToFpXX(double value, int exponentBits, int mantissaBits, int expone
 /*!
  @category NSNumber(Extension)
  @abstract Mathematical operations extension for NSNumber.
- @discussion This category extends NSNumber with convenient methods for performing mathematical operations with other NSNumber instances or primitive types. All operations preserve type precision and handle overflow conditions appropriately.
+ @discussion This category extends NSNumber with methods for performing mathematical operations with other NSNumber instances or primitive types. The result type is the highest-precedence operand type; unsigned types below 64 bits promote to the next larger signed type.
+ 
+ Edge-case results:
+ - Integer add, subtract, or multiply whose exact result does not fit the resolved 64-bit type → NaN (a double NSNumber).
+ - Integer divide or modulus by zero → NaN.
+ - Integer power that overflows 64 bits → 0 (the pow_int64 / pow_uint64 result).
+ - Integer power with a negative exponent → a double computed with pow().
+ - Floating-point divide by zero → the IEEE 754 result (±INFINITY, or NaN for 0/0) boxed with the resolved float or double type. Foundation reports a non-finite float as a double ('d').
+ - Floating-point XOR with a NaN operand → NaN; other floating operands saturate to the int64 range before the XOR.
+ - A nil operand, or an operand whose objCType is not an integer, BOOL, float, or double encoding → NSInvalidArgumentException.
  
  The methods are organized into two groups:
  - Operations with NSNumber instances (addNumber:, subtractNumber:, etc.)
@@ -91,7 +100,7 @@ NS_ASSUME_NONNULL_BEGIN
 /*!
  @method addNumber:
  @abstract Adds another NSNumber to this NSNumber.
- @discussion Performs addition while preserving the highest precision type between the operands.
+ @discussion Performs addition while preserving the highest precision type between the operands. Returns NaN when the exact integer sum does not fit the resolved 64-bit type.
  @param second The NSNumber to add
  @return A new NSNumber containing the sum
  */
@@ -100,7 +109,7 @@ NS_ASSUME_NONNULL_BEGIN
 /*!
  @method subtractNumber:
  @abstract Subtracts another NSNumber from this NSNumber.
- @discussion Performs subtraction while preserving the highest precision type between the operands.
+ @discussion Performs subtraction while preserving the highest precision type between the operands. Returns NaN when the exact integer difference does not fit the resolved 64-bit type, including a negative difference in an unsigned long long result.
  @param second The NSNumber to subtract
  @return A new NSNumber containing the difference
  */
@@ -109,7 +118,7 @@ NS_ASSUME_NONNULL_BEGIN
 /*!
  @method multiplyNumber:
  @abstract Multiplies this NSNumber by another NSNumber.
- @discussion Performs multiplication while preserving the highest precision type between the operands.
+ @discussion Performs multiplication while preserving the highest precision type between the operands. Returns NaN when the exact integer product does not fit the resolved 64-bit type.
  @param second The NSNumber to multiply by
  @return A new NSNumber containing the product
  */
@@ -118,7 +127,7 @@ NS_ASSUME_NONNULL_BEGIN
 /*!
  @method divideNumber:
  @abstract Divides this NSNumber by another NSNumber.
- @discussion Performs division while preserving the highest precision type between the operands. Returns NaN for integer division by zero, and INFINITY for floating-point division by zero.
+ @discussion Performs division while preserving the highest precision type between the operands. Returns NaN for integer division by zero. Floating-point division by zero follows IEEE 754: ±INFINITY for a nonzero numerator, NaN for 0/0, boxed in the resolved float or double type.
  @param second The NSNumber to divide by
  @return A new NSNumber containing the quotient
  */
@@ -136,7 +145,7 @@ NS_ASSUME_NONNULL_BEGIN
 /*!
  @method powerNumber:
  @abstract Raises this NSNumber to the power of another NSNumber.
- @discussion Performs exponentiation while preserving the highest precision type between the operands. Uses optimized integer power functions for integer operands.
+ @discussion Performs exponentiation while preserving the highest precision type between the operands. Integer operands use pow_int64 / pow_uint64, which return 0 on 64-bit overflow. A negative integer exponent returns a double computed with pow(). Floating-point operands use pow().
  @param second The NSNumber exponent
  @return A new NSNumber containing the result
  */
@@ -145,7 +154,7 @@ NS_ASSUME_NONNULL_BEGIN
 /*!
  @method xorNumber:
  @abstract Performs bitwise XOR operation with another NSNumber.
- @discussion Performs bitwise XOR operation. For floating-point numbers, converts to integer before operation.
+ @discussion Performs bitwise XOR operation. Floating-point operands saturate to the int64 range, XOR as integers, and return in the resolved float or double type. A NaN operand returns NaN.
  @param second The NSNumber to XOR with
  @return A new NSNumber containing the XOR result
  */
@@ -286,7 +295,7 @@ NS_ASSUME_NONNULL_BEGIN
 /*!
  @method powerUInt:
  @abstract Raises this NSNumber to the power of an unsigned 64-bit integer.
- @discussion Uses optimized integer exponentiation algorithms for better performance and overflow detection.
+ @discussion Uses pow_int64 / pow_uint64 for integer receivers; both return 0 on 64-bit overflow. A floating-point receiver uses pow().
  @param second The unsigned integer exponent
  @return A new NSNumber containing the result
  */

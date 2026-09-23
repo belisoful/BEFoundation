@@ -3,8 +3,8 @@
  @copyright		-© 2025 Delicense - @belisoful. All rights released.
  @date			2025-01-01
  @author		belisoful@icloud.com
- @abstract
- @discussion
+ @abstract		Implements the NSCoder (AtIndex) category.
+ @discussion	Each index-based method converts the index to a decimal string key and forwards to the matching NSCoder key-based method.
 */
 
 #import <objc/runtime.h>
@@ -24,12 +24,9 @@
 
 /*!
  @method		-indexKey:
- @abstract		This is a private utility method for changing the index to a
- 				string key for the coder.
+ @abstract		Converts the index to the string key used by the coder.
  @param			index	The index to convert into an NSString for the Coder.
- @discussion	This adds functionality to encode and decode at an index rather
-				than a key.  The AtIndex (in each method) is converted into a
-				string of the number to be used as the key for the data.
+ @discussion	Uses the decimal representation of the index.
  */
 - (nonnull NSString *)indexKey:(uint64_t)index
 {
@@ -38,7 +35,7 @@
 
 
 /*!
- @method		-encodeObject::
+ @method		-encodeObject:atIndex:
  @abstract		Encodes an object and associates it with the integer index.
  @param			object	The object to encode.
  @param			index	The index to associate the object data with.
@@ -66,7 +63,7 @@
 }
 
 /*!
- @method		-encodeBool::
+ @method		-encodeBool:atIndex:
  @abstract		Encodes a Boolean value and associates it with the integer index.
  @param			value	The BOOL value to encode.
  @param			index	The index to associate the Boolean data with.
@@ -78,7 +75,7 @@
 
 
 /*!
- @method		-encodeInt::
+ @method		-encodeInt:atIndex:
  @abstract		Encodes a C integer value and associates it with the integer
  				index.
  @param			value	The C integer value to encode.
@@ -91,7 +88,7 @@
 
 
 /*!
- @method		-encodeInteger::
+ @method		-encodeInteger:atIndex:
  @abstract		Encodes a system sized NSInteger value and associates it with
 				the integer index.
  @param			value	The system sized NSInteger value to encode.
@@ -104,7 +101,7 @@
 
 
 /*!
- @method		-encodeInt32::
+ @method		-encodeInt32:atIndex:
  @abstract		Encodes a 32 bit integer value and associates it with the
  				integer index.
  @param			value	The 32 bit integer value to encode.
@@ -117,7 +114,7 @@
 
 
 /*!
- @method		-encodeInt64::
+ @method		-encodeInt64:atIndex:
  @abstract		Encodes a 64 bit integer value and associates it with the
 				integer index.
  @param			value	The 64 bit integer value to encode.
@@ -130,7 +127,7 @@
 
 
 /*!
- @method		-encodeHalf::
+ @method		-encodeHalf:atIndex:
  @abstract		Encodes a 16 bit float value and associates it with the
 				integer index.
  @param			value	The 16 bit float value to encode.
@@ -143,7 +140,7 @@
 
 
 /*!
- @method		-encodeFloat::
+ @method		-encodeFloat:atIndex:
  @abstract		Encodes a 32 bit float value and associates it with the
 				integer index.
  @param			value	The 32 bit float value to encode.
@@ -156,7 +153,7 @@
 
 
 /*!
- @method		-encodeDouble::
+ @method		-encodeDouble:atIndex:
  @abstract		Encodes a 64 bit float value and associates it with the
 				integer index.
  @param			value	The 64 bit float value to encode.
@@ -169,7 +166,7 @@
 
 
 /*!
- @method		-encodeBytes::
+ @method		-encodeBytes:length:atIndex:
  @abstract		Encodes a buffer of data, given its length and a pointer, and
  				associates it with the integer index.
  @param			bytes	The pointer to the bytes to encode.
@@ -215,7 +212,7 @@
 
 
 /*!
- @method		-decodeTopLevelObjectAtIndex:
+ @method		-decodeTopLevelObjectAtIndex:error:
  @abstract		Decodes the previously-encoded object associated by an integer
  				index, populating an error if decoding fails.
  @param			index	The integer index that identifies the object to decode.
@@ -345,7 +342,7 @@
 
 
 /*!
- @method		-decodeBytesAtIndex::
+ @method		-decodeBytesAtIndex:returnedLength:
  @abstract		Decodes a buffer of data that was previously encoded with
  				encodeBytes:length:forKey: and associated with the integer index.
  @param			index	The integer index that identifies the object to decode.
@@ -356,18 +353,18 @@
  				returned bytes are immutable.
  */
 - (nullable const uint8_t *)decodeBytesAtIndex:(uint64_t)index returnedLength:(nullable NSUInteger *)lengthp NS_RETURNS_INNER_POINTER
-{	//	NS_RETURNS_INNER_POINTER   // returned bytes immutable!
+{
 	return [self decodeBytesForKey:[self indexKey:index] returnedLength:lengthp];
 }
 
 
 /*!
- @method		-decodeObjectOfClass::
+ @method		-decodeObjectOfClass:atIndex:
  @abstract		Decodes an object for the key, restricted to the specified class.
  @param			aClass	The expected class of the object being decoded.
  @param			index	The integer index that identifies the object to decode.
  @discussion	If the coder responds YES to requiresSecureCoding, then an
-				exception will be thrown if the class to be decoded does not
+				exception is thrown if the class to be decoded does not
  				implement NSSecureCoding or is not isKindOfClass: of aClass.
  
  				If the coder responds NO to requiresSecureCoding, then the class
@@ -383,7 +380,7 @@
 
 
 /*!
- @method		-decodeTopLevelObjectOfClass:::
+ @method		-decodeTopLevelObjectOfClass:atIndex:error:
  @abstract		Decode an object as an expected type, failing if the archived
  				type does not match.
  @param			aClass	The expected class of the object being decoded.
@@ -408,7 +405,7 @@
 
 
 /*!
- @method		-decodeArrayOfObjectsOfClass::
+ @method		-decodeArrayOfObjectsOfClass:atIndex:
  @abstract		Decodes an array of objects for the integer index, restricted
 				to the specified class.
  @param			aClass	The expected class of the object being decoded.
@@ -424,9 +421,7 @@
  				decoder.
 				A runtime that does not enforce the allowed classes logs a warning
 				and returns the mismatched element in the collection.
- @throws		Requires \c NSSecureCoding otherwise an exception is thrown and
- 				sets the \c decodingFailurePolicy to
- 				\c NSDecodingFailurePolicySetErrorAndReturn.
+ @throws		Raises if the coder does not require secure coding.
  */
 - (nullable NSArray *)decodeArrayOfObjectsOfClass:(Class)aClass atIndex:(uint64_t)index
 {
@@ -435,7 +430,7 @@
 
 
 /*!
- @method		-decodeDictionaryWithKeysOfClass:::
+ @method		-decodeDictionaryWithKeysOfClass:objectsOfClass:atIndex:
  @abstract		Decodes a dictionary of objects for the integer index, restricted
 				to the specified key class and object class.
  @param			keyCls		The expected class of the dictionary keys being
@@ -457,7 +452,7 @@
 
 
 /*!
- @method		-decodeObjectOfClasses::
+ @method		-decodeObjectOfClasses:atIndex:
  @abstract		Decodes an object for the integer index, restricted to the
  				specified classes.
  @param			classes		A set of the expected classes.
@@ -475,7 +470,7 @@
 
 
 /*!
- @method		-decodeTopLevelObjectOfClasses:::
+ @method		-decodeTopLevelObjectOfClasses:atIndex:error:
  @abstract		Decode an object as one of several expected types, failing if
  				the archived type does not match.
  @param			classes		A set of expected classes that the object being
@@ -487,7 +482,7 @@
  @discussion	This method is equivalent to decodeObject(of:forKey:), but
 				allows you to specify a set of classes that the decoded object
  				can match. If requiresSecureCoding is YES, the decoded object’s
- 				class must be a member of the classes parameter, or a sublcass
+ 				class must be a member of the classes parameter, or a subclass
  				of a member.
  @return		The decoded object, or nil if decoding fails.
  */
@@ -498,7 +493,7 @@
 
 
 /*!
- @method		-decodeArrayOfObjectsOfClasses::
+ @method		-decodeArrayOfObjectsOfClasses:atIndex:
  @abstract		Decodes an array of objects for the integer index, restricted
 				to the specified classes.
  @param			classes	The expected classes of the objects being decoded.
@@ -511,9 +506,7 @@
 				decoder.
 				A runtime that does not enforce the allowed classes logs a warning
 				and returns the mismatched element in the collection.
- @throws		Requires \c NSSecureCoding otherwise an exception is thrown and
-				sets the \c decodingFailurePolicy to
-				\c NSDecodingFailurePolicySetErrorAndReturn.
+ @throws		Raises if the coder does not require secure coding.
  */
 
 - (nullable NSArray *)decodeArrayOfObjectsOfClasses:(NSSet<Class> *)classes atIndex:(uint64_t)index
@@ -522,7 +515,7 @@
 }
 
 /*!
- @method		-decodeDictionaryWithKeysOfClasses:::
+ @method		-decodeDictionaryWithKeysOfClasses:objectsOfClasses:atIndex:
  @abstract		Decodes a dictionary of objects for the integer index, restricted
 				to the specified key class and object classes.
  @param			keyClasses	The expected classes of the dictionary keys being
@@ -545,7 +538,7 @@
 /*!
  @method		-decodePropertyListAtIndex:
  @abstract		Decodes a property list for the integer index.
- @param			index	The integer index that identifies the propery list to
+ @param			index	The integer index that identifies the property list to
  						decode.
  @return		Returns the decoded property list object, or \c nil if no value
 				is encoded for \c index or it cannot be decoded.

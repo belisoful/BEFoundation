@@ -20,9 +20,9 @@ NSString *str = @"hello";
 // Get string value (same as self for NSString)
 NSString *value = str.stringValue;  // @"hello"
 
-// Useful for generic dictionary reading
+// Read mixed string and number values with one accessor
 NSDictionary *dict = @{@"stringKey": @"stringValue", @"numberKey": @42};
-// When iterating, you can safely call stringValue on both
+// When iterating, stringValue works on both
 ```
 
 ### Numeric Validation
@@ -54,11 +54,11 @@ NSDictionary *dict = @{@"stringKey": @"stringValue", @"numberKey": @42};
 ### Date and Time Validation
 
 ```objc
-// Check if string is a valid system date/time
-@"2024-01-15 10:30:00".isSystemDateTimeValue;  // YES
+// Check if string is a date and time in the current locale's short styles
+@"1/15/24, 10:30 AM".isSystemDateTimeValue;  // YES in the en_US locale
 
 // Get the date value
-NSDate *date = @"2024-01-15 10:30:00".systemDateTimeValue;
+NSDate *date = @"1/15/24, 10:30 AM".systemDateTimeValue;
 
 // Check for specific date styles
 NSDate *date = [@"01/15/2024" dateWithStyle:NSDateFormatterShortStyle];
@@ -66,9 +66,9 @@ NSDate *date = [@"01/15/2024" dateWithStyle:NSDateFormatterShortStyle];
 // Check for specific time styles
 NSDate *time = [@"10:30 AM" timeWithStyle:NSDateFormatterShortStyle];
 
-// Check for date and time with specific styles
-NSDate *dateTime = [@"01/15/2024 at 10:30 AM" dateWithStyle:NSDateFormatterMediumStyle 
-                                                        timeStyle:NSDateFormatterShortStyle];
+// Check for date and time with specific styles (en_US medium date, short time)
+NSDate *dateTime = [@"Jan 15, 2024 at 10:30 AM" dateWithStyle:NSDateFormatterMediumStyle
+                                                         timeStyle:NSDateFormatterShortStyle];
 
 // Check for custom format
 NSDate *custom = [@"2024-01-15" dateWithFormat:@"yyyy-MM-dd"];
@@ -106,7 +106,7 @@ NSMutableString *str = [NSMutableString stringWithString:@"Hello"];
 // Delete at index
 [str setString:@"Hello World"];
 [str deleteAtIndex:5];
-// str is now @"Hello"
+// str is now @"HelloWorld"
 ```
 
 ## See Also

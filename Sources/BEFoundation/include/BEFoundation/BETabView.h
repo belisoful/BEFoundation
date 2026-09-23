@@ -9,8 +9,7 @@
  @discussion BETabView extends NSTabView to add the ability to hide and show individual
 			 tab items while maintaining their position in the tab order. Hidden tabs
 			 are removed from the visible interface but remain in memory and can be
-			 shown again at any time. This is useful for conditional UI where certain
-			 tabs should only be visible under specific circumstances.
+			 shown again at any time.
 			 
 			 BETabView adds these behaviors to NSTabView:
 			 - Hide/show individual tabs dynamically
@@ -55,8 +54,7 @@
 			 BETabView methods when changed.
 			 
 			 Important: This property only works with BETabView instances. Attempting
-			 to use it with a standard NSTabView will raise an exception to prevent
-			 programming errors.
+			 to use it with a standard NSTabView raises an exception.
 			 
 			 The hidden state is persistent across show/hide cycles and is maintained
 			 even when the tab is not in the visible tabs array.
@@ -70,9 +68,10 @@
 			 tab bar and content area). Setting it to NO shows the tab (adds it back
 			 to the visible interface at its preserved position).
 			 
-			 This property only works when the tab item is part of a BETabView. Using
-			 it with a standard NSTabView will raise an NSInternalInconsistencyException
-			 to prevent misuse.
+			 This property takes effect when the tab item is part of a BETabView. On an
+			 item that belongs to no tab view the value is stored and applied when the
+			 item is inserted into a BETabView. Setting it on an item that belongs to a
+			 standard NSTabView raises an NSInternalInconsistencyException.
 			 
 			 The hidden state is preserved using associated objects and persists across
 			 show/hide operations. When a tab is hidden, it remains in the allTabViewItems
@@ -97,8 +96,7 @@
 /*!
  @property   hiddenTabView
  @abstract   The BETabView that owns this item when it is hidden.
- @discussion Internal property used to maintain a weak reference to the owning BETabView
-			 when the item is hidden. When a tab is visible, tabView returns the owning
+ @discussion A weak reference to the owning BETabView when the item is hidden. When a tab is visible, tabView returns the owning
 			 NSTabView. When hidden, tabView returns nil, so hiddenTabView provides
 			 access to the owner.
 			 
@@ -123,8 +121,8 @@
  @abstract   Adds convenience method for finding tab items by identifier.
  @discussion Provides a simple method to retrieve a tab view item using its identifier,
 			 similar to how UIKit handles view lookups by tag. This complements the
-			 existing indexOfTabViewItemWithIdentifier: method by returning the actual
-			 tab item instead of just its index.
+			 existing indexOfTabViewItemWithIdentifier: method by returning the tab item
+			 itself.
 			 
 			 This category works with both NSTabView and BETabView instances.
  */
@@ -184,6 +182,9 @@
 				 [self updateUserPreferences];
 			 }
 			 @endcode
+
+			 Every delegate method receives a non-nil tabViewItem; the nullable declaration
+			 is kept for source compatibility.
  */
 @protocol BETabViewDelegate <NSTabViewDelegate>
 
@@ -193,7 +194,7 @@
  @method     tabView:willHideTabViewItem:
  @abstract   Notifies delegate that a tab item is about to be hidden.
  @param      tabView The BETabView containing the tab item.
- @param      tabViewItem The tab item that will be hidden.
+ @param      tabViewItem The tab item about to be hidden.
  @discussion Called immediately before the tab item is removed from the visible tabs.
 			 At this point, the tab is still in the tabViewItems array and visible
 			 in the UI. The delegate can use this opportunity to save state, update
@@ -223,7 +224,7 @@
  @method     tabView:willShowTabViewItem:
  @abstract   Notifies delegate that a tab item is about to be shown.
  @param      tabView The BETabView containing the tab item.
- @param      tabViewItem The tab item that will be shown.
+ @param      tabViewItem The tab item about to be shown.
  @discussion Called immediately before the tab item is added back to the visible tabs.
 			 At this point, the tab is still hidden (not in the tabViewItems array).
 			 The delegate can use this opportunity to prepare the tab's content,
@@ -258,8 +259,6 @@
  @abstract   NSTabView subclass that supports hiding and showing individual tabs.
  @discussion BETabView extends NSTabView to add dynamic tab visibility control. Tabs
 			 can be hidden and shown while preserving their position in the tab order.
-			 This is useful for applications that need to conditionally display tabs
-			 based on user permissions, application state, or user preferences.
 			 
 			 Architecture:
 			 - Maintains two conceptual arrays: visible tabs (tabViewItems) and all
@@ -319,7 +318,7 @@
  @abstract   All tab view items, including both visible and hidden tabs.
  @discussion This property provides access to all tabs that have been added to the
 			 tab view, regardless of their visibility state. The order of items in
-			 this array determines the position where tabs will appear when shown.
+			 this array determines the position where tabs appear when shown.
 			 
 			 The inherited tabViewItems property returns only visible tabs, while
 			 allTabViewItems returns all tabs.
@@ -378,8 +377,7 @@
 			 index in the tabViewItems (visible tabs) array. This accounts for any
 			 hidden tabs that come before the specified index.
 			 
-			 This method is useful for determining where a tab appears in the visible
-			 tab bar, or for converting between the two coordinate systems.
+			 The result is the tab's position in the visible tab bar.
 			 
 			 Example:
 			 If allTabViewItems contains [Tab0, Tab1(hidden), Tab2, Tab3(hidden), Tab4]
@@ -406,8 +404,7 @@
 			 - insertMode=NO: Returns NSNotFound for hidden tabs and out-of-range indices
 			 - insertMode=YES: Allows index==count and returns where to insert a new tab
 			 
-			 This is primarily used internally by insertTabViewItem:atIndex: but can
-			 be useful for custom tab management logic.
+			 insertTabViewItem:atIndex: uses this method to place new tabs.
  @return     The display index, or NSNotFound if out of range (respecting insertMode).
  */
 - (NSInteger)displayIndexAtIndex:(NSInteger)index insertMode:(BOOL)insertMode;
@@ -566,8 +563,7 @@
  @abstract   Returns the tab at the specified index in allTabViewItems.
  @param      index The index in the allTabViewItems array (0-based).
  @discussion Provides access to any tab (visible or hidden) by its index in the
-			 complete array. This is useful for iterating over all tabs or accessing
-			 tabs by their absolute position.
+			 complete array.
 			 
 			 Compare with the inherited tabViewItemAtIndex: method, which only accesses
 			 visible tabs.
@@ -582,8 +578,7 @@
  @discussion Searches allTabViewItems for a tab whose identifier matches using isEqual:.
 			 This searches both visible and hidden tabs.
 			 
-			 The search is performed linearly, so for large numbers of tabs, consider
-			 caching the result if multiple lookups are needed.
+			 The search is linear.
 			 
 			 Compare with the inherited indexOfTabViewItemWithIdentifier: method, which
 			 only searches visible tabs.

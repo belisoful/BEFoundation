@@ -3,11 +3,9 @@
  @copyright  -© 2025 Delicense - @belisoful. All rights released.
  @author     belisoful@icloud.com
  @abstract   Auto Layout convenience for @c BEView (@c NSView on macOS, @c UIView on iOS).
- @discussion Pinning, centering, and sizing a view with Auto Layout is 5–10 lines of anchor
-             boilerplate each, and forgetting @c translatesAutoresizingMaskIntoConstraints = NO
-             is a perennial gotcha. These helpers do both: each clears that flag automatically,
-             activates the constraints it creates, and returns them so the caller can later
-             deactivate or animate them. @c NSLayoutAnchor and @c UILayoutAnchor are the same
+ @discussion Each helper clears @c translatesAutoresizingMaskIntoConstraints, activates the
+             constraints it creates, and returns them so the caller can later deactivate or
+             animate them. @c NSLayoutAnchor and @c UILayoutAnchor are the same
              API, so a single implementation serves both platforms.
 
              @code
@@ -15,6 +13,7 @@
              [contentView pinEdgesToSuperview];
              NSArray<NSLayoutConstraint *> *centering = [badge centerInSuperview];
              @endcode
+ @since      1.1
  */
 
 #ifndef BEView_BExtension_h
@@ -49,7 +48,8 @@ NS_ASSUME_NONNULL_BEGIN
  @abstract   Pins the receiver's four edges to another view's edges with the given insets.
  @param      view   The view to pin to (typically an ancestor or sibling in the same hierarchy).
  @param      insets Distances from @c view's edges (@c left → leading, @c right → trailing).
- @return     The four activated constraints, or an empty array if @c view is nil.
+ @return     The four activated constraints. @c view is nonnull; a nil value passed anyway
+             yields an empty array.
  */
 - (NSArray<NSLayoutConstraint *> *)pinEdgesToView:(BEView *)view insets:(BEEdgeInsets)insets;
 
@@ -72,6 +72,8 @@ NS_ASSUME_NONNULL_BEGIN
 /*!
  @method     constrainToWidth:height:
  @abstract   Constrains the receiver to a fixed width and height.
+ @param      width  The fixed width, in points.
+ @param      height The fixed height, in points.
  @return     The two activated constraints (width, height).
  */
 - (NSArray<NSLayoutConstraint *> *)constrainToWidth:(CGFloat)width height:(CGFloat)height;

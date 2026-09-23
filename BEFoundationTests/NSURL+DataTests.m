@@ -692,7 +692,6 @@
 - (void)testPropertyCaching {
 	NSURL *dataURL = [NSURL URLWithString:@"data:text/plain;charset=utf-8;base64,SGVsbG8="];
 	
-	// First access
 	NSString *mimeType1 = dataURL.dataMIMEType;
 	NSString *charset1 = dataURL.dataCharset;
 	BOOL isBase64_1 = dataURL.isBase64;
@@ -1180,7 +1179,6 @@
 - (void)testAllConvenienceMethodsWork {
 	NSData *data = [@"test" dataUsingEncoding:NSUTF8StringEncoding];
 	
-	// Test all class methods
 	XCTAssertNotNil([NSURL dataURLWithData:data]);
 	XCTAssertNotNil([NSURL dataURLWithData:data isBase64:NSURLBase64Type_Yes]);
 	XCTAssertNotNil([NSURL dataURLWithData:data charset:@"utf-8"]);
@@ -1190,7 +1188,6 @@
 	XCTAssertNotNil([NSURL dataURLWithData:data mimeType:@"text/plain" isBase64:NSURLBase64Type_Yes]);
 	XCTAssertNotNil([NSURL dataURLWithData:data mimeType:@"text/plain" charset:@"utf-8" isBase64:NSURLBase64Type_Yes]);
 	
-	// Test all instance methods
 	XCTAssertNotNil([[NSURL alloc] initDataURLWithData:data]);
 	XCTAssertNotNil([[NSURL alloc] initDataURLWithData:data isBase64:NSURLBase64Type_Yes]);
 	XCTAssertNotNil([[NSURL alloc] initDataURLWithData:data charset:@"utf-8"]);
@@ -1329,6 +1326,58 @@
 	XCTAssertNotNil(dataURL);
 	NSString *decoded = dataURL.decodedString;
 	XCTAssertEqualObjects(decoded, js);
+}
+
+#pragma mark - Parameter Parsing Leniency
+
+- (void)testParseDataURL_uppercaseCharsetNameMatches {
+	NSURL *url = [NSURL URLWithString:@"data:text/plain;CHARSET=utf-8,caf%C3%A9"];
+
+	XCTAssertEqualObjects(url.dataCharset, @"utf-8");
+	XCTAssertEqual(url.stringEncoding, NSUTF8StringEncoding);
+	XCTAssertEqualObjects(url.decodedString, @"café");
+}
+
+- (void)testParseDataURL_quotedCharsetWithWhitespaceIsUnquoted {
+	// NSURL stores the spaces and quotes of `charset = "utf-8"` percent-encoded.
+	NSURL *url = [NSURL URLWithString:@"data:text/plain;charset%20=%20%22utf-8%22,caf%C3%A9"];
+
+	XCTAssertEqualObjects(url.dataCharset, @"utf-8");
+	XCTAssertEqual(url.stringEncoding, NSUTF8StringEncoding);
+	XCTAssertEqualObjects(url.decodedString, @"café");
+}
+
+- (void)testParseDataURL_base64TokenIsCaseInsensitiveAndTrimmed {
+	NSURL *url = [NSURL URLWithString:@"data:text/plain;%20Base64%20,SGVsbG8="];
+
+	XCTAssertTrue(url.isBase64);
+	XCTAssertEqualObjects(url.decodedString, @"Hello");
+}
+
+- (void)testDecodedData_base64WithEmbeddedNewlines {
+	NSString *expected = [@"" stringByPaddingToLength:200 withString:@"The quick brown fox jumps over the lazy dog. " startingAtIndex:0];
+	NSString *wrapped = [[expected dataUsingEncoding:NSUTF8StringEncoding]
+						 base64EncodedStringWithOptions:NSDataBase64Encoding64CharacterLineLength | NSDataBase64EncodingEndLineWithLineFeed];
+	XCTAssertTrue([wrapped containsString:@"\n"], @"Precondition: the payload wraps onto several lines");
+	NSURL *url = [NSURL URLWithString:[@"data:text/plain;charset=utf-8;base64," stringByAppendingString:wrapped]];
+
+	XCTAssertNotNil(url);
+	XCTAssertEqualObjects(url.decodedString, expected);
+}
+
+- (void)testDecodedData_base64WithPercentEncodedPadding {
+	NSURL *url = [NSURL URLWithString:@"data:text/plain;base64,SGk%3D"];
+
+	XCTAssertEqualObjects(url.decodedString, @"Hi");
+}
+
+- (void)testCharsetFromMediaType {
+	XCTAssertEqualObjects([NSURL charsetFromMediaType:@"text/html; charset=utf-8"], @"utf-8");
+	XCTAssertEqualObjects([NSURL charsetFromMediaType:@"text/html;CHARSET = \"ISO-8859-1\""], @"ISO-8859-1");
+	XCTAssertEqualObjects([NSURL charsetFromMediaType:@"text/html; boundary=x; charset=utf-8"], @"utf-8");
+	XCTAssertNil([NSURL charsetFromMediaType:@"text/html"]);
+	XCTAssertNil([NSURL charsetFromMediaType:@"text/html; charset="]);
+	XCTAssertNil([NSURL charsetFromMediaType:nil]);
 }
 
 @end

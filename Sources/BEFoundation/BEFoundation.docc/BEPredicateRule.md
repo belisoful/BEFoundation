@@ -39,7 +39,7 @@ typedef NSInteger BEPredicateRuleOutcome;
 
 enum {
     BEPredicateRuleReject = -1,  // Rule matched and rejected
-    BEPredicateRuleNA = 0,       // Rule did not match
+    BEPredicateRuleNA = 0,       // No outcome; a matching NA rule is skipped
     BEPredicateRuleAccept = 1,   // Rule matched and accepted
 };
 ```
@@ -73,7 +73,8 @@ NSArray *rules = @[
 ];
 
 // Evaluate object against all rules
-// Returns outcome of first matching rule (by lowest priority number)
+// Returns the outcome of the first matching rule (by lowest priority number)
+// whose outcome is not BEPredicateRuleNA; a matching NA rule is skipped
 BEPredicateRuleOutcome outcome = [rules ruleOutcomeWithObject:someObject];
 ```
 

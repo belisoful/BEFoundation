@@ -8,7 +8,7 @@
 #import <XCTest/XCTest.h>
 #import "NSNotification+ExtraProperties.h"
 
-// Cross-platform stand-in for the AppKit fixture this test used to use: a plain object
+// Cross-platform stand-in for an AppKit fixture: a plain object
 // exposing -tag and -identifier, which NSNotification+ExtraProperties reads from .object.
 @interface BENotificationTestObject : NSObject
 @property (nonatomic) NSInteger tag;
@@ -23,11 +23,9 @@
 @implementation NSNotificationExtraPropertiesTests
 
 - (void)setUp {
-    // Put setup code here. This method is called before the invocation of each test method in the class.
 }
 
 - (void)tearDown {
-    // Put teardown code here. This method is called after the invocation of each test method in the class.
 }
 
 - (void)testTag_SetExtraProperties_Correctness
@@ -253,6 +251,27 @@
 	
 	XCTAssertEqual(notification.tag, userTag);
 	XCTAssertEqual(notification.identifier, userIdentifier);
+}
+
+- (void)testIdentifier_MutableValueReadsBackAsImmutableCopy
+{
+	NSMutableString *identifier = [NSMutableString stringWithString:@"mutable"];
+	NSNotification *notification = [NSNotification notificationWithName:@"NonspecificName" object:nil];
+	notification.identifier = identifier;
+
+	[identifier appendString:@"-changed"];
+
+	XCTAssertEqualObjects(notification.identifier, @"mutable");
+	XCTAssertFalse([notification.identifier isKindOfClass:NSMutableString.class]);
+}
+
+- (void)testIdentifier_NonCopyableValueIsRetained
+{
+	NSObject *identifier = NSObject.new;
+	NSNotification *notification = [NSNotification notificationWithName:@"NonspecificName" object:nil];
+	notification.identifier = identifier;
+
+	XCTAssertEqual(notification.identifier, identifier);
 }
 
 @end

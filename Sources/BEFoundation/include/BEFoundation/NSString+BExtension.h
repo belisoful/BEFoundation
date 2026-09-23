@@ -40,11 +40,11 @@
  
  `-isDoubleValue`: Checks if the string can be interpreted as a valid double.
  
- `-isSystemDateTimeValue`: Checks if the string is a valid system date time.
+ `-isSystemDateTimeValue`: Checks if the string is a valid date in the current locale's short style time.
  
- `-isSystemDateValue`: Checks if the string is a valid system date.
+ `-isSystemDateValue`: Checks if the string is a valid date in the current locale's short style.
  
- `-isSystemTimeValue`: Checks if the string is a valid system time.
+ `-isSystemTimeValue`: Checks if the string is a valid time in the current locale's short style.
  
  `-dateWithStyle:`: Parses the string as a date of a given style (returns the NSDate or nil).
 
@@ -53,13 +53,20 @@
  `-dateWithStyle:timeStyle:`: Parses the string as a date and time of given styles.
 
  `-dateWithFormat:`: Parses the string against an NSDateFormatter format string.
+
+ `-systemDateTimeValue`, `-systemDateValue`, `-systemTimeValue`: The parsed NSDate for the three checks above, or nil.
+
+ `-objectAtIndexedSubscript:`: The NSNumber value of the character at an index.
+
+ `-stringByInsertingString:atIndex:`, `-stringByPrependingString:`, `-stringByPrependingFormat:`: Return a new string with the insertion.
  
  And in NSMutableString:
  
+ `-prependString:`, `-prependFormat:`: Insert at index 0.
+
+ `-deleteAll`: Removes every character.
+
  `-deleteAtIndex:`: Deletes the character at an index.
- 
- These methods aim to make string parsing and validation easier, especially in scenarios where the format or
- content of the string matters, such as user input validation or conversion tasks.
 
  @code
 	if (@"42".isIntegerValue) { NSInteger n = @"42".integerValue; }   // YES
@@ -87,7 +94,7 @@
 /*!
  @property		isDigits
  @abstract		Checks if the string is all digits.
- @result		Returns `YES`  if all digits.
+ @result		Returns `YES` if every character is a decimal digit; `NO` for an empty string.
  */
 @property (readonly, assign, nonatomic) BOOL isDigits;
 
@@ -135,43 +142,43 @@
 
 /*!
  @property		isSystemDateTimeValue
- @abstract		Checks if the string is a valid system date and time.
- @result		Returns `YES`  if the string is valid system date and time.
+ @abstract		Checks if the string is a valid date and time in the current locale's short styles.
+ @result		Returns `YES`  if the string is valid date and time in the current locale's short styles.
  */
 @property (readonly, assign, nonatomic) BOOL isSystemDateTimeValue;
 
 /*!
  @property		systemDateTimeValue
- @abstract		The string parsed as a system date and time.
- @result		The parsed `NSDate`, or `nil` if the string is not a valid system date and time.
+ @abstract		The string parsed as a date and time in the current locale's short styles.
+ @result		The parsed `NSDate`, or `nil` if the string is not a valid date and time in the current locale's short styles.
  */
 @property (readonly, nullable, nonatomic) NSDate* systemDateTimeValue;
 
 /*!
  @property		isSystemDateValue
- @abstract		Checks if the string is a valid system date.
- @result		Returns `YES`  if the string is valid system date.
+ @abstract		Checks if the string is a valid date in the current locale's short style.
+ @result		Returns `YES`  if the string is valid date in the current locale's short style.
  */
 @property (readonly, assign, nonatomic) BOOL isSystemDateValue;
 
 /*!
  @property		systemDateValue
- @abstract		The string parsed as a system date.
- @result		The parsed `NSDate`, or `nil` if the string is not a valid system date.
+ @abstract		The string parsed as a date in the current locale's short style.
+ @result		The parsed `NSDate`, or `nil` if the string is not a valid date in the current locale's short style.
  */
 @property (readonly, nullable, nonatomic) NSDate* systemDateValue;
 
 /*!
  @property		isSystemTimeValue
- @abstract		Checks if the string is a valid system time.
- @result		Returns `YES`  if the string is valid system time.
+ @abstract		Checks if the string is a valid time in the current locale's short style.
+ @result		Returns `YES`  if the string is valid time in the current locale's short style.
  */
 @property (readonly, assign, nonatomic) BOOL isSystemTimeValue;
 
 /*!
  @property		systemTimeValue
- @abstract		The string parsed as a system time.
- @result		The parsed `NSDate`, or `nil` if the string is not a valid system time.
+ @abstract		The string parsed as a time in the current locale's short style.
+ @result		The parsed `NSDate`, or `nil` if the string is not a valid time in the current locale's short style.
  */
 @property (readonly, nullable, nonatomic) NSDate * systemTimeValue;
 
@@ -264,20 +271,22 @@
 
 
 /*!
- @method		-prependString
+ @method		-prependString:
  @abstract		Adds to the start of the receiver the characters of a given string.
- @param			aString The string to prepend to the receiver. aString must not be nil
+ @param			aString The string to prepend to the receiver.
+ @exception	NSInvalidArgumentException Raised when aString is nil or is not an NSString.
  */
 - (void)prependString:(nonnull NSString *)aString;
 
 /*!
- @method		-prependFormat
+ @method		-prependFormat:
  @abstract		Adds a constructed string to the start of the receiver.
  @param			format	A format string. See Formatting String Objects for more
 						information. This value must not be nil.
- 
+
  @param			...		A comma-separated list of arguments to substitute into
 						format.
+ @exception	NSInvalidArgumentException Raised when format is nil or is not an NSString.
  */
 - (void)prependFormat:(nonnull NSString *)format, ... NS_FORMAT_FUNCTION(1,2);
 
@@ -288,9 +297,10 @@
 - (void)deleteAll;
 
 /*!
- @method		-deleteAtIndex
+ @method		-deleteAtIndex:
  @abstract		Deletes the character in the string at the index
- @param			index The index of the character to delete.
+ @param			index The index of the character to delete. An index at or past the end leaves
+				the receiver unchanged.
  */
 - (void)deleteAtIndex:(NSUInteger)index;
 
@@ -301,10 +311,11 @@
  @category      NSString (CharacterCounter)
  @abstract      Adds methods to `NSString` for counting characters based on an `NSCharacterSet`.
  @discussion	Counting iterates by composed character sequence (so a sequence like an emoji with
-				modifiers is visited once), but membership is tested on the FIRST `unichar` of each
-				sequence. This means a member in the astral planes (a surrogate pair, e.g. an emoji)
-				is tested against its high surrogate and effectively never matches — `NSCharacterSet`
+				modifiers is visited once), but membership is tested on the first `unichar` of each
+				sequence. A member in the astral planes (a surrogate pair, e.g. an emoji)
+				is tested against its high surrogate and never matches. `NSCharacterSet`
 				membership here is reliable only for BMP (single-`unichar`) characters.
+ @since      1.1
 */
 @interface NSString (CharacterCounter)
 

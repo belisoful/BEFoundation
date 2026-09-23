@@ -5,4 +5,5 @@ This group covers predicate-based evaluation systems for determining accept/reje
 ## Articles
 
 - [BEPredicateRule](doc:BEPredicateRule)
-- [BEPriorityExtensions](doc:BEPriorityExtensions)
+
+Rules sort by `itemPriority`, which [BEPriorityExtensions](doc:BEPriorityExtensions) defines.

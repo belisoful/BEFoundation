@@ -61,11 +61,9 @@
 @implementation NSMethodSignatureBlockSignaturesTests
 
 - (void)setUp {
-    // Put setup code here. This method is called before the invocation of each test method in the class.
 }
 
 - (void)tearDown {
-    // Put teardown code here. This method is called after the invocation of each test method in the class.
 }
 
 #pragma mark - NSMethodSignature (DynamicMethods)
@@ -780,7 +778,7 @@
 #endif
 
 #if !BE_APPLE_TERMS_COMPLIANT
-// This test is compiled in ONLY when the suite is built with BE_APPLE_TERMS_COMPLIANT=0, so it runs
+// This test is compiled in only when the suite is built with BE_APPLE_TERMS_COMPLIANT=0, so it runs
 // only in the opt-out configuration. It exercises the non-public _Block_signature runtime path that
 // the default (compliant) build never references. Run it via Scripts/run-noncompliant-tests.sh.
 - (void)testBlockSignature_NonCompliantRuntimePath

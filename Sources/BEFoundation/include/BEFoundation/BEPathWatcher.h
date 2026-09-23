@@ -4,7 +4,7 @@
  * @date		2025-01-01
  * @author		belisoful@icloud.com
  * @abstract	A Grand Central Dispatch-based file system monitoring utility.
- * @discussion	This class monitors file system paths for changes using GCD's dispatch sources. It provides flexible callback mechanisms including blocks, target-action, and protocol-based notifications.
+ * @discussion	This class monitors file system paths for changes using GCD's dispatch sources. Callbacks are delivered through blocks, target-action, or protocol methods.
  */
 
 #import <Foundation/Foundation.h>
@@ -15,8 +15,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 /*!
  * @protocol BEPathWatcher
- * @abstract Protocol for receiving internal path change notifications.
- * @discussion This protocol provides an internal hook that subclasses can implement to receive notifications before public callbacks are executed. This is useful for implementing custom logic that should always run regardless of the callback mechanism used.
+ * @abstract Protocol for receiving path change notifications before the public callbacks.
+ * @discussion This protocol is the delegate hook that subclasses implement to receive notifications before public callbacks are executed. Logic that must run on every change regardless of the callback mechanism belongs here.
  */
 @protocol BEPathWatcher
 
@@ -24,7 +24,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 /*!
  * @method pathDidChangeWithFlags:
- * @abstract Internal method called whenever a change is detected in the watched path.
+ * @abstract Called whenever a change is detected in the watched path.
  * @discussion This method is called before any public callback (block, target/selector) is executed. Subclasses can override this method to implement custom logic that should always run on a change event.
  * @param flags The dispatch source event flags indicating the type of change that occurred. This is a bitmask of DISPATCH_VNODE_* constants.
  */
@@ -44,29 +44,27 @@ extern unsigned long const BEPathWatcherDefaultEventMask;
  * @abstract A class to monitor file system paths for changes using Grand Central Dispatch.
  * @discussion This class uses GCD's dispatch sources to monitor a file or directory for various types of changes. It provides three mechanisms for receiving notifications: blocks, target-action selectors, and protocol methods. The watcher automatically starts monitoring when both a path and callback mechanism are configured.
  *
- * ## Usage Examples
- *
- * **Block-based monitoring:**
- * ```objc
+ * Block-based monitoring:
+ * @code
  * BEPathWatcher *watcher = [BEPathWatcher watcherForPath:@"/path/to/watch"
  *                                             withBlock:^(BEPathWatcher *w, unsigned long flags) {
  *     NSLog(@"Path changed: %@", w.path);
  * }];
- * ```
+ * @endcode
  *
- * **Target-action monitoring:**
- * ```objc
+ * Target-action monitoring:
+ * @code
  * BEPathWatcher *watcher = [BEPathWatcher watcherForPath:@"/path/to/watch"
  *                                               target:self
  *                                             selector:@selector(pathChanged:)];
- * ```
+ * @endcode
  *
  * The watcher automatically stops monitoring when the watched path itself is deleted, renamed, or
  * revoked, since the underlying file descriptor becomes invalid.
  *
  * Callbacks (the block, the target-selector, and the subclass `pathDidChangeWithFlags:` hook) are
  * delivered on the main queue. They are invoked without the watcher's internal lock held, so a
- * callback may safely call back into the watcher — including from another thread — without
+ * callback may safely call back into the watcher, including from another thread, without
  * deadlocking. Configuration methods are safe to call from any thread.
  */
 @interface BEPathWatcher : NSObject <BEPathWatcher>
@@ -76,14 +74,14 @@ extern unsigned long const BEPathWatcherDefaultEventMask;
 /*!
  * @property path
  * @abstract The file system path currently being watched.
- * @discussion Setting this property will stop any current monitoring and restart it with the new path if monitoring was previously active. Setting to nil will stop monitoring. The path is copied when set. If a start fails because the path cannot be opened (e.g. it does not exist), the path is cleared back to nil.
+ * @discussion Setting this property stops any current monitoring and restarts it with the new path if monitoring was previously active. Setting to nil stops monitoring. The path is copied when set. If a start fails because the path cannot be opened (e.g. it does not exist), the path is cleared back to nil.
  */
 @property (nonatomic, copy, nullable) NSString *path;
 
 /*!
  * @property eventMask
  * @abstract The bitmask of DISPATCH_VNODE_* events to monitor.
- * @discussion Changing this property will restart monitoring with the new event mask if monitoring was previously active. Common values include DISPATCH_VNODE_WRITE, DISPATCH_VNODE_DELETE, DISPATCH_VNODE_EXTEND, and DISPATCH_VNODE_RENAME.
+ * @discussion Changing this property restarts monitoring with the new event mask if monitoring was previously active. Common values include DISPATCH_VNODE_WRITE, DISPATCH_VNODE_DELETE, DISPATCH_VNODE_EXTEND, and DISPATCH_VNODE_RENAME.
  */
 @property (nonatomic, assign) unsigned long eventMask;
 
@@ -104,14 +102,14 @@ extern unsigned long const BEPathWatcherDefaultEventMask;
 /*!
  * @property selector
  * @abstract The selector to call on the target when events occur.
- * @discussion This property is read-only. Use setTarget:selector: to set both target and selector together. The selector should accept either just the watcher, or the watcher and event flags.
+ * @discussion This property is read-only. Use setTarget:selector: to set both target and selector together. The selector takes the watcher alone, the watcher and the event flags, or the event flags alone (see setTarget:selector:).
  */
 @property (nonatomic, readonly, nullable) SEL selector;
 
 /*!
  * @property isActive
  * @abstract Whether the watcher is currently monitoring the file system.
- * @discussion Setting this property to YES will start monitoring if a path and callback mechanism are configured. Setting to NO will stop monitoring. This property is automatically managed by the watch* methods.
+ * @discussion Setting this property to YES starts monitoring if a path and callback mechanism are configured. Setting to NO stops monitoring. This property is automatically managed by the watch* methods.
  */
 @property (nonatomic, assign) BOOL isActive;
 
@@ -380,7 +378,7 @@ extern unsigned long const BEPathWatcherDefaultEventMask;
 /*!
  * @method startMonitoring
  * @abstract Starts monitoring the configured path with the current settings.
- * @discussion This method starts monitoring if a path and callback mechanism are configured. It's automatically called by the watch* methods and when setting isActive to YES. If the path cannot be opened, the path is cleared and NO is returned.
+ * @discussion This method starts monitoring if a path and callback mechanism are configured. It is called automatically by the watch* methods and when setting isActive to YES. If the path cannot be opened, the path is cleared and NO is returned.
  * @return YES if monitoring started successfully, NO otherwise.
  */
 - (BOOL)startMonitoring;
@@ -388,7 +386,7 @@ extern unsigned long const BEPathWatcherDefaultEventMask;
 /*!
  * @method stopMonitoring
  * @abstract Stops monitoring the file system.
- * @discussion This method stops all monitoring activity and cleans up resources. It's automatically called when the watcher is deallocated and when the watched path is deleted, renamed, or revoked.
+ * @discussion This method stops all monitoring activity and cleans up resources. It is called automatically when the watcher is deallocated and when the watched path is deleted, renamed, or revoked.
  */
 - (void)stopMonitoring;
 

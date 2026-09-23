@@ -89,7 +89,7 @@ MyClass *instance = [MyClass sharedInstance];
 2. If so, it creates the instance using `initForSingleton:` when implemented, or `init` otherwise
 3. The instance is cached as an associated object on the class and propagated to `BESingleton`-conforming superclasses, so a subclass and its ancestors share one instance
 4. Subsequent calls return the cached instance
-5. Thread-safety uses double-checked locking: an unsynchronized read of the cache, then creation inside `@synchronized` on the class with a re-check
+5. Thread-safety uses double-checked locking: an unsynchronized read of the cache, then creation inside `@synchronized` on the topmost `BESingleton`-conforming class in the receiver's chain, with a re-check
 6. An `atexit` handler clears the cached instances at process exit
 
 ## See Also

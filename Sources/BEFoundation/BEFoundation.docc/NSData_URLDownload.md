@@ -64,7 +64,7 @@ BOOL isDataTask = handler.isDataTask;
 
 ### Configuring the Session
 
-By default, downloads use `[NSURLSessionConfiguration defaultSessionConfiguration]`. To control timeouts, headers, caching policy, or protocol classes, supply your own configuration — either per download or process-wide.
+By default, downloads use `[NSURLSessionConfiguration defaultSessionConfiguration]`. To control timeouts, headers, caching policy, or protocol classes, supply your own configuration, either per download or process-wide.
 
 For a single download, set `sessionConfiguration` on a handler and pass it to one of the `…handler:` methods:
 
@@ -80,7 +80,7 @@ handler.dataCompletionBlock = ^(NSData *data, NSURLResponse *response) {
 [NSData dataDownloadWithContentsOfURL:webURL handler:handler];
 ```
 
-To apply a configuration to every download — including the convenience methods that build their handler internally — set the process-wide default once, for example at app launch:
+To apply a configuration to every download, including the convenience methods that build their handler internally, set the process-wide default once, for example at app launch:
 
 ```objc
 NSData.defaultSessionConfiguration = config;

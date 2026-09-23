@@ -78,7 +78,7 @@
 /*!
  @method     initForSingleton:
  @abstract   An optional custom initializer for the singleton instance.
- @discussion If a class implements this method, it will be called exactly once to
+ @discussion If a class implements this method, the singleton path calls it exactly once to
 			 initialize the singleton instance. This allows for custom setup logic
 			 that should only be run when the singleton is first created.
  @param      initInfo A dictionary containing initialization data, retrieved from
@@ -119,8 +119,11 @@
  @property   singletonInitInfo
  @abstract   A dictionary passed to the custom singleton initializer.
  @discussion Set this property *before* the first time the singleton is accessed. The
-			 dictionary will be passed to the `initForSingleton:` method during
-			 initialization. The property is atomic to ensure thread-safe access.
+			 dictionary is passed to the `initForSingleton:` method during
+			 initialization. The setter is ignored when the receiver is not a singleton
+			 (does not conform to `BESingleton`, or `isSingleton` is `NO`) and once the
+			 instance exists. The getter merges the dictionaries stored on the receiver and
+			 its `BESingleton`-conforming ancestors, the receiver's entries taking precedence.
  */
 @property (class, readwrite, atomic, retain, nullable) NSDictionary *singletonInitInfo;
 

@@ -8,7 +8,7 @@ Hex parsing/formatting and appearance-aware colors for `NSColor` (macOS) and `UI
 
 ## Overview
 
-`BEColor` is a cross-platform alias (`NSColor` on macOS, `UIColor` on iOS — see <doc:BEPlatformTypes>). This category adds hex support, which neither platform ships, and a one-call light/dark dynamic color. Because it is a category on the real class, the methods are available on every `NSColor`/`UIColor` — system colors, asset-catalog colors, and your own — through either name.
+`BEColor` is a cross-platform alias (`NSColor` on macOS, `UIColor` on iOS; see <doc:BEPlatformTypes>). This category adds hex support, which neither platform ships, and a one-call light/dark dynamic color. Because it is a category on the real class, the methods are available on every `NSColor`/`UIColor` (system colors, asset-catalog colors, and your own) through either name.
 
 ![Hex parsing of 3/4/6/8-digit strings into color swatches, and a dynamic color that resolves to a different swatch in light and dark appearances.](becolor-hex)
 

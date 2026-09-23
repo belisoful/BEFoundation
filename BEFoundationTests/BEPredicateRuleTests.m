@@ -39,12 +39,26 @@
 	XCTAssertEqual(copy.outcome, rule.outcome);
 }
 
+- (void)testInitWithNilPredicateRaisesInvalidArgument
+{
+	NSPredicate *nilPredicate = nil;
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wnonnull"
+	XCTAssertThrowsSpecificNamed([[BEPredicateRule alloc] initWithPredicate:nilPredicate],
+								 NSException, NSInvalidArgumentException);
+	XCTAssertThrowsSpecificNamed([[BEPredicateRule alloc] initWithPredicate:nilPredicate outcome:BEPredicateRuleAccept],
+								 NSException, NSInvalidArgumentException);
+	XCTAssertThrowsSpecificNamed([[BEPredicateRule alloc] initWithPredicate:nilPredicate priorityInteger:3],
+								 NSException, NSInvalidArgumentException);
+	XCTAssertThrowsSpecificNamed([[BEPredicateRule alloc] initWithPredicate:nilPredicate outcome:BEPredicateRuleReject priorityDouble:1.5],
+								 NSException, NSInvalidArgumentException);
+#pragma clang diagnostic pop
+}
+
 - (void)setUp {
-    // Put setup code here. This method is called before the invocation of each test method in the class.
 }
 
 - (void)tearDown {
-    // Put teardown code here. This method is called after the invocation of each test method in the class.
 }
 
 - (void)testBEPredicateRule_outcome
@@ -442,8 +456,8 @@
 
 - (void)testBEPredicateRule_hashEqualContractAcrossUniqueFlag
 {
-	// A unique-priority rule and a non-unique rule are NOT equal even with the same predicate,
-	// outcome, and priority — the flag is part of identity. This keeps -hash/-isEqual: consistent
+	// A unique-priority rule and a non-unique rule are not equal even with the same predicate,
+	// outcome, and priority; the flag is part of identity. This keeps -hash/-isEqual: consistent
 	// (equal rules always agree on whether priority participates).
 	BEPredicateRule *notUnique = [BEPredicateRule ruleWithFormat:@"age >= %d", 30];
 	notUnique.itemPriorityInteger = 5;

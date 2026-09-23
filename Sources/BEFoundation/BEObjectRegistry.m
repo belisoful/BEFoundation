@@ -3,8 +3,9 @@
  @copyright		-© 2025 Delicense - @belisoful. All rights released.
  @date			2025-01-01
  @author		belisoful@icloud.com
- @abstract
- @discussion
+ @abstract		A UUID-keyed registry of weakly held objects.
+ @discussion	Implements BEObjectRegistry as declared in BEObjectRegistry.h. Registries that share a
+				keySalt share one UUID namespace and one lock.
 */
 #import <objc/runtime.h>
 #import <CommonCrypto/CommonDigest.h>
@@ -45,7 +46,6 @@ static NSMutableDictionary *gSaltLocks;
 		_requireRegistryProtocol = YES;
 		_keySalt = 0;
 
-		// Create a map table with weak references to instances
 		registryTable = [NSMapTable mapTableWithKeyOptions:self.class.keyOptions
 											  valueOptions:self.class.valueOptions];
 
@@ -131,7 +131,7 @@ static NSMutableDictionary *gSaltLocks;
 		void* uuidKey = [self uuidKey];
 		instanceUUID = objc_getAssociatedObject(object, uuidKey);
 		
-		//	If the object conforms to the CustomRegistryUUID, call the object and set
+		// CustomRegistryUUID objects supply their own UUID; it is cached as the associated object.
 		if (!instanceUUID && [object conformsToProtocol:@protocol(CustomRegistryUUID)]) {
 			instanceUUID = [(id<CustomRegistryUUID>)object objectRegistryUUID:self];
 			objc_setAssociatedObject(object, uuidKey, instanceUUID, OBJC_ASSOCIATION_RETAIN);
@@ -198,7 +198,7 @@ static NSMutableDictionary *gSaltLocks;
 
 // Per-registry-instance registration count. Keyed by the registry itself and stored as an
 // associated object on the registered object, so it is released automatically when that object
-// deallocates — leaving no stale pointer-keyed entry (no slow leak, and no pointer-reuse where a
+// deallocates, leaving no stale pointer-keyed entry (no slow leak, and no pointer-reuse where a
 // new object at a freed address would inherit a prior count). Callers hold @synchronized(registryTable).
 - (NSUInteger)instanceCountForObject:(id<NSObject>)object
 {
@@ -299,7 +299,6 @@ static NSMutableDictionary *gSaltLocks;
 	NSString *uuid;
 	
 	@synchronized (registryTable) {
-		// Check if already has a UUID
 		uuid = [self registryUUIDForObject:object];
 		
 		NSObject *instance = [registryTable objectForKey:uuid];
@@ -415,7 +414,6 @@ static NSMutableDictionary *gSaltLocks;
 - (void)clearObjectsWithoutRegistryProtocol:(BOOL)clearObjectUUIDs
 {
 	@synchronized(registryTable) {
-		// Clear UUIDs from all instances before removing from registry
 		NSEnumerator *enumerator = [[self allRegisteredObjectUUIDs] objectEnumerator];
 		NSString *uuid;
 		while (uuid = [enumerator nextObject]) {
@@ -438,7 +436,29 @@ static NSMutableDictionary *gSaltLocks;
 		return NO;
 	}
 	
-	return [self clearObjectByUUID:[self simpleRegistryUUIDForObject:object]];
+	@synchronized(registryTable) {
+		NSString *uuid = [self simpleRegistryUUIDForObject:object];
+		if (uuid && [registryTable objectForKey:uuid] == object) {
+			return [self clearObjectByUUID:uuid];
+		}
+		// Another registry sharing this keySalt re-keyed the object's UUID; the entry here is
+		// still under the UUID the object carried when it was registered.
+		return [self clearObjectByUUID:[self tableKeyForObject:object]];
+	}
+}
+
+- (NSString *)tableKeyForObject:(id<NSObject>)object
+{
+	@synchronized(registryTable) {
+		NSEnumerator *keyEnumerator = [registryTable keyEnumerator];
+		NSString *key;
+		while ((key = [keyEnumerator nextObject])) {
+			if ([registryTable objectForKey:key] == object) {
+				return key;
+			}
+		}
+		return nil;
+	}
 }
 
 - (BOOL)clearObjectByUUID:(NSString *)uuid
@@ -483,7 +503,6 @@ static NSMutableDictionary *gSaltLocks;
 			}
 			[self setInstanceCount:0 forObject:object];
 			if (clearObjectUUIDs && [self countForObject:object] <= 0) {
-				// Clear UUID before removing from registry
 				[self setSimpleRegistryUUID:nil forObject:object];
 			}
 		}

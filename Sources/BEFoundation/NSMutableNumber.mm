@@ -28,6 +28,15 @@
 #import "NSMutableNumber.h"
 #include "NSMutableNumber.hpp"
 
+// NSNumber is a class cluster. Every one of its NS_DESIGNATED_INITIALIZER methods
+// (-initWithInt: and friends, and NSValue's -initWithBytes:objCType:) raises
+// NSInvalidArgumentException ("cannot be sent to an abstract object") when sent to
+// a subclass instance via super. NSMutableNumber owns all of its storage, overrides
+// every NSNumber designated initializer, and chains to NSObject's -init instead, so
+// clang's designated-initializer chaining rules cannot be satisfied here and the
+// resulting -Wobjc-designated-initializers diagnostics are noise.
+#pragma clang diagnostic ignored "-Wobjc-designated-initializers"
+
 @interface NSMutableNumber() {
 @private
 	NSMPCNumber _number;

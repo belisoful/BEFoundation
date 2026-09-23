@@ -131,17 +131,14 @@
 - (void)testUniversalRegistryProtocolRequirementToggle {
 	TestNonProtocolObject *obj = [[TestNonProtocolObject alloc] initWithIdentifier:@"test"];
 	
-	// Should work with requireRegistryProtocol = NO (default)
 	NSString *uuid = [self.universalRegistry registerObject:obj];
 	XCTAssertNotNil(uuid);
 	
-	// Change requirement
 	self.universalRegistry.requireRegistryProtocol = YES;
 	
 	// Should still work for already registered objects
 	XCTAssertTrue([self.universalRegistry isObjectRegistered:obj]);
 	
-	// New non-protocol objects should fail
 	TestNonProtocolObject *obj2 = [[TestNonProtocolObject alloc] initWithIdentifier:@"test2"];
 	NSString *uuid2 = [self.universalRegistry registryUUIDForObject:obj2];
 	XCTAssertNil(uuid2);
@@ -163,7 +160,6 @@
 		XCTAssertNotNil([self.universalRegistry registeredObjectForUUID:uuid]);
 	}
 	
-	// Object should be deallocated and removed from registry
 	XCTAssertNil([self.universalRegistry registeredObjectForUUID:uuid]);
 }
 
@@ -176,12 +172,10 @@
 	XCTAssertEqualObjects(uuid1, uuid2);
 	XCTAssertEqual([self.universalRegistry registeredCountForObject:obj], 2);
 	
-	// First unregister
 	BEUnregisterStatus result1 = [self.universalRegistry unregisterObject:obj];
 	XCTAssertEqual(result1, BEUnregisterStatus_Decremented); // Still registered but count decremented
 	XCTAssertTrue([self.universalRegistry isObjectRegistered:obj]);
 	
-	// Second unregister
 	BEUnregisterStatus result2 = [self.universalRegistry unregisterObject:obj];
 	XCTAssertEqual(result2, BEUnregisterStatus_Unregistered); // Completely removed
 	XCTAssertFalse([self.universalRegistry isObjectRegistered:obj]);
@@ -196,7 +190,6 @@
 	
 	XCTAssertEqual(self.universalRegistry.registeredObjectsCount, 2);
 	
-	// Clear objects without registry protocol
 	[self.universalRegistry clearObjectsWithoutRegistryProtocol];
 	
 	XCTAssertEqual(self.universalRegistry.registeredObjectsCount, 1);
@@ -211,7 +204,6 @@
 	dispatch_group_t group = dispatch_group_create();
 	dispatch_queue_t queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
 	
-	// Register objects concurrently
 	for (int i = 0; i < 100; i++) {
 		dispatch_group_async(group, queue, ^{
 			TestNonProtocolObject *obj = [[TestNonProtocolObject alloc] initWithIdentifier:[NSString stringWithFormat:@"thread-test-%d", i]];
@@ -231,7 +223,6 @@
 	XCTAssertEqual(uuids.count, 100);
 	XCTAssertEqual(self.universalRegistry.registeredObjectsCount, 100);
 	
-	// All UUIDs should be unique
 	NSSet *uniqueUUIDs = [NSSet setWithArray:uuids];
 	XCTAssertEqual(uniqueUUIDs.count, 100);
 }
@@ -279,7 +270,6 @@
 		XCTAssertNotNil([self.storageRegistry registeredObjectForUUID:uuid]);
 	}
 	
-	// Object should still be retained by the registry
 	id retrievedObj = [self.storageRegistry registeredObjectForUUID:uuid];
 	XCTAssertNotNil(retrievedObj);
 	XCTAssertTrue([retrievedObj isKindOfClass:[TestNonProtocolObject class]]);
@@ -316,21 +306,16 @@
 	TestNonProtocolObject *obj = [[TestNonProtocolObject alloc] initWithIdentifier:@"lifecycle-test"];
 	NSString *uuid = [self.storageRegistry registerObject:obj];
 	
-	// Object should be retained by registry
 	XCTAssertNotNil([self.storageRegistry registeredObjectForUUID:uuid]);
 	
-	// Release our reference
 	obj = nil;
 	
-	// Object should still be available in registry
 	id retrievedObj = [self.storageRegistry registeredObjectForUUID:uuid];
 	XCTAssertNotNil(retrievedObj);
 	
-	// Unregister should release the object
 	BEUnregisterStatus result = [self.storageRegistry unregisterObject:retrievedObj];
 	XCTAssertEqual(result, BEUnregisterStatus_Unregistered); // Completely removed
 	
-	// Object should no longer be available
 	XCTAssertNil([self.storageRegistry registeredObjectForUUID:uuid]);
 }
 
@@ -338,31 +323,25 @@
 	TestNonProtocolObject *obj = [[TestNonProtocolObject alloc] initWithIdentifier:@"multi-ref-test"];
 	NSString *uuid = [self.storageRegistry registerObject:obj];
 	
-	// Register multiple times
 	[self.storageRegistry registerObject:obj];
 	[self.storageRegistry registerObject:obj];
 	
 	XCTAssertEqual([self.storageRegistry registeredCountForObject:obj], 3);
 	
-	// Release our reference
 	obj = nil;
 	
-	// Object should still be available
 	id retrievedObj = [self.storageRegistry registeredObjectForUUID:uuid];
 	XCTAssertNotNil(retrievedObj);
 	
-	// Unregister twice
 	[self.storageRegistry unregisterObject:retrievedObj];
 	[self.storageRegistry unregisterObject:retrievedObj];
 	
 	// Object should still be available
 	XCTAssertNotNil([self.storageRegistry registeredObjectForUUID:uuid]);
 	
-	// Final unregister
 	BEUnregisterStatus result = [self.storageRegistry unregisterObject:retrievedObj];
 	XCTAssertEqual(result, BEUnregisterStatus_Unregistered); // Completely removed
 	
-	// Object should no longer be available
 	XCTAssertNil([self.storageRegistry registeredObjectForUUID:uuid]);
 }
 
@@ -370,7 +349,6 @@
 	NSMutableArray *objects = [NSMutableArray array];
 	NSMutableArray *uuids = [NSMutableArray array];
 	
-	// Register multiple objects
 	for (int i = 0; i < 10; i++) {
 		TestNonProtocolObject *obj = [[TestNonProtocolObject alloc] initWithIdentifier:[NSString stringWithFormat:@"bulk-test-%d", i]];
 		[objects addObject:obj];
@@ -380,18 +358,14 @@
 	
 	XCTAssertEqual(self.storageRegistry.registeredObjectsCount, 10);
 	
-	// Clear our references
 	[objects removeAllObjects];
 	
-	// All objects should still be available in storage registry
 	for (NSString *uuid in uuids) {
 		XCTAssertNotNil([self.storageRegistry registeredObjectForUUID:uuid]);
 	}
 	
-	// Clear all registered objects
 	[self.storageRegistry clearAllRegisteredObjects:YES];
 	
-	// All objects should be gone
 	XCTAssertEqual(self.storageRegistry.registeredObjectsCount, 0);
 	for (NSString *uuid in uuids) {
 		XCTAssertNil([self.storageRegistry registeredObjectForUUID:uuid]);
@@ -404,7 +378,6 @@
 	dispatch_group_t group = dispatch_group_create();
 	dispatch_queue_t queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
 	
-	// Register objects concurrently
 	for (int i = 0; i < 50; i++) {
 		dispatch_group_async(group, queue, ^{
 			@autoreleasepool {
@@ -434,10 +407,8 @@
 	
 	XCTAssertEqualObjects(uuid, @"storage-custom-uuid-123");
 	
-	// Release our reference
 	obj = nil;
 	
-	// Object should still be available via custom UUID
 	id retrievedObj = [self.storageRegistry registeredObjectForUUID:@"storage-custom-uuid-123"];
 	XCTAssertNotNil(retrievedObj);
 	XCTAssertTrue([retrievedObj conformsToProtocol:@protocol(CustomRegistryUUID)]);
@@ -448,7 +419,6 @@
 	
 	__block int maxCount = 1000;
 	__block int fullCount = 0;
-	// Measure registration time
 	[self measureBlock:^{
 		
 		for (int i = 0; i < maxCount; i++) {
@@ -467,7 +437,6 @@
 	NSMutableArray *uuids = [NSMutableArray array];
 	
 	__block int maxCount = 1000;
-	// Measure registration time
 		
 	for (int i = 0; i < maxCount; i++) {
 		TestNonProtocolObject *obj = [[TestNonProtocolObject alloc] initWithIdentifier:[NSString stringWithFormat:@"perf-test-%d", i]];
@@ -475,7 +444,6 @@
 		[uuids addObject:uuid];
 	}
 	
-	// Test retrieval performance
 	[self measureBlock:^{
 		for (NSString *uuid in uuids) {
 			id obj = [self.storageRegistry registeredObjectForUUID:uuid];

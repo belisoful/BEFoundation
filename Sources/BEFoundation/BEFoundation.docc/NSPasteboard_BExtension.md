@@ -8,7 +8,7 @@ Typed read/write convenience for `NSPasteboard` (macOS only).
 
 ## Overview
 
-`NSPasteboard`'s API is low-level and stringly-typed (UTIs, `declareTypes:`, `readObjectsForClasses:options:`). The common cases — put a string, URL, or image on the pasteboard and read it back, checking availability — are the same boilerplate everywhere. These helpers cover them: each writer clears the pasteboard and writes the value (returning success); each reader returns the first value of that type, or `nil`. This is macOS only — `UIPasteboard` is a separate, simpler API and is not bridged here.
+`NSPasteboard`'s API works in UTIs, `declareTypes:`, and `readObjectsForClasses:options:`. These helpers cover the common cases: putting a string, URL, or image on the pasteboard, reading it back, and checking availability. Each writer clears the pasteboard and writes the value (returning success); each reader returns the first value of that type, or `nil`. This is macOS only. `UIPasteboard` is a separate API and is not bridged here.
 
 ## Usage
 

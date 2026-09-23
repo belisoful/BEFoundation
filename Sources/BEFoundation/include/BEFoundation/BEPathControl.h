@@ -8,13 +8,13 @@
  @abstract   Provides an NSPathControl subclass that limits displayed path items based on a relative URL.
  @discussion BEPathControl extends NSPathControl to introduce a concept of a "relative"
 			 root for the displayed file path. When a @c relativeURL is set, the
-			 path control will automatically filter its path items (@c pathItems)
+			 path control filters its path items (@c pathItems)
 			 to only show the components of the full URL that are descendants of
 			 the @c relativeURL, including the relative URL itself.
 			 
-			 This is useful for displaying file paths within a project or document
-			 structure, where the full path is known, but only the parts relative
-			 to the project's root should be visible to the user.
+			 This suits file paths within a project or document structure, where the
+			 full path is known and only the parts relative to the project's root
+			 should be visible to the user.
 			 
 			 The control behaves as follows:
 			 - Path items are trimmed to only show paths within the @c relativeURL.
@@ -43,7 +43,7 @@
 			 pathControl.relativeURL = relativeURL;
 			 pathControl.URL = fullURL;
 			 
-			 // The path control will display: MyProject / Sources / File.m
+			 // The path control displays: MyProject / Sources / File.m
 			 // It hides: / / Users / user / Projects
 			 @endcode
  */
@@ -83,9 +83,9 @@ NS_ASSUME_NONNULL_BEGIN
 /*!
  @property   relativeURL
  @abstract   The URL defining the root of the displayed path items.
- @discussion When set, the path control will only display path items (@c NSPathControlItem)
+ @discussion When set, the path control displays only path items (@c NSPathControlItem)
 			 whose URL is a descendant of, or equal to, this URL. Any leading path
-			 components up to and including the system root will be hidden.
+			 components up to and including the system root are hidden.
 			 
 			 Setting this property triggers a rebuild of the path items based on the
 			 currently set @c URL property. The URL is automatically standardized for
@@ -118,8 +118,8 @@ NS_ASSUME_NONNULL_BEGIN
 			 Comparison is performed on standardized path components (not raw strings), so
 			 the match is exact at directory boundaries: @c /a/Projects does not match
 			 @c /a/ProjectsX, files are not treated as directories, and percent-encoding
-			 differences are normalized. Schemes must match. Symlinks are NOT resolved.
-			 Comparison is case-SENSITIVE regardless of the underlying file system, so on a
+			 differences are normalized. Schemes must match. Symlinks are not resolved.
+			 Comparison is case-sensitive regardless of the underlying file system, so on a
 			 case-insensitive volume @c /a/Docs and @c /a/docs are treated as different.
  @return     @c YES if the @c checkUrl is contained within the @c relativeURL's
 			 path hierarchy, @c NO otherwise.

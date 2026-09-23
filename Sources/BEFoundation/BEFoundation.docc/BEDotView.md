@@ -9,7 +9,7 @@ lower center to the main color at the rim, a white specular reflection near the 
 drop shadow. Setting ``flat`` draws a plain filled circle with an optional border instead.
 
 It subclasses [BEView](doc:BEPlatformTypes), so one class renders on every platform BEFoundation
-supports — `NSView` on macOS, `UIView` on iOS and tvOS. Drawing uses a top-left, y-down
+supports: `NSView` on macOS, `UIView` on iOS. Drawing uses a top-left, y-down
 coordinate system everywhere (macOS overrides `isFlipped`), so a single Core Graphics path
 serves them all.
 
@@ -45,7 +45,7 @@ the grid above to see where a preset differs from its computed equivalent.
 
 ### Flat colors
 
-The same presets with ``flat`` set — a plain filled circle with a border, no gradient,
+The same presets with ``flat`` set: a plain filled circle with a border, no gradient,
 specular, or shadow.
 
 ![A grid of all 141 preset dots drawn flat: solid circles with a border and no shading.](bedotview-flat)

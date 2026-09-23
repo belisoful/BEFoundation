@@ -16,24 +16,13 @@ Key features:
 - Reference counting for multiple registrations of the same object
 - Support for custom UUID generation through protocols
 - Bulk operations for registry management
-- Salt-based key generation for security
+- Salt-keyed UUID namespaces that isolate registries from one another
 
-## Usage
+## Contents
 
-### Registry Classes
-
-- [BEObjectRegistry](doc:BEObjectRegistry)
-- [BEUniversalObjectRegistry](doc:BEObjectRegistry)
-- [BEStorageObjectRegistry](doc:BEObjectRegistry)
-
-### Protocols
-
-- [BERegistryProtocol](doc:BEObjectRegistry)
-- [CustomRegistryUUID](doc:BEObjectRegistry)
-
-### Constants
-
-- [BEUnregisterStatus](doc:BEObjectRegistry)
+- Registry classes: `BEObjectRegistry`, `BEUniversalObjectRegistry`, `BEStorageObjectRegistry`
+- Protocols: `BERegistryProtocol`, `CustomRegistryUUID`
+- Constants: `BEUnregisterStatus`
 
 ## Usage
 
@@ -73,9 +62,14 @@ Objects can provide their own UUIDs by conforming to [CustomRegistryUUID](doc:BE
 @interface MyObject : NSObject <BERegistryProtocol, CustomRegistryUUID>
 @end
 
-@implementation MyObject
+@implementation MyObject {
+    NSString *_stableUUID;
+}
 - (NSString *)objectRegistryUUID:(BEObjectRegistry *)registry {
-    return [[NSUUID UUID] UUIDString];
+    if (!_stableUUID) {
+        _stableUUID = [[NSUUID UUID] UUIDString];
+    }
+    return _stableUUID;  // the same value on every call
 }
 @end
 ```
@@ -117,6 +111,5 @@ NSMutableArray *retrievedData = [registry registeredObjectForUUID:uuid];  // Sti
 
 ## See Also
 
-- [BERegistryProtocol](doc:BEObjectRegistry)
 - [BESingleton](doc:BESingleton)
 - [NSObject+GlobalRegistry](doc:NSObject_GlobalRegistry)

@@ -40,7 +40,7 @@ NS_ASSUME_NONNULL_BEGIN
 					reverse:YES];
 				
 				// Create notification with post-processing block
-				NSPriorityNotification *notification = [NSPriorityNotification
+				NSPriorityNotification *blockNotification = [NSPriorityNotification
 					notificationWithName:@"MyNotification"
 					object:self
 					postBlock:^(NSNotification *note) {
@@ -92,7 +92,7 @@ NS_ASSUME_NONNULL_BEGIN
  @param			anObject	The object associated with the notification. May be nil.
  @return		A new NSPriorityNotification instance.
  @discussion	This is the simplest factory method for creating a priority notification.
-				The notification will have no user info, reverse processing disabled,
+				The notification has no user info, reverse processing disabled,
 				and no post-processing block.
  */
 + (instancetype)notificationWithName:(NSNotificationName)aName
@@ -120,7 +120,6 @@ NS_ASSUME_NONNULL_BEGIN
  @param			postBlock	A block to execute after each observer. May be nil.
  @return		A new NSPriorityNotification instance.
  @discussion	The post-processing block is called after each observer processes the notification.
-				This is useful for logging, cleanup, or state validation operations.
  */
 + (instancetype)notificationWithName:(NSNotificationName)aName
 							  object:(nullable id)anObject
@@ -217,7 +216,7 @@ NS_ASSUME_NONNULL_BEGIN
  @param			userInfo	A dictionary containing additional information. May be nil.
  @param			reverse		Whether to process observers in reverse order.
  @return		An initialized NSPriorityNotification instance.
- @discussion	This designated initializer allows configuration of reverse processing.
+ @discussion	This initializer allows configuration of reverse processing.
 				No post-processing block is set.
  */
 - (instancetype)initWithName:(NSNotificationName)name
@@ -233,7 +232,7 @@ NS_ASSUME_NONNULL_BEGIN
  @param			userInfo	A dictionary containing additional information. May be nil.
  @param			postBlock	A block to execute after each observer. May be nil.
  @return		An initialized NSPriorityNotification instance.
- @discussion	This designated initializer allows configuration of post-processing behavior.
+ @discussion	This initializer allows configuration of post-processing behavior.
 				Reverse processing is disabled. The block is copied and retained.
  */
 - (instancetype)initWithName:(NSNotificationName)name
@@ -266,7 +265,7 @@ NS_ASSUME_NONNULL_BEGIN
  @abstract		Indicates whether the class supports secure coding.
  @return		YES, indicating NSPriorityNotification supports secure coding.
  @discussion	NSPriorityNotification fully supports NSSecureCoding for safe archiving
-				and unarchiving. Objects that conform to GlobalRegistryProtocol are
+				and unarchiving. Objects that conform to BERegistryProtocol are
 				handled specially to maintain object identity across coding operations.
  */
 + (BOOL)supportsSecureCoding;
@@ -277,8 +276,9 @@ NS_ASSUME_NONNULL_BEGIN
  @param			aDecoder	The decoder containing the archived notification data.
  @return		An initialized NSPriorityNotification instance, or nil if decoding fails.
  @discussion	This method supports both keyed and non-keyed coding. Objects that conform
-				to GlobalRegistryProtocol are restored using their global registry UUID.
-				Post-processing blocks are not archived and will be nil after decoding.
+				to BERegistryProtocol are restored using their global registry UUID. The tag and
+				identifier extra properties are decoded with the notification.
+				Post-processing blocks are not archivable; postBlock is nil after decoding.
  */
 - (nullable instancetype)initWithCoder:(NSCoder *)aDecoder NS_DESIGNATED_INITIALIZER;
 
@@ -287,8 +287,9 @@ NS_ASSUME_NONNULL_BEGIN
  @abstract		Encodes the notification to an archive.
  @param			aCoder		The encoder to write the notification data to.
  @discussion	This method supports both keyed and non-keyed coding. Objects that conform
-				to GlobalRegistryProtocol are automatically registered globally if needed,
-				and their UUID is encoded for later restoration. Post-processing blocks
+				to BERegistryProtocol are automatically registered globally if needed,
+				and their UUID is encoded for later restoration. The tag and identifier extra
+				properties are encoded with the notification. Post-processing blocks
 				are not encoded due to security considerations.
  */
 - (void)encodeWithCoder:(NSCoder *)aCoder;
@@ -296,7 +297,7 @@ NS_ASSUME_NONNULL_BEGIN
 /*!
  @method		classForCoder
  @abstract		Returns the class to use for encoding with non-keyed archivers.
- @return		The NSPriorityNotification class.
+ @return		The receiver's class.
  @discussion	This method ensures proper class identity during non-keyed archiving operations.
  */
 - (Class)classForCoder;
@@ -304,7 +305,7 @@ NS_ASSUME_NONNULL_BEGIN
 /*!
  @method		classForKeyedArchiver
  @abstract		Returns the class to use for encoding with keyed archivers.
- @return		The NSPriorityNotification class.
+ @return		The receiver's class.
  @discussion	This method ensures proper class identity during keyed archiving operations.
  */
 - (Class)classForKeyedArchiver;

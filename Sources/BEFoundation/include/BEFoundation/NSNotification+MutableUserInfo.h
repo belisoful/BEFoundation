@@ -24,9 +24,7 @@
 /*!
  @category		NSNotification (MutableUserInfo)
  @abstract		Adds getting the userInfo as an NSMutableDictionary if it is one.
- @discussion	The following methods are provided by this category:
-
- `-mutableUserInfo`: Returns the userInfo as an NSMutableDictionary if it is one.
+ @discussion	`mutableUserInfo` returns the userInfo as an NSMutableDictionary, or nil when it is immutable.
 
 				@code
 				NSNotification *note = [NSNotification notificationWithName:@"Event"
@@ -40,9 +38,7 @@
 /*!
  @property		mutableUserInfo
  @abstract		Returns userInfo as an NSMutableDictionary if it is one.
- @discussion	A userInfo for a NSNotification can be a NSMutableDictionary, but rather than having to cast
-				userInfo to make it a NSMutableDictionary, this method ensures it is a NSMutableDictionary
-				and returns it already cast as a NSMutableDictionary.
+ @discussion	Returns the userInfo typed as NSMutableDictionary when it is one, so the caller does not cast.
  @result		Returns the userInfo as a NSMutableDictionary, or nil if userInfo is not mutable.
  */
 @property (readonly, nonatomic, nullable) NSMutableDictionary* mutableUserInfo;

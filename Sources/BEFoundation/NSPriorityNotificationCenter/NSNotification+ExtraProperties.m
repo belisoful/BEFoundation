@@ -3,8 +3,9 @@
  @copyright		-© 2025 Delicense - @belisoful. All rights released.
  @date			2025-01-01
  @author		belisoful@icloud.com
- @abstract
- @discussion
+ @abstract		Tag and identifier properties on NSNotification.
+ @discussion	Implements the accessors declared in NSNotification+ExtraProperties.h. Each value is
+				stored as an associated object, then falls back to the notification's object and userInfo.
 */
 
 #import "NSNotification+ExtraProperties.h"
@@ -50,7 +51,7 @@
 /*!
  @method		identifier
  @abstract		Gets the identifier of the notification.
- @result		id of the tag object
+ @result		The identifier object, or nil when none is set.
  */
 - (id)identifier
 {
@@ -68,7 +69,7 @@
 /*!
  @method		setIdentifier
  @abstract		Sets the identifier of the notification.
- @param		identifier		 The id of the identifier.
+ @param		identifier		 The id of the identifier. Copied when it conforms to NSCopying, retained otherwise.
  */
 - (void)setIdentifier:(id)identifier
 {

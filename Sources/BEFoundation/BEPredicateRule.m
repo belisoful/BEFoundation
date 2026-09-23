@@ -17,6 +17,15 @@
 NSInteger	const  BEPredicateRuleDefaultPriority = 0;
 
 
+static void BEPredicateRuleRequirePredicate(NSPredicate *predicate, Class cls, SEL cmd)
+{
+	if (predicate == nil) {
+		[NSException raise:NSInvalidArgumentException
+					format:@"*** -[%@ %@]: predicate is nil", NSStringFromClass(cls), NSStringFromSelector(cmd)];
+	}
+}
+
+
 @implementation BEPredicateRule
 {
 	NSNumber *_itemPriority;
@@ -71,7 +80,7 @@ NSInteger	const  BEPredicateRuleDefaultPriority = 0;
 
 
 
-+ (nonnull BEPredicateRule *)ruleWithFormat:(NSString * _Nonnull)predicateFormat, ...
++ (nonnull instancetype)ruleWithFormat:(NSString * _Nonnull)predicateFormat, ...
 {
 	va_list args;
 	va_start(args, predicateFormat);
@@ -79,7 +88,7 @@ NSInteger	const  BEPredicateRuleDefaultPriority = 0;
 	va_end(args);
 	return rule;
 }
-+ (nonnull BEPredicateRule *)ruleWithOutcome:(BEPredicateRuleOutcome)outcome format:(NSString * _Nonnull)predicateFormat, ...
++ (nonnull instancetype)ruleWithOutcome:(BEPredicateRuleOutcome)outcome format:(NSString * _Nonnull)predicateFormat, ...
 {
 	va_list args;
 	va_start(args, predicateFormat);
@@ -87,7 +96,7 @@ NSInteger	const  BEPredicateRuleDefaultPriority = 0;
 	va_end(args);
 	return rule;
 }
-+ (nonnull BEPredicateRule *)ruleWithPriority:(NSNumber * _Nonnull)priority format:(NSString * _Nonnull)predicateFormat, ...
++ (nonnull instancetype)ruleWithPriority:(NSNumber * _Nonnull)priority format:(NSString * _Nonnull)predicateFormat, ...
 {
 	va_list args;
 	va_start(args, predicateFormat);
@@ -96,7 +105,7 @@ NSInteger	const  BEPredicateRuleDefaultPriority = 0;
 	return rule;
 }
 
-+ (nonnull BEPredicateRule *)ruleWithPriorityInteger:(NSInteger)priority format:(NSString * _Nonnull)predicateFormat, ...
++ (nonnull instancetype)ruleWithPriorityInteger:(NSInteger)priority format:(NSString * _Nonnull)predicateFormat, ...
 {
 	va_list args;
 	va_start(args, predicateFormat);
@@ -104,7 +113,7 @@ NSInteger	const  BEPredicateRuleDefaultPriority = 0;
 	va_end(args);
 	return rule;
 }
-+ (nonnull BEPredicateRule *)ruleWithPriorityDouble:(double)priority format:(NSString * _Nonnull)predicateFormat, ...
++ (nonnull instancetype)ruleWithPriorityDouble:(double)priority format:(NSString * _Nonnull)predicateFormat, ...
 {
 	va_list args;
 	va_start(args, predicateFormat);
@@ -113,7 +122,7 @@ NSInteger	const  BEPredicateRuleDefaultPriority = 0;
 	return rule;
 }
 
-+ (nonnull BEPredicateRule *)ruleWithOutcome:(BEPredicateRuleOutcome)outcome priority:(NSNumber * _Nonnull)priority format:(NSString * _Nonnull)predicateFormat, ...
++ (nonnull instancetype)ruleWithOutcome:(BEPredicateRuleOutcome)outcome priority:(NSNumber * _Nonnull)priority format:(NSString * _Nonnull)predicateFormat, ...
 {
 	va_list args;
 	va_start(args, predicateFormat);
@@ -121,7 +130,7 @@ NSInteger	const  BEPredicateRuleDefaultPriority = 0;
 	va_end(args);
 	return rule;
 }
-+ (nonnull BEPredicateRule *)ruleWithOutcome:(BEPredicateRuleOutcome)outcome priorityInteger:(NSInteger)priority format:(NSString * _Nonnull)predicateFormat, ...
++ (nonnull instancetype)ruleWithOutcome:(BEPredicateRuleOutcome)outcome priorityInteger:(NSInteger)priority format:(NSString * _Nonnull)predicateFormat, ...
 {
 	va_list args;
 	va_start(args, predicateFormat);
@@ -129,7 +138,7 @@ NSInteger	const  BEPredicateRuleDefaultPriority = 0;
 	va_end(args);
 	return rule;
 }
-+ (nonnull BEPredicateRule *)ruleWithOutcome:(BEPredicateRuleOutcome)outcome priorityDouble:(double)priority format:(NSString * _Nonnull)predicateFormat, ...
++ (nonnull instancetype)ruleWithOutcome:(BEPredicateRuleOutcome)outcome priorityDouble:(double)priority format:(NSString * _Nonnull)predicateFormat, ...
 {
 	va_list args;
 	va_start(args, predicateFormat);
@@ -140,171 +149,171 @@ NSInteger	const  BEPredicateRuleDefaultPriority = 0;
 
 
 
-+ (nonnull BEPredicateRule *)ruleWithFormat:(nonnull NSString *)predicateFormat argumentArray:(nullable NSArray *)arguments
++ (nonnull instancetype)ruleWithFormat:(nonnull NSString *)predicateFormat argumentArray:(nullable NSArray *)arguments
 {
 	NSPredicate *predicate = [NSPredicate predicateWithFormat:predicateFormat argumentArray:arguments];
 	return [[self alloc] initWithPredicate:predicate];
 }
-+ (nonnull BEPredicateRule *)ruleWithFormat:(nonnull NSString *)predicateFormat argumentArray:(nullable NSArray *)arguments outcome:(BEPredicateRuleOutcome)outcome
++ (nonnull instancetype)ruleWithFormat:(nonnull NSString *)predicateFormat argumentArray:(nullable NSArray *)arguments outcome:(BEPredicateRuleOutcome)outcome
 {
 	NSPredicate *predicate = [NSPredicate predicateWithFormat:predicateFormat argumentArray:arguments];
 	return [[self alloc] initWithPredicate:predicate outcome:outcome];
 }
 
-+ (nonnull BEPredicateRule *)ruleWithFormat:(nonnull NSString *)predicateFormat argumentArray:(nullable NSArray *)arguments priority:(NSNumber *)priority
++ (nonnull instancetype)ruleWithFormat:(nonnull NSString *)predicateFormat argumentArray:(nullable NSArray *)arguments priority:(NSNumber *)priority
 {
 	NSPredicate *predicate = [NSPredicate predicateWithFormat:predicateFormat argumentArray:arguments];
 	return [[self alloc] initWithPredicate:predicate priority:priority];
 }
-+ (nonnull BEPredicateRule *)ruleWithFormat:(nonnull NSString *)predicateFormat argumentArray:(nullable NSArray *)arguments priorityInteger:(NSInteger)priority
++ (nonnull instancetype)ruleWithFormat:(nonnull NSString *)predicateFormat argumentArray:(nullable NSArray *)arguments priorityInteger:(NSInteger)priority
 {
 	return [self ruleWithFormat:predicateFormat argumentArray:arguments priority:[NSNumber numberWithInteger:priority]];
 }
-+ (nonnull BEPredicateRule *)ruleWithFormat:(nonnull NSString *)predicateFormat argumentArray:(nullable NSArray *)arguments priorityDouble:(double)priority
++ (nonnull instancetype)ruleWithFormat:(nonnull NSString *)predicateFormat argumentArray:(nullable NSArray *)arguments priorityDouble:(double)priority
 {
 	return [self ruleWithFormat:predicateFormat argumentArray:arguments priority:[NSNumber numberWithDouble:priority]];
 }
 
-+ (nonnull BEPredicateRule *)ruleWithFormat:(nonnull NSString *)predicateFormat argumentArray:(nullable NSArray *)arguments outcome:(BEPredicateRuleOutcome)outcome priority:(NSNumber *)priority
++ (nonnull instancetype)ruleWithFormat:(nonnull NSString *)predicateFormat argumentArray:(nullable NSArray *)arguments outcome:(BEPredicateRuleOutcome)outcome priority:(NSNumber *)priority
 {
 	NSPredicate *predicate = [NSPredicate predicateWithFormat:predicateFormat argumentArray:arguments];
 	return [[self alloc] initWithPredicate:predicate outcome:outcome priority:priority];
 }
-+ (nonnull BEPredicateRule *)ruleWithFormat:(nonnull NSString *)predicateFormat argumentArray:(nullable NSArray *)arguments outcome:(BEPredicateRuleOutcome)outcome priorityInteger:(NSInteger)priority
++ (nonnull instancetype)ruleWithFormat:(nonnull NSString *)predicateFormat argumentArray:(nullable NSArray *)arguments outcome:(BEPredicateRuleOutcome)outcome priorityInteger:(NSInteger)priority
 {
 	return [self ruleWithFormat:predicateFormat argumentArray:arguments outcome:outcome priority:[NSNumber numberWithInteger:priority]];
 }
-+ (nonnull BEPredicateRule *)ruleWithFormat:(nonnull NSString *)predicateFormat argumentArray:(nullable NSArray *)arguments outcome:(BEPredicateRuleOutcome)outcome priorityDouble:(double)priority
++ (nonnull instancetype)ruleWithFormat:(nonnull NSString *)predicateFormat argumentArray:(nullable NSArray *)arguments outcome:(BEPredicateRuleOutcome)outcome priorityDouble:(double)priority
 {
 	return [self ruleWithFormat:predicateFormat argumentArray:arguments outcome:outcome priority:[NSNumber numberWithDouble:priority]];
 }
 
 
 
-+ (nonnull BEPredicateRule *)ruleWithFormat:(nonnull NSString *)predicateFormat arguments:(va_list)argList
++ (nonnull instancetype)ruleWithFormat:(nonnull NSString *)predicateFormat arguments:(va_list)argList
 {
 	NSPredicate *predicate = [NSPredicate predicateWithFormat:predicateFormat arguments:argList];
 	return [[self alloc] initWithPredicate:predicate];
 }
-+ (nonnull BEPredicateRule *)ruleWithFormat:(nonnull NSString *)predicateFormat arguments:(va_list)argList outcome:(BEPredicateRuleOutcome)outcome
++ (nonnull instancetype)ruleWithFormat:(nonnull NSString *)predicateFormat arguments:(va_list)argList outcome:(BEPredicateRuleOutcome)outcome
 {
 	NSPredicate *predicate = [NSPredicate predicateWithFormat:predicateFormat arguments:argList];
 	return [[self alloc] initWithPredicate:predicate outcome:outcome];
 }
 
-+ (nonnull BEPredicateRule *)ruleWithFormat:(nonnull NSString *)predicateFormat arguments:(va_list)argList priority:(NSNumber *)priority
++ (nonnull instancetype)ruleWithFormat:(nonnull NSString *)predicateFormat arguments:(va_list)argList priority:(NSNumber *)priority
 {
 	NSPredicate *predicate = [NSPredicate predicateWithFormat:predicateFormat arguments:argList];
 	return [[self alloc] initWithPredicate:predicate priority:priority];
 }
-+ (nonnull BEPredicateRule *)ruleWithFormat:(nonnull NSString *)predicateFormat arguments:(va_list)argList priorityInteger:(NSInteger)priority
++ (nonnull instancetype)ruleWithFormat:(nonnull NSString *)predicateFormat arguments:(va_list)argList priorityInteger:(NSInteger)priority
 {
 	return [self ruleWithFormat:predicateFormat arguments:argList priority:[NSNumber numberWithInteger:priority]];
 }
-+ (nonnull BEPredicateRule *)ruleWithFormat:(nonnull NSString *)predicateFormat arguments:(va_list)argList priorityDouble:(double)priority
++ (nonnull instancetype)ruleWithFormat:(nonnull NSString *)predicateFormat arguments:(va_list)argList priorityDouble:(double)priority
 {
 	return [self ruleWithFormat:predicateFormat arguments:argList priority:[NSNumber numberWithDouble:priority]];
 }
 
-+ (nonnull BEPredicateRule *)ruleWithFormat:(nonnull NSString *)predicateFormat arguments:(va_list)argList outcome:(BEPredicateRuleOutcome)outcome priority:(NSNumber *)priority
++ (nonnull instancetype)ruleWithFormat:(nonnull NSString *)predicateFormat arguments:(va_list)argList outcome:(BEPredicateRuleOutcome)outcome priority:(NSNumber *)priority
 {
 	NSPredicate *predicate = [NSPredicate predicateWithFormat:predicateFormat arguments:argList];
 	return [[self alloc] initWithPredicate:predicate outcome:outcome priority:priority];
 }
-+ (nonnull BEPredicateRule *)ruleWithFormat:(nonnull NSString *)predicateFormat arguments:(va_list)argList outcome:(BEPredicateRuleOutcome)outcome priorityInteger:(NSInteger)priority
++ (nonnull instancetype)ruleWithFormat:(nonnull NSString *)predicateFormat arguments:(va_list)argList outcome:(BEPredicateRuleOutcome)outcome priorityInteger:(NSInteger)priority
 {
 	return [self ruleWithFormat:predicateFormat arguments:argList outcome:outcome priority:[NSNumber numberWithInteger:priority]];
 }
-+ (nonnull BEPredicateRule *)ruleWithFormat:(nonnull NSString *)predicateFormat arguments:(va_list)argList outcome:(BEPredicateRuleOutcome)outcome priorityDouble:(double)priority
++ (nonnull instancetype)ruleWithFormat:(nonnull NSString *)predicateFormat arguments:(va_list)argList outcome:(BEPredicateRuleOutcome)outcome priorityDouble:(double)priority
 {
 	return [self ruleWithFormat:predicateFormat arguments:argList outcome:outcome priority:[NSNumber numberWithDouble:priority]];
 }
 
 
 
-+ (nonnull BEPredicateRule *)ruleWithValue:(BOOL)value
++ (nonnull instancetype)ruleWithValue:(BOOL)value
 {
 	NSPredicate *predicate = [NSPredicate predicateWithValue:value];
 	return [[self alloc] initWithPredicate:predicate];
 }
-+ (nonnull BEPredicateRule *)ruleWithValue:(BOOL)value outcome:(BEPredicateRuleOutcome)outcome
++ (nonnull instancetype)ruleWithValue:(BOOL)value outcome:(BEPredicateRuleOutcome)outcome
 {
 	NSPredicate *predicate = [NSPredicate predicateWithValue:value];
 	return [[self alloc] initWithPredicate:predicate outcome:outcome];
 }
 
-+ (nonnull BEPredicateRule *)ruleWithValue:(BOOL)value priority:(NSNumber *)priority
++ (nonnull instancetype)ruleWithValue:(BOOL)value priority:(NSNumber *)priority
 {
 	NSPredicate *predicate = [NSPredicate predicateWithValue:value];
 	return [[self alloc] initWithPredicate:predicate priority:priority];
 }
-+ (nonnull BEPredicateRule *)ruleWithValue:(BOOL)value priorityInteger:(NSInteger)priority
++ (nonnull instancetype)ruleWithValue:(BOOL)value priorityInteger:(NSInteger)priority
 {
 	return [self ruleWithValue:value priority:[NSNumber numberWithInteger:priority]];
 }
-+ (nonnull BEPredicateRule *)ruleWithValue:(BOOL)value priorityDouble:(double)priority
++ (nonnull instancetype)ruleWithValue:(BOOL)value priorityDouble:(double)priority
 {
 	return [self ruleWithValue:value priority:[NSNumber numberWithDouble:priority]];
 }
 
-+ (nonnull BEPredicateRule *)ruleWithValue:(BOOL)value outcome:(BEPredicateRuleOutcome)outcome priority:(NSNumber *)priority
++ (nonnull instancetype)ruleWithValue:(BOOL)value outcome:(BEPredicateRuleOutcome)outcome priority:(NSNumber *)priority
 {
 	NSPredicate *predicate = [NSPredicate predicateWithValue:value];
 	return [[self alloc] initWithPredicate:predicate outcome:outcome priority:priority];
 }
-+ (nonnull BEPredicateRule *)ruleWithValue:(BOOL)value outcome:(BEPredicateRuleOutcome)outcome priorityInteger:(NSInteger)priority
++ (nonnull instancetype)ruleWithValue:(BOOL)value outcome:(BEPredicateRuleOutcome)outcome priorityInteger:(NSInteger)priority
 {
 	return [self ruleWithValue:value outcome:outcome priority:[NSNumber numberWithInteger:priority]];
 }
-+ (nonnull BEPredicateRule *)ruleWithValue:(BOOL)value outcome:(BEPredicateRuleOutcome)outcome priorityDouble:(double)priority
++ (nonnull instancetype)ruleWithValue:(BOOL)value outcome:(BEPredicateRuleOutcome)outcome priorityDouble:(double)priority
 {
 	return [self ruleWithValue:value outcome:outcome priority:[NSNumber numberWithDouble:priority]];
 }
 
 
 
-+ (nonnull BEPredicateRule*)ruleWithBlock:(BOOL (^ _Nonnull)(id _Nullable evaluatedObject, NSDictionary<NSString *, id> * _Nullable bindings))block
++ (nonnull instancetype)ruleWithBlock:(BOOL (^ _Nonnull)(id _Nullable evaluatedObject, NSDictionary<NSString *, id> * _Nullable bindings))block
 {
 	NSPredicate *predicate = [NSPredicate predicateWithBlock:block];
 	return [[self alloc] initWithPredicate:predicate];
 }
-+ (nonnull BEPredicateRule*)ruleWithOutcome:(BEPredicateRuleOutcome)outcome block:(BOOL (^ _Nonnull)(id _Nullable evaluatedObject, NSDictionary<NSString *, id> * _Nullable bindings))block
++ (nonnull instancetype)ruleWithOutcome:(BEPredicateRuleOutcome)outcome block:(BOOL (^ _Nonnull)(id _Nullable evaluatedObject, NSDictionary<NSString *, id> * _Nullable bindings))block
 {
 	NSPredicate *predicate = [NSPredicate predicateWithBlock:block];
 	return [[self alloc] initWithPredicate:predicate outcome:outcome];
 }
 
-+ (nonnull BEPredicateRule*)ruleWithPriority:(NSNumber *)priority block:(BOOL (^ _Nonnull)(id _Nullable evaluatedObject, NSDictionary<NSString *, id> * _Nullable bindings))block
++ (nonnull instancetype)ruleWithPriority:(NSNumber *)priority block:(BOOL (^ _Nonnull)(id _Nullable evaluatedObject, NSDictionary<NSString *, id> * _Nullable bindings))block
 {
 	NSPredicate *predicate = [NSPredicate predicateWithBlock:block];
 	return [[self alloc] initWithPredicate:predicate priority:priority];
 }
-+ (nonnull BEPredicateRule *)ruleWithPriorityInteger:(NSInteger)priority block:(BOOL (^ _Nonnull)(id _Nullable evaluatedObject, NSDictionary<NSString *, id> * _Nullable bindings))block
++ (nonnull instancetype)ruleWithPriorityInteger:(NSInteger)priority block:(BOOL (^ _Nonnull)(id _Nullable evaluatedObject, NSDictionary<NSString *, id> * _Nullable bindings))block
 {
 	return [self ruleWithPriority:[NSNumber numberWithInteger:priority] block:block];
 }
-+ (nonnull BEPredicateRule *)ruleWithPriorityDouble:(double)priority block:(BOOL (^ _Nonnull)(id _Nullable evaluatedObject, NSDictionary<NSString *, id> * _Nullable bindings))block
++ (nonnull instancetype)ruleWithPriorityDouble:(double)priority block:(BOOL (^ _Nonnull)(id _Nullable evaluatedObject, NSDictionary<NSString *, id> * _Nullable bindings))block
 {
 	return [self ruleWithPriority:[NSNumber numberWithDouble:priority] block:block];
 }
 
-+ (nonnull BEPredicateRule*)ruleWithOutcome:(BEPredicateRuleOutcome)outcome priority:(NSNumber *)priority block:(BOOL (^ _Nonnull)(id _Nullable evaluatedObject, NSDictionary<NSString *, id> * _Nullable bindings))block
++ (nonnull instancetype)ruleWithOutcome:(BEPredicateRuleOutcome)outcome priority:(NSNumber *)priority block:(BOOL (^ _Nonnull)(id _Nullable evaluatedObject, NSDictionary<NSString *, id> * _Nullable bindings))block
 {
 	NSPredicate *predicate = [NSPredicate predicateWithBlock:block];
 	return [[self alloc] initWithPredicate:predicate outcome:outcome priority:priority];
 }
-+ (nonnull BEPredicateRule *)ruleWithOutcome:(BEPredicateRuleOutcome)outcome priorityInteger:(NSInteger)priority block:(BOOL (^ _Nonnull)(id _Nullable evaluatedObject, NSDictionary<NSString *, id> * _Nullable bindings))block
++ (nonnull instancetype)ruleWithOutcome:(BEPredicateRuleOutcome)outcome priorityInteger:(NSInteger)priority block:(BOOL (^ _Nonnull)(id _Nullable evaluatedObject, NSDictionary<NSString *, id> * _Nullable bindings))block
 {
 	return [self ruleWithOutcome:outcome priority:[NSNumber numberWithInteger:priority] block:block];
 }
-+ (nonnull BEPredicateRule *)ruleWithOutcome:(BEPredicateRuleOutcome)outcome priorityDouble:(double)priority block:(BOOL (^ _Nonnull)(id _Nullable evaluatedObject, NSDictionary<NSString *, id> * _Nullable bindings))block
++ (nonnull instancetype)ruleWithOutcome:(BEPredicateRuleOutcome)outcome priorityDouble:(double)priority block:(BOOL (^ _Nonnull)(id _Nullable evaluatedObject, NSDictionary<NSString *, id> * _Nullable bindings))block
 {
 	return [self ruleWithOutcome:outcome priority:[NSNumber numberWithDouble:priority] block:block];
 }
 
 
 
-- (nullable instancetype)init
+- (instancetype)init
 {
 	self = [super init];
 	if (self) {
@@ -315,8 +324,9 @@ NSInteger	const  BEPredicateRuleDefaultPriority = 0;
 	return self;
 }
 
-- (nullable instancetype)initWithPredicate:(NSPredicate *)predicate
+- (nonnull instancetype)initWithPredicate:(NSPredicate *)predicate
 {
+	BEPredicateRuleRequirePredicate(predicate, self.class, _cmd);
 	self = [super init];
 	if (self) {
 		if (!_predicate) {
@@ -326,8 +336,9 @@ NSInteger	const  BEPredicateRuleDefaultPriority = 0;
 	return self;
 }
 
-- (nullable instancetype)initWithPredicate:(NSPredicate *)predicate outcome:(BEPredicateRuleOutcome)outcome
+- (nonnull instancetype)initWithPredicate:(NSPredicate *)predicate outcome:(BEPredicateRuleOutcome)outcome
 {
+	BEPredicateRuleRequirePredicate(predicate, self.class, _cmd);
 	self = [super init];
 	if (self) {
 		if (!_predicate) {
@@ -338,8 +349,9 @@ NSInteger	const  BEPredicateRuleDefaultPriority = 0;
 	return self;
 }
 
-- (nullable instancetype)initWithPredicate:(NSPredicate *)predicate priority:(NSNumber *)priority
+- (nonnull instancetype)initWithPredicate:(NSPredicate *)predicate priority:(NSNumber *)priority
 {
+	BEPredicateRuleRequirePredicate(predicate, self.class, _cmd);
 	self = [super init];
 	if (self) {
 		if (!_predicate) {
@@ -350,18 +362,19 @@ NSInteger	const  BEPredicateRuleDefaultPriority = 0;
 	return self;
 }
 
-- (nullable instancetype)initWithPredicate:(NSPredicate *)predicate priorityInteger:(NSInteger)priority
+- (nonnull instancetype)initWithPredicate:(NSPredicate *)predicate priorityInteger:(NSInteger)priority
 {
 	return [self initWithPredicate:predicate priority:[NSNumber numberWithInteger:priority]];
 }
 
-- (nullable instancetype)initWithPredicate:(NSPredicate *)predicate priorityDouble:(double)priority
+- (nonnull instancetype)initWithPredicate:(NSPredicate *)predicate priorityDouble:(double)priority
 {
 	return [self initWithPredicate:predicate priority:[NSNumber numberWithDouble:priority]];
 }
 
-- (nullable instancetype)initWithPredicate:(NSPredicate *)predicate outcome:(BEPredicateRuleOutcome)outcome priority:(NSNumber *)priority
+- (nonnull instancetype)initWithPredicate:(NSPredicate *)predicate outcome:(BEPredicateRuleOutcome)outcome priority:(NSNumber *)priority
 {
+	BEPredicateRuleRequirePredicate(predicate, self.class, _cmd);
 	self = [super init];
 	if (self) {
 		if (!_predicate) {
@@ -373,12 +386,12 @@ NSInteger	const  BEPredicateRuleDefaultPriority = 0;
 	return self;
 }
 
-- (nullable instancetype)initWithPredicate:(NSPredicate *)predicate outcome:(BEPredicateRuleOutcome)outcome priorityInteger:(NSInteger)priority
+- (nonnull instancetype)initWithPredicate:(NSPredicate *)predicate outcome:(BEPredicateRuleOutcome)outcome priorityInteger:(NSInteger)priority
 {
 	return [self initWithPredicate:predicate outcome:outcome priority:[NSNumber numberWithInteger:priority]];
 }
 
-- (nullable instancetype)initWithPredicate:(NSPredicate *)predicate outcome:(BEPredicateRuleOutcome)outcome priorityDouble:(double)priority
+- (nonnull instancetype)initWithPredicate:(NSPredicate *)predicate outcome:(BEPredicateRuleOutcome)outcome priorityDouble:(double)priority
 {
 	return [self initWithPredicate:predicate outcome:outcome priority:[NSNumber numberWithDouble:priority]];
 }
@@ -429,15 +442,12 @@ NSInteger	const  BEPredicateRuleDefaultPriority = 0;
 {
 	const NSInteger BEPredicateRuleSalt = (sizeof(NSInteger) >= 8) ? 0x388e4b6d1b5d9071 : 0x1b5d9071;
 
-	// Convert integer to string
 	NSString *valueString = [NSString stringWithFormat:@"%d", (int)_outcome];
 	const char *cStr = [valueString UTF8String];
 
-	// Compute SHA1 hash
 	unsigned char digest[CC_SHA1_DIGEST_LENGTH];
 	CC_SHA1(cStr, (CC_LONG)strlen(cStr), digest);
 
-	// Use first sizeof(NSUInteger) bytes of digest to create hash
 	NSUInteger result = 0;
 	memcpy(&result, digest, sizeof(NSUInteger));
 
@@ -450,10 +460,8 @@ NSInteger	const  BEPredicateRuleDefaultPriority = 0;
 		valueString = self.itemPriority.stringValue;
 		 const char *cStr2 = [valueString UTF8String];
 
-		 // Compute SHA1 hash
 		 CC_SHA1(cStr2, (CC_LONG)strlen(cStr2), digest);
 
-		 // Use first sizeof(NSUInteger) bytes of digest to create hash
 		 NSUInteger result2 = 0;
 		 memcpy(&result2, digest, sizeof(NSUInteger));
 		result ^= result2;
@@ -462,7 +470,7 @@ NSInteger	const  BEPredicateRuleDefaultPriority = 0;
 	return [_predicate hash] ^ result ^ BEPredicateRuleSalt;
 }
 
-- (void)substitutePredicateVariables:(NSDictionary<NSString *, id> * _Nullable)variables     // substitute constant values for variables
+- (void)substitutePredicateVariables:(NSDictionary<NSString *, id> * _Nullable)variables
 {
 	_predicate = [_predicate predicateWithSubstitutionVariables:variables];
 }

@@ -184,10 +184,16 @@ FOUNDATION_EXPORT NSString * const BEWebColorNameRebeccaPurple;   /*!< @c #66339
  @abstract   The color for a CSS/SVG color keyword.
  @param      name A color keyword such as @c @"DeepSkyBlue" . Matching ignores case and
                   surrounding whitespace, so @c @"deep skY blue " does not resolve but
-                  @c @" deepskyblue " does — inner spaces are not part of a keyword.
+                  @c @" deepskyblue " does. Inner spaces are not part of a keyword.
  @return     An opaque sRGB color, or @c nil when the name is not a color keyword.
  @discussion Prefer the @c BEWebColorName... constants over string literals; a typo in a
              literal is a runtime @c nil, a typo in a constant is a compile error.
+
+             The @c grey spellings CSS Color Level 4 accepts (@c Grey, @c DarkGrey, @c DimGrey,
+             @c LightGrey, @c SlateGrey, @c LightSlateGrey, @c DarkSlateGrey) resolve to the
+             same colors as their @c Gray keywords. They are aliases: @c webColorNames and
+             @c webColorNameForColor: report the @c Gray spelling only. Alias lookup is
+             available since 1.2.0.
  @since      1.1
 */
 + (nullable BEColor *)webColorNamed:(NSString *)name;
@@ -198,10 +204,11 @@ FOUNDATION_EXPORT NSString * const BEWebColorNameRebeccaPurple;   /*!< @c #66339
  @param      color The color to identify. It is converted to sRGB before comparison.
  @return     The canonical keyword (as in the @c BEWebColorName... constants), or @c nil when
              no keyword has that exact RGB value. Alpha is ignored.
- @discussion The comparison is exact, not nearest: a color one component away from
-             @c DeepSkyBlue returns @c nil rather than @c @"DeepSkyBlue" . Where two keywords
-             share a value (@c Aqua and @c Cyan, @c Fuchsia and @c Magenta, @c Gray and
-             @c Grey), the first in @c webColorNames wins, so the result is stable.
+ @discussion The comparison is exact: a color one component away from
+             @c DeepSkyBlue returns @c nil . Where two keywords
+             share a value (@c Aqua and @c Cyan, @c Fuchsia and @c Magenta), the first in
+             @c webColorNames wins, so the result is stable. The @c grey aliases are not
+             in @c webColorNames, so a gray value reports its @c Gray spelling.
  @since      1.1
 */
 + (nullable NSString *)webColorNameForColor:(BEColor *)color;
@@ -210,7 +217,8 @@ FOUNDATION_EXPORT NSString * const BEWebColorNameRebeccaPurple;   /*!< @c #66339
  @property   webColorNames
  @abstract   Every CSS/SVG color keyword, in the canonical spelling.
  @discussion Ordered as the CSS specification lists them: the 16 original HTML keywords first,
-             then the extended set grouped by hue.
+             then the extended set grouped by hue. The 141 entries use the @c Gray spelling;
+             the @c grey aliases that @c webColorNamed: accepts are not listed.
  @since      1.1
 */
 @property (class, readonly, nonatomic) NSArray<NSString *> *webColorNames;

@@ -1,10 +1,11 @@
-//
-//  BESecurityScopedURLManager.h
-//  BESecurityScopedURLManager
-//
-//  A thread-safe manager for persistently storing and accessing security-scoped bookmarks
-//  on macOS. Handles bookmark creation, resolution, staleness, and reference-counted access.
-//
+/*!
+ @header        BESecurityScopedURLManager.h
+ @copyright     -© 2025 Delicense - @belisoful. All rights released.
+ @author        belisoful@icloud.com
+ @abstract      A thread-safe manager for persistently storing and accessing security-scoped bookmarks
+                on macOS.
+ @discussion    Handles bookmark creation, resolution, staleness, and reference-counted access.
+ */
 
 #import <Foundation/Foundation.h>
 
@@ -73,7 +74,7 @@ typedef NS_ENUM(NSUInteger, BESecurityScopedURLBookmarkLifetime) {
  @abstract      Whether the bookmark is currently stale (resolved as stale and not yet refreshed).
  @discussion    A stale bookmark indicates the resource has been moved or relocated. Resolution sets this to
 				YES when the bookmark is found stale, and it is reset to NO once the bookmark is successfully
-				refreshed — which the manager does automatically, also notifying the delegate of relocations.
+				refreshed, which the manager does automatically, also notifying the delegate of relocations.
  */
 @property (nonatomic, readonly) BOOL isStale;
 
@@ -189,7 +190,7 @@ typedef NS_ENUM(NSUInteger, BESecurityScopedURLBookmarkLifetime) {
 				- Ignore the failure
 				- Log and report to the user
 				
-				If the delegate locates an alternative URL, it MUST call the completionHandler with the new URL.
+				If the delegate locates an alternative URL, it must call the completionHandler with the new URL.
 				If the delegate cannot resolve the issue, call the completionHandler with nil.
 				
 				This method is invoked on the main thread. The completionHandler must be called exactly once.
@@ -230,7 +231,7 @@ typedef NS_ENUM(NSUInteger, BESecurityScopedURLBookmarkLifetime) {
 				NSURL *folder = openPanel.URL;
 				[manager addURLToCatalog:folder lifetime:BESecurityScopedURLBookmarkLifetimeLongLived];
 
-				// Later — resolve and access a file inside that folder. Access is
+				// Later, resolve and access a file inside that folder. Access is
 				// reference-counted; balance every start with an end.
 				NSURL *file = [manager startAccessingURL:fileInFolder];
 				if (file) {
@@ -248,14 +249,53 @@ typedef NS_ENUM(NSUInteger, BESecurityScopedURLBookmarkLifetime) {
  @method        sharedManager
  @abstract      Returns the shared, singleton instance of the manager.
  @discussion    The shared manager is created on first access and persists for the application lifetime.
-				Initialization with -init can be used for private instances if needed, though the shared
-				manager is recommended for most use cases.
+				It persists under the default storage identifier (see -initWithStorageIdentifier:).
+				Private instances can be created with -init or -initWithStorageIdentifier:, though the
+				shared manager is recommended for most use cases.
  @return        The shared BESecurityScopedURLManager instance.
  @since         1.1
  */
 + (instancetype)sharedManager;
 
+#pragma mark - Initialization
+
+/*!
+ @method        initWithStorageIdentifier:
+ @abstract      Creates a private manager whose persisted catalog is stored under the given identifier.
+ @discussion    The identifier names this manager's persistent stores. The NSUserDefaults key is
+				`<identifier>Catalog` and the file in the user's Caches directory is
+				`<identifier>_Catalog.archive`. Managers that share an identifier read and write the same
+				stores. The default identifier is `BESecurityScopedURLManager`, which names the key
+				`BESecurityScopedURLManagerCatalog` and the file `BESecurityScopedURLManager_Catalog.archive`;
+				+sharedManager and -init use it. Pass a distinct identifier to keep a private manager's
+				long-lived bookmarks apart from the shared manager's. The identifier must be valid as a
+				file name component. An empty string selects the default identifier.
+ @param         storageIdentifier The identifier that names this manager's persistent stores.
+ @return        A new manager. Loading of any catalog persisted under the identifier starts asynchronously.
+ @since         1.2.0
+ */
+- (instancetype)initWithStorageIdentifier:(NSString *)storageIdentifier NS_DESIGNATED_INITIALIZER;
+
+/*!
+ @method        init
+ @abstract      Creates a private manager that uses the default storage identifier.
+ @discussion    Equivalent to -initWithStorageIdentifier: with the default identifier. With persistence
+				enabled, an instance created this way reads and writes the same NSUserDefaults key and
+				Caches file as +sharedManager. Use -initWithStorageIdentifier: to isolate a private catalog.
+ @return        A new manager.
+ */
+- (instancetype)init;
+
 #pragma mark - Properties
+
+/*!
+ @property      storageIdentifier
+ @abstract      The identifier that names this manager's persistent stores.
+ @discussion    Set at initialization. -initWithStorageIdentifier: describes how the NSUserDefaults key
+				and the Caches file name derive from it.
+ @since         1.2.0
+ */
+@property (nonatomic, copy, readonly) NSString *storageIdentifier;
 
 /*!
  @property      delegate
@@ -291,9 +331,11 @@ typedef NS_ENUM(NSUInteger, BESecurityScopedURLBookmarkLifetime) {
 /*!
  @method        addURLToCatalog:lifetime:
  @abstract      Creates a security-scoped bookmark for the given URL and adds it to the catalog.
- @discussion    If the URL is already in the catalog, its bookmark data and metadata are updated. This method
-				verifies that the resource can be bookmarked before adding it. Long-lived bookmarks are
-				automatically persisted to the configured storage locations. This is a thread-safe operation.
+ @discussion    If the URL is already in the catalog, its bookmark data and metadata are replaced and every
+				active reference-counted access session for it is ended; callers restart access afterward.
+				This method verifies that the resource can be bookmarked before adding it. Long-lived
+				bookmarks are automatically persisted to the configured storage locations. This is a
+				thread-safe operation.
  @param         url The file URL to bookmark. Must be a security-scoped resource and a valid file URL.
  @param         lifetime The persistence option for the bookmark (short-lived or long-lived).
  @return        YES if the bookmark was successfully created and added, NO if the URL is invalid or
@@ -307,8 +349,9 @@ typedef NS_ENUM(NSUInteger, BESecurityScopedURLBookmarkLifetime) {
  @abstract      Removes the bookmark associated with the given URL from the catalog and persistence.
  @discussion    This is the canonical removal method. The entry is matched by the exact stored
 				catalog key, including the trailing-slash form used for directory entries.
-				Also ends any active reference-counted access sessions associated with this URL.
-				Changes are persisted to configured storage locations. This is a thread-safe operation.
+				Every active reference-counted access session for this URL is ended, regardless of how
+				many references are held. Changes are persisted to configured storage locations. This is
+				a thread-safe operation.
  @param         url The file URL associated with the bookmark to remove.
  */
 - (void)removeURLFromCatalog:(NSURL *)url;
@@ -326,7 +369,7 @@ typedef NS_ENUM(NSUInteger, BESecurityScopedURLBookmarkLifetime) {
 /*!
  @method        clearCatalog
  @abstract      Removes all bookmarks from the catalog, ends all access sessions, and clears persistence.
- @discussion    This operation is useful for cleanup or reset scenarios. All reference counts are
+ @discussion    All reference counts are
 				released and underlying resource access is terminated. Persisted bookmarks are also cleared.
 				This is a thread-safe operation that executes atomically.
  */
@@ -338,7 +381,7 @@ typedef NS_ENUM(NSUInteger, BESecurityScopedURLBookmarkLifetime) {
  @method        urlFromCatalog:
  @abstract      Resolves a URL from the catalog, handling staleness and directory containment.
  @discussion    If the provided URL matches a direct bookmark or is contained within a bookmarked directory,
-				the resolved URL is returned. Stale bookmarks are automatically updated. This method does NOT
+				the resolved URL is returned. Stale bookmarks are automatically updated. This method does not
 				start access; use startAccessingURLWithAbsolutePath: or related methods for that.
 				This is a thread-safe operation.
  @param         url The URL to resolve (which may be stale or contained within a bookmarked directory).
@@ -356,14 +399,14 @@ typedef NS_ENUM(NSUInteger, BESecurityScopedURLBookmarkLifetime) {
 				Resolution proceeds through four tiers, in order:
 				1. Direct catalog match on the exact key.
 				2. A URL already present in the active reference-count set.
-				3. Directory containment — the path lies inside a bookmarked directory.
-				4. Filename fallback — a file with the same last path component exists inside ANY
+				3. Directory containment: the path lies inside a bookmarked directory.
+				4. Filename fallback: a file with the same last path component exists inside any
 				   bookmarked directory.
 
-				WARNING: Tier 4 matches on filename alone. If two bookmarked directories each contain
+				Tier 4 matches on filename alone. If two bookmarked directories each contain
 				a file with the requested name, the first directory enumerated wins and the other is
 				ignored silently. Callers that require an exact path must verify the returned URL's full
-				path rather than relying on this method's fallback. Tiers 1–3 are path-exact and unaffected.
+				path. Tiers 1–3 are path-exact and unaffected.
  @param         absolutePathString The canonical absolute string of the URL in the catalog.
  @return        The current, resolved URL from the catalog, or nil if not found.
  */
@@ -372,7 +415,7 @@ typedef NS_ENUM(NSUInteger, BESecurityScopedURLBookmarkLifetime) {
 /*!
  @method        objectForKeyedSubscript:
  @abstract      Allows subscript access to resolve URLs, e.g., manager[staleURL] or manager[@"file:///path"].
- @discussion    This method provides convenient syntax sugar for URL resolution. The key must be an NSURL or
+ @discussion    The key must be an NSURL or
 				NSString representing a file URL or absolute path string. This is equivalent to calling
 				urlFromCatalog: or urlFromCatalogWithAbsolutePath: depending on key type.
  @param         key An NSURL or NSString key for resolution.
@@ -387,11 +430,13 @@ typedef NS_ENUM(NSUInteger, BESecurityScopedURLBookmarkLifetime) {
  @abstract      Starts reference-counted security-scoped access for a given URL.
  @discussion    Resolves the URL through the catalog and starts security-scoped access. Access is
 				reference-counted: the underlying startAccessingSecurityScopedResource call is made only
-				on the 0→1 transition; subsequent calls increment the count. Each call must be balanced
-				with a corresponding endAccessingURL:. If resolution or access fails, the delegate's
+				on the 0→1 transition; subsequent calls increment the count and return the NSURL instance
+				that started access. Each call must be balanced with a corresponding endAccessingURL:.
+				If resolution or access fails, the delegate's
 				accessFailedForURL:entry:completionHandler: is invoked (on the main thread) so it can
 				locate the resource or give up. This is a thread-safe operation.
- @param         url The URL for which to start access. If nil, returns nil.
+ @param         url The URL for which to start access. The parameter is nonnull; a nil value
+				passed anyway returns nil.
  @return        The resolved URL if access was successfully started, nil otherwise.
  */
 - (nullable NSURL *)startAccessingURL:(NSURL *)url;
@@ -401,8 +446,11 @@ typedef NS_ENUM(NSUInteger, BESecurityScopedURLBookmarkLifetime) {
  @abstract      Ends reference-counted security-scoped access for a given URL.
  @discussion    Decrements the reference count for the URL and calls stopAccessingSecurityScopedResource
 				only when the count reaches zero. This allows multiple callers to share access to the same
-				resource safely. Each call balances one prior startAccessingURL:. This is a thread-safe operation.
- @param         url The URL for which to end access. If nil, returns NO.
+				resource safely. Each call balances one prior startAccessingURL:. The URL is matched by
+				equality; the stop call is made on the NSURL instance that started access, since the
+				security scope belongs to that instance. This is a thread-safe operation.
+ @param         url The URL for which to end access. Any URL equal to the one returned by
+				startAccessingURL: matches. The parameter is nonnull; a nil value passed anyway returns NO.
  @return        YES if access was successfully ended, NO if the URL was not active or an error occurred.
  */
 - (BOOL)endAccessingURL:(NSURL *)url;
@@ -437,14 +485,14 @@ typedef NS_ENUM(NSUInteger, BESecurityScopedURLBookmarkLifetime) {
 /*!
  @method        startAccessingAllURLs
  @abstract      Starts reference-counted access for every URL in the catalog.
- @discussion    This is useful on application launch or after loading the catalog to ensure all bookmarked
-				resources are immediately accessible. Returns the array of successfully accessed URLs. The
+ @discussion    Call it on application launch or after loading the catalog to make all bookmarked
+				resources immediately accessible. Returns the array of successfully accessed URLs. The
 				returned URLs are guaranteed to have active security-scoped access until endAccessingAllURLs
 				is called. This is a thread-safe operation.
 
-				NOTE: Unlike startAccessingURL:, this bulk method does NOT invoke the delegate's
+				Unlike startAccessingURL:, this bulk method does not invoke the delegate's
 				accessFailedForURL:entry:completionHandler: for entries that fail to resolve or whose
-				security-scoped access cannot be started. Such entries are simply omitted from the
+				security-scoped access cannot be started. Such entries are omitted from the
 				returned array. Compare the returned count (or contents) against `catalog` to detect
 				which bookmarks failed, and re-acquire them individually via startAccessingURL: if you
 				need the delegate's relocation flow.
@@ -471,8 +519,10 @@ typedef NS_ENUM(NSUInteger, BESecurityScopedURLBookmarkLifetime) {
  @category      NSURL (BESecurityScopedURLManagerHelpers)
  @abstract      Convenience methods to quickly start/end security-scoped access using reference counting.
  @discussion    These methods use the reference-counted access logic of the shared manager. They ensure that
-				a single URL's access is properly managed, even if multiple parts of the app access it. These
-				methods provide the simplest API for most use cases.
+				a single URL's access is properly managed, even if multiple parts of the app access it. The
+				receiver is matched by URL equality, so start and end may be sent to different NSURL instances
+				with the same path; the shared manager starts and stops the resolved instance that holds the
+				security scope. These methods provide the simplest API for most use cases.
 
 				@code
 				if ([fileURL ss_startAccessingSecurityScopedResource]) {

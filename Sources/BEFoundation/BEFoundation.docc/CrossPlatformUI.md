@@ -4,9 +4,9 @@ Color, view, and image conveniences that work on both macOS and iOS.
 
 ## Overview
 
-Built on the type aliases in <doc:BEPlatformTypes>, these categories extend the real platform classes (`NSColor`/`UIColor`, `NSView`/`UIView`, `NSImage`/`UIImage`), so the same call sites compile and behave on both platforms. They fill gaps Apple leaves in both AppKit and UIKit — hex colors, Auto Layout boilerplate, and image round-trips/resizing.
+Built on the type aliases in <doc:BEPlatformTypes>, these categories extend the real platform classes (`NSColor`/`UIColor`, `NSView`/`UIView`, `NSImage`/`UIImage`), so the same call sites compile and behave on both platforms. They cover hex colors, Auto Layout constraint helpers, and image round-trips and resizing.
 
-`BEDotView` is a view rather than a category: a `BEView` subclass, so one status-indicator dot renders on every supported platform.
+`BEDotView` is a `BEView` subclass; one status-indicator dot renders on every supported platform.
 
 ## Articles
 

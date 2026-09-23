@@ -5,9 +5,8 @@
  @author	 belisoful@icloud.com
  @abstract   Adds stack (LIFO) and queue (FIFO) operations to mutable collections.
  @discussion This header file provides categories on NSMutableArray and NSMutableOrderedSet
-			 to enable stack-like and queue-like behaviors using pushObject:, popObject,
-			 and shift. These extensions allow treating mutable collections as stacks
-			 (Last-In, First-Out) or queues (First-In, First-Out) with intuitive method names.
+			 to enable stack-like (Last-In, First-Out) and queue-like (First-In, First-Out)
+			 behaviors using pushObject:, popObject, and shift.
 
 			 Selector naming: Apple attaches private categories to these classes at runtime
 			 (OSAnalytics defines -[NSMutableArray push:] and -[NSMutableArray pop]), so the
@@ -114,9 +113,9 @@
  @property   isPushOnTop
  @abstract   Controls whether pushing existing objects moves them to the end of the set.
  @discussion When YES (the default), pushing an object that already exists in the set
-			 will first remove the existing instance before adding it to the end,
-			 ensuring the pushed object is at the "top" of the stack. When NO, pushing
-			 an existing object has no effect on the set.
+			 removes the existing instance before adding it to the end, so the pushed
+			 object is at the top of the stack. When NO, pushing an existing object has
+			 no effect on the set.
  */
 @property (readwrite, assign, nonatomic) BOOL isPushOnTop;
 

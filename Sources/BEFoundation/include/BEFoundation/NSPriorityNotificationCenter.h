@@ -78,12 +78,11 @@ extern NSInteger const NSPriorityNotificationDefaultPriority;
 /*!
  @protocol      NSNotificationObjectPriorityCapture
  @abstract      Protocol for objects that can store notification priority configuration
- @discussion    Objects conforming to this protocol can be configured with a priority
-				for specific notification names. This is useful for objects that need
-				to remember their priority settings between notification registrations.
+ @discussion    Objects conforming to this protocol store a priority for specific
+				notification names.
 				
 				When an observer conforms to this protocol, the notification center
-				will automatically call setNcPriority:name: when the observer is added.
+				calls setNcPriority:name: when the observer is added.
  */
 @protocol NSNotificationObjectPriorityCapture <NSObject>
 
@@ -140,10 +139,19 @@ extern NSInteger const NSPriorityNotificationDefaultPriority;
 				- Post-processing blocks for notifications
 				- Thread-safe observer management
 				- Singleton pattern with defaultCenter
-				- Automatic integration with NSNotificationCenter.defaultCenter
-				
-				The class intercepts notifications from the standard NSNotificationCenter
-				and re-dispatches them with priority ordering when used as the defaultCenter.
+				- A bridge between defaultCenter and NSNotificationCenter.defaultCenter
+
+				Only the shared instance returned by `defaultCenter` is bridged to
+				NSNotificationCenter.defaultCenter: it receives every notification posted to the
+				system default center and delivers it in priority order, and it forwards its own
+				posts to the system default center at `defaultPriority`. A center created with
+				`init` is self-contained. It delivers only to its own observers and neither
+				receives nor forwards system default center notifications.
+
+				The center takes no lock around an observer call-out. A notification's userInfo
+				is shared by reference with every observer, including observers on operation
+				queues, as NSNotificationCenter shares it. An observer that mutates a mutable
+				userInfo synchronizes that access itself.
 
 				A notification posted through CFNotificationCenterPostNotification may carry an
 				opaque C pointer as its object (SceneKit posts C structs this way). The center
@@ -189,11 +197,15 @@ extern NSInteger const NSPriorityNotificationDefaultPriority;
 /*!
  @property      defaultCenter
  @abstract      The shared priority notification center instance
- @discussion    Returns the singleton instance of NSPriorityNotificationCenter.
-				This instance automatically intercepts notifications from the standard
-				NSNotificationCenter.defaultCenter and re-dispatches them with priority ordering.
-				
-				This property is thread-safe and will always return the same instance.
+ @discussion    Returns the singleton instance of NSPriorityNotificationCenter. It is the one
+				instance bridged to NSNotificationCenter.defaultCenter:
+				- A post to NSNotificationCenter.defaultCenter → delivered to this center's
+				  observers in priority order.
+				- A post to this center → delivered to its own observers, and forwarded to
+				  NSNotificationCenter.defaultCenter at `defaultPriority`.
+
+				BESingleton creates the instance through `initForSingleton:`. This property is
+				thread-safe and always returns the same instance.
  */
 @property (class, readonly, strong) NSPriorityNotificationCenter *defaultCenter;
 
@@ -224,20 +236,44 @@ extern NSInteger const NSPriorityNotificationDefaultPriority;
  */
 + (BOOL)isSingleton;
 
+#pragma mark - Initialization
+
+/*!
+ @method        init
+ @abstract      Creates a self-contained priority notification center
+ @return        A new center with no bridge to NSNotificationCenter.defaultCenter
+ @discussion    The center delivers posts to its own observers only. It does not receive
+				notifications posted to NSNotificationCenter.defaultCenter and does not forward
+				its own posts there. Use `defaultCenter` for the bridged shared instance.
+ @since         1.2.0 (behavior change: earlier releases bridged every center)
+ */
+- (instancetype)init;
+
+/*!
+ @method        initForSingleton:
+ @abstract      Creates the center that is bridged to NSNotificationCenter.defaultCenter
+ @param         initInfo The BESingleton init info; unused.
+ @return        A new bridged center
+ @discussion    BESingleton calls this once to create `defaultCenter`. A center created directly
+				with this initializer has the same bridge; `cleanup` removes it.
+ @since         1.2.0
+ */
+- (nullable instancetype)initForSingleton:(nullable NSDictionary *)initInfo;
+
 #pragma mark - Observer Management
 
 /*!
  @method        addObserver:selector:name:object:
  @abstract      Adds an observer with default priority
- @param         observer The object that will receive notifications
+ @param         observer The object that receives notifications
  @param         aSelector The method to call on the observer
  @param         aName The notification name to observe, or nil for all notifications
  @param         anObject The object whose notifications to observe, or nil for all objects
  @discussion    This method maintains compatibility with NSNotificationCenter while adding
-				priority support. The observer will be assigned the current defaultPriority value.
+				priority support. The observer is assigned the current defaultPriority value.
 				
 				If the observer conforms to NSNotificationObjectPriorityCapture, the default
-				priority will be stored in the observer via setNcPriority:name:.
+				priority is stored in the observer via setNcPriority:name:.
  */
 - (void)addObserver:(nonnull id)observer
 		   selector:(nonnull SEL)aSelector
@@ -247,7 +283,7 @@ extern NSInteger const NSPriorityNotificationDefaultPriority;
 /*!
  @method        addObserver:selector:name:object:queue:
  @abstract      Adds an observer with default priority and specified queue
- @param         observer The object that will receive notifications
+ @param         observer The object that receives notifications
  @param         aSelector The method to call on the observer
  @param         aName The notification name to observe, or nil for all notifications
  @param         anObject The object whose notifications to observe, or nil for all objects
@@ -265,7 +301,7 @@ extern NSInteger const NSPriorityNotificationDefaultPriority;
 /*!
  @method        addObserver:selector:name:object:priority:
  @abstract      Adds an observer with specified priority
- @param         observer The object that will receive notifications
+ @param         observer The object that receives notifications
  @param         aSelector The method to call on the observer
  @param         aName The notification name to observe, or nil for all notifications
  @param         anObject The object whose notifications to observe, or nil for all objects
@@ -276,8 +312,14 @@ extern NSInteger const NSPriorityNotificationDefaultPriority;
 				- Zero is neutral priority
 				- Positive values have lower priority
 				
-				If the observer conforms to NSNotificationObjectPriorityItem, the priority
-				parameter is treated as an offset from the observer's dynamic priority.
+				If the observer conforms to NSNotificationObjectPriorityItem, its effective
+				priority is the value its ncPriority: returns at sort time plus
+				(priority - defaultPriority). Passing defaultPriority uses the observer's
+				own priority unchanged.
+				
+				If the observer conforms to NSNotificationObjectPriorityCapture, priority is
+				stored through setNcPriority:name: first. When it conforms to both protocols
+				the offset is 0 and the stored value alone orders the observer.
  */
 - (void)addObserver:(nonnull id)observer
 		   selector:(nonnull SEL)aSelector
@@ -288,17 +330,19 @@ extern NSInteger const NSPriorityNotificationDefaultPriority;
 /*!
  @method        addObserver:selector:name:object:priority:queue:
  @abstract      Adds an observer with specified priority and execution queue
- @param         observer The object that will receive notifications
+ @param         observer The object that receives notifications
  @param         aSelector The method to call on the observer
  @param         aName The notification name to observe, or nil for all notifications
  @param         anObject The object whose notifications to observe, or nil for all objects
  @param         priority The priority value (lower values = higher priority)
  @param         queue The operation queue for asynchronous execution, or nil for synchronous
  @discussion    This method combines priority-based ordering with queue-based execution.
-				The observer method will be called in priority order, but if a queue is
-				specified, the actual execution happens asynchronously on that queue.
-				
-				When using queues, notification objects may be copied to ensure thread safety.
+				Observers are ordered by priority; when a queue is specified, the call
+				runs asynchronously on that queue.
+
+				A queued observer receives a copy of the notification made at post time. The
+				copy shares the original's userInfo by reference; the center does not
+				synchronize access to it.
  */
 - (void)addObserver:(nonnull id)observer
 		   selector:(nonnull SEL)aSelector
@@ -318,9 +362,6 @@ extern NSInteger const NSPriorityNotificationDefaultPriority;
  @discussion    This method provides block-based notification observing with default priority.
 				The returned object should be retained and used with removeObserver: to
 				unregister the observation.
-				
-				Block-based observers are particularly useful for one-off observations
-				or when the observing code is localized.
  */
 - (nonnull id <NSObject>)addObserverForName:(nullable NSNotificationName)name
 									 object:(nullable id)obj
@@ -338,7 +379,7 @@ extern NSInteger const NSPriorityNotificationDefaultPriority;
  @param         block The block to execute when notifications are received
  @return        An opaque object that can be used to remove the observer
  @discussion    This method combines block-based observing with priority control.
-				The block will be executed in priority order relative to other observers.
+				The block runs in priority order relative to other observers.
 				
 				The returned object should be retained and used with removeObserver:
 				to unregister the observation.
@@ -370,7 +411,7 @@ extern NSInteger const NSPriorityNotificationDefaultPriority;
  @param         aName The notification name
  @param         anObject The object associated with the notification, or nil
  @discussion    Convenience method for posting simple notifications.
-				Equivalent to creating an NSNotification and calling postNotification:.
+				Equivalent to creating an NSPriorityNotification and calling postNotification:.
  */
 - (void)postNotificationName:(nonnull NSNotificationName)aName
 					  object:(nullable id)anObject;
@@ -429,9 +470,6 @@ extern NSInteger const NSPriorityNotificationDefaultPriority;
  @param         reverse If YES, observers are called in reverse priority order (lowest priority first)
  @discussion    This method allows reversing the normal priority order for special cases.
 				When reverse is YES, observers with higher priority values are notified first.
-				
-				This can be useful for cleanup operations or when you want to notify
-				less critical observers before more critical ones.
  */
 - (void)postNotificationName:(nonnull NSNotificationName)aName
 					  object:(nullable id)anObject
@@ -518,11 +556,11 @@ extern NSInteger const NSPriorityNotificationDefaultPriority;
 /*!
  @method        cleanup
  @abstract      Performs cleanup operations for the notification center
- @discussion    This method unregisters the notification center from the standard
-				NSNotificationCenter.defaultCenter and performs other cleanup operations.
-				
-				This method is typically called during application shutdown or when
-				the priority notification center is no longer needed.
+ @discussion    On a bridged center (`defaultCenter`, or one created with `initForSingleton:`)
+				this method removes the bridge: the center stops receiving notifications from
+				NSNotificationCenter.defaultCenter and stops forwarding its posts there. Its own
+				observers remain registered. A center created with `init` has no bridge, so this
+				method has no effect on it.
  */
 - (void)cleanup;
 

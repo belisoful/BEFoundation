@@ -4,9 +4,8 @@
  * @date		2025-01-01
  * @author		belisoful@icloud.com
  * @abstract	Runtime utility functions for Objective-C class and method introspection
- * @discussion	This header provides utility functions for working with Objective-C runtime,
- *             including metaclass resolution and method existence checking within a specific class
- *             These functions extend the standard runtime API with commonly needed functionality.
+ * @discussion	This header provides utility functions for working with the Objective-C runtime:
+ *             metaclass resolution and method existence checking within a specific class.
  *
  *             @code
  *             // Does NSString itself define -isEqualToString: (vs. inheriting it)?
@@ -27,7 +26,6 @@
  * @function metaclass_getClass
  * @abstract Retrieves the class instance corresponding to a given metaclass
  * @discussion Given a metaclass, this function returns the corresponding class instance.
- *             This is useful when you have a metaclass and need to find its associated class.
  * @param metaClass The metaclass to resolve to its corresponding class
  * @return The class instance corresponding to the metaclass, or nil if the metaclass is invalid
  *         or if no corresponding class is found

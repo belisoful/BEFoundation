@@ -6,8 +6,9 @@
              (@c NSColor on macOS, @c UIColor on iOS).
  @discussion AppKit/UIKit ship no hex support and make component access error-prone
              (NSColor's component accessors raise on non-RGB colors). This category adds
-             robust @c #RGB / @c #RRGGBBAA parsing and formatting that always round-trips
+             @c #RGB / @c #RRGGBBAA parsing and formatting that always round-trips
              through sRGB, plus a one-call light/dark dynamic color.
+ @since      1.1
  */
 
 #ifndef BEColor_BExtension_h
@@ -27,6 +28,8 @@ NS_ASSUME_NONNULL_BEGIN
                        hex digits: @c RGB, @c RGBA, @c RRGGBB, or @c RRGGBBAA (alpha last,
                        CSS-style). 3/4-digit shorthand is expanded (@c "#1a2" → @c "#11aa22").
                        Surrounding whitespace is ignored; case is insensitive.
+                       One prefix is accepted; the remainder must be hex digits only, so
+                       @c "#0x1234" is malformed.
  @return     An sRGB color, or @c nil if the string is empty, malformed, or has an unsupported
              digit count.
  */

@@ -5,7 +5,7 @@
  @author		belisoful@icloud.com
  @abstract		The NSCoder HalfFloat category adds encoding and decoding for the
  				half-precision float, `_Float16`.
- @discussion	The Half Float is a missing aspect of the basic NSCoder.
+ @discussion	NSCoder has no built-in half-precision methods.
 */
 
 #import "NSCoder+HalfFloat.h"
@@ -19,7 +19,7 @@
 @implementation NSCoder (HalfFloat)
 
 /*!
- @method		-encodeHalf:
+ @method		-encodeHalf:forKey:
  @abstract		Encodes a half sized float and associates it with a string key.
  @param		value	This is the _Float16 to be encoded.
  @param		key		This is the key associated with the @c value.
@@ -31,7 +31,7 @@
 
 
 /*!
- @method		-decodeHalfForKey
+ @method		-decodeHalfForKey:
  @abstract		Decodes a half sized float that was previously encoded with
 				encodeHalf:forKey: and associated with the string key.
  @result		Returns the decoded `_Float16`, or 0 if the key is absent or the stored

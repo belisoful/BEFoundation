@@ -94,8 +94,7 @@
 	char buffer[16];
 	memset(buffer, 0xAA, sizeof(buffer));
 
-	// Location entirely past the end must copy nothing (pre-fix this read out of bounds because
-	// (length - location) underflowed and MAX(...,0) was a no-op on unsigned values).
+	// Location entirely past the end must copy nothing; (length - location) would underflow on unsigned values.
 	[data getBytes:buffer range:NSMakeRange(10, 4)];
 	XCTAssertEqual((unsigned char)buffer[0], 0xAA, @"out-of-range start must copy nothing");
 }
@@ -201,7 +200,6 @@
 	NSString *tempDir = NSTemporaryDirectory();
 	NSURL *tempDirUrl = [NSURL fileURLWithPath:tempDir isDirectory:YES];
 	
-	// Create a valid file URL in the temporary directory
 	NSURL *fileURL = [tempDirUrl URLByAppendingPathComponent:
 					  [NSString stringWithFormat:@"%@.txt", NSUUID.new.UUIDString]];
 	
@@ -461,7 +459,6 @@
 	
 	XCTAssertNotNil(original);
 	
-	// Archive
 	NSError *archiveError = nil;
 	NSData *archivedData = [NSKeyedArchiver archivedDataWithRootObject:original
 												 requiringSecureCoding:YES
@@ -470,7 +467,6 @@
 	XCTAssertNotNil(archivedData, @"Archiving failed: %@", archiveError);
 	XCTAssertNil(archiveError);
 	
-	// Unarchive
 	NSError *unarchiveError = nil;
 	BEWebData *restored = [NSKeyedUnarchiver unarchivedObjectOfClass:[BEWebData class]
 															fromData:archivedData
@@ -479,10 +475,8 @@
 	XCTAssertNotNil(restored, @"Unarchiving failed: %@", unarchiveError);
 	XCTAssertNil(unarchiveError);
 
-	// Verify data
 	XCTAssertEqualObjects(restored, original);
 
-	// Verify metadata
 	XCTAssertEqualObjects(restored.MIMEType, original.MIMEType);
 	XCTAssertEqualObjects(restored.charset, original.charset);
 	XCTAssertEqual(restored.stringEncoding, original.stringEncoding);
@@ -502,7 +496,6 @@
 	NSData *plainData = [@"test data" dataUsingEncoding:NSUTF8StringEncoding];
 	BEWebData *webData = [BEWebData dataWithBytes:plainData.bytes length:plainData.length];
 	
-	// Archive and unarchive
 	NSError *error = nil;
 	NSData *archived = [NSKeyedArchiver archivedDataWithRootObject:webData
 											 requiringSecureCoding:YES
@@ -542,7 +535,6 @@
 	XCTAssertNotNil(copy);
 	XCTAssertEqualObjects(copy, original);
 	
-	// Verify metadata is copied
 	XCTAssertEqualObjects(copy.MIMEType, original.MIMEType);
 	XCTAssertEqualObjects(copy.charset, original.charset);
 	XCTAssertEqual(copy.stringEncoding, original.stringEncoding);
@@ -645,8 +637,8 @@
  @discussion Should behave like NSData for non-data URLs.
 */
 - (void)testLoadingFromFileURL {
-	// Create a temporary file
-	NSString *tempPath = [NSTemporaryDirectory() stringByAppendingPathComponent:@"test.txt"];
+	NSString *tempPath = [NSTemporaryDirectory() stringByAppendingPathComponent:
+						  [NSString stringWithFormat:@"%@.txt", NSUUID.new.UUIDString]];
 	NSString *content = @"File content";
 	[content writeToFile:tempPath atomically:YES encoding:NSUTF8StringEncoding error:nil];
 	
@@ -684,7 +676,6 @@
 	XCTAssertNil(fResponse);
 	XCTAssertNil(fError);
 	
-	// Clean up
 	[[NSFileManager defaultManager] removeItemAtPath:tempPath error:nil];
 }
 
@@ -694,7 +685,6 @@
  @discussion Should behave like NSData for non-data URLs.
 */
 - (void)testLoadingFromWebURL_synchronous {
-	// Create a temporary file
 	
 	NSURL *webURL = [NSURL URLWithString:@"https://github.com"];
 	BEWebData *webData = [BEWebData dataWithContentsOfURL:webURL];
@@ -770,7 +760,6 @@
  @discussion Should behave like NSData for non-data URLs.
 */
 - (void)testLoadingFromWebURL_synchronous_badurl {
-	// Create a temporary file
 	
 	NSURL *webURL = [NSURL URLWithString:@"https://invalid.not-a-website.invalid"];
 	NSError *error = nil;
@@ -787,7 +776,6 @@
  @discussion Should behave like NSData for non-data URLs.
 */
 - (void)testLoadingFromWebURL_asynchronous {
-	// Create a temporary file
 	
 	NSURL *webURL = [NSURL URLWithString:@"https://github.com"];
 	BEWebData *webData = [BEWebData dataWithContentsOfURL:webURL options:BEDataReadingAsynchronous error:nil];
@@ -871,7 +859,6 @@
  @abstract   Tests data URL with large payload.
 */
 - (void)testLargeDataURL {
-	// Create 10KB of data
 	NSMutableData *largeData = [NSMutableData dataWithCapacity:10000];
 	for (int i = 0; i < 10000; i++) {
 		unsigned char byte = i % 256;
@@ -915,7 +902,6 @@
  @discussion Should behave like NSData for non-data URLs.
 */
 - (void)testLoadingFromWebURL_differentURLScheme {
-	// Create a temporary file
 	
 	NSURL *webURL = [NSURL URLWithString:@"scheme://github.com"];
 	NSError *error = nil;
@@ -1062,7 +1048,6 @@
 	NSURL *dataURL = [NSURL URLWithString:@"data:text/plain,test"];
 	BEWebData *webData = [BEWebData dataWithContentsOfURL:dataURL];
 	
-	// Should work with NSData methods
 	XCTAssertEqual(webData.length, 4);
 	
 	const void *bytes = webData.bytes;
@@ -1146,6 +1131,95 @@
 	const uint8_t expected[2] = {0xC3, 0xA9};
 	XCTAssertEqualObjects([NSData dataWithData:d], [NSData dataWithBytes:expected length:2],
 						  @"The declared charset's bytes must survive undisturbed.");
+}
+
+#pragma mark - Parity with NSURL (Data)
+
+/*! Asserts that BEWebData and the NSURL (Data) category agree on every metadata value and the bytes. */
+- (void)assertWebData:(BEWebData *)webData matchesURL:(NSURL *)url {
+	XCTAssertNotNil(webData, @"%@", url);
+	XCTAssertEqualObjects(webData.MIMEType, url.dataMIMEType, @"%@", url);
+	XCTAssertEqualObjects(webData.charset, url.dataCharset, @"%@", url);
+	XCTAssertEqual(webData.stringEncoding, url.stringEncoding, @"%@", url);
+	XCTAssertEqual(webData.isBase64, url.isBase64, @"%@", url);
+	XCTAssertEqualObjects([NSData dataWithData:webData], url.decodedData, @"%@", url);
+}
+
+- (void)testDataURL_uppercaseCharsetParameterMatchesNSURL {
+	NSURL *url = [NSURL URLWithString:@"data:text/plain;CHARSET=utf-8,caf%C3%A9"];
+	BEWebData *webData = [BEWebData dataWithContentsOfURL:url];
+
+	[self assertWebData:webData matchesURL:url];
+	XCTAssertEqualObjects(webData.charset, @"utf-8");
+	XCTAssertEqual(webData.stringEncoding, NSUTF8StringEncoding);
+}
+
+- (void)testDataURL_quotedCharsetWithWhitespaceMatchesNSURL {
+	NSURL *url = [NSURL URLWithString:@"data:text/plain;charset%20=%20%22utf-8%22,caf%C3%A9"];
+	BEWebData *webData = [BEWebData dataWithContentsOfURL:url];
+
+	[self assertWebData:webData matchesURL:url];
+	XCTAssertEqualObjects(webData.charset, @"utf-8");
+	XCTAssertEqualObjects([[NSString alloc] initWithData:webData encoding:webData.stringEncoding], @"café");
+}
+
+- (void)testDataURL_base64WithEmbeddedNewlinesMatchesNSURL {
+	NSString *expected = [@"" stringByPaddingToLength:200 withString:@"The quick brown fox jumps over the lazy dog. " startingAtIndex:0];
+	NSData *expectedData = [expected dataUsingEncoding:NSUTF8StringEncoding];
+	NSString *wrapped = [expectedData base64EncodedStringWithOptions:NSDataBase64Encoding64CharacterLineLength | NSDataBase64EncodingEndLineWithLineFeed];
+	XCTAssertTrue([wrapped containsString:@"\n"], @"Precondition: the payload wraps onto several lines");
+	NSURL *url = [NSURL URLWithString:[@"data:text/plain;charset=utf-8;base64," stringByAppendingString:wrapped]];
+	BEWebData *webData = [BEWebData dataWithContentsOfURL:url];
+
+	[self assertWebData:webData matchesURL:url];
+	XCTAssertEqualObjects([NSData dataWithData:webData], expectedData);
+}
+
+- (void)testDataURL_binaryMIMEWithoutCharsetMatchesNSURL {
+	NSURL *url = [NSURL URLWithString:@"data:image/png;base64,iVBORw0KGgo="];
+	BEWebData *webData = [BEWebData dataWithContentsOfURL:url];
+
+	[self assertWebData:webData matchesURL:url];
+	XCTAssertNil(webData.charset, @"A non-text MIME type has no default charset");
+	XCTAssertEqual(webData.stringEncoding, 0);
+}
+
+#pragma mark - Class-cluster initializers
+
+- (void)testInitWithBytesNoCopyInvokesDeallocatorOnceAndPreservesBytes {
+	const NSUInteger length = 5;
+	void *buffer = malloc(length);
+	memcpy(buffer, "hello", length);
+
+	__block NSUInteger deallocatorCalls = 0;
+	__block void *deallocatedBytes = NULL;
+	__block NSUInteger deallocatedLength = 0;
+	BEWebData *webData = [[BEWebData alloc] initWithBytesNoCopy:buffer length:length deallocator:^(void *bytes, NSUInteger byteLength) {
+		deallocatorCalls++;
+		deallocatedBytes = bytes;
+		deallocatedLength = byteLength;
+		free(bytes);
+	}];
+
+	XCTAssertNotNil(webData);
+	XCTAssertEqual(deallocatorCalls, 1UL);
+	XCTAssertEqual(deallocatedBytes, buffer);
+	XCTAssertEqual(deallocatedLength, length);
+	XCTAssertEqualObjects([NSData dataWithData:webData], [NSData dataWithBytes:"hello" length:length]);
+
+	webData = nil;
+	XCTAssertEqual(deallocatorCalls, 1UL, @"Releasing the object does not run the deallocator a second time");
+}
+
+- (void)testDataWithBytesNoCopyFreeWhenDonePreservesBytes {
+	const NSUInteger length = 5;
+	void *buffer = malloc(length);
+	memcpy(buffer, "hello", length);
+
+	BEWebData *webData = [BEWebData dataWithBytesNoCopy:buffer length:length freeWhenDone:YES];
+
+	XCTAssertTrue([webData isKindOfClass:BEWebData.class]);
+	XCTAssertEqualObjects([NSData dataWithData:webData], [NSData dataWithBytes:"hello" length:length]);
 }
 
 /*! A missing file URL must return nil with an error, like every other failing branch. */

@@ -7,9 +7,9 @@
  * @discussion	This header provides the underlying infrastructure for the dynamic method
  *             injection system, including method swizzling management, signature parsing,
  *             and protocol introspection utilities. These components work together to
- *             enable safe and efficient runtime method injection.
+ *             enable runtime method injection.
  *
- *             The helper classes handle the complex low-level operations required for
+ *             The helper classes handle the low-level operations required for
  *             dynamic method management, including:
  *             - Method signature conversion between blocks and Objective-C methods
  *             - Safe method swizzling with state tracking
@@ -79,7 +79,7 @@ typedef NS_ENUM(NSInteger, BEDynamicMethodsSwizzleState) {
 /*!
  * @property isMetaClass
  * @abstract Indicates whether this swizzle operation targets a metaclass.
- * @discussion When YES, the swizzle operation will target the metaclass of the
+ * @discussion When YES, the swizzle operation targets the metaclass of the
  *             specified class, affecting class methods. When NO, it targets
  *             instance methods.
  */
@@ -213,10 +213,9 @@ typedef NS_ENUM(NSInteger, BEDynamicMethodsSwizzleState) {
  *             converting between block signatures and method signatures, and for manipulating
  *             NSInvocation objects to work with block-based method implementations.
  *
- *             These utilities handle the complex task of signature transformation, ensuring
- *             that arguments are properly marshaled between the original method call and
- *             the block implementation, including proper handling of the optional selector
- *             parameter capture feature.
+ *             These utilities transform signatures and marshal arguments between the original
+ *             method call and the block implementation, including the optional selector
+ *             parameter capture.
  */
 @interface BEMethodSignatureHelper (DynamicMethods)
 
@@ -263,6 +262,21 @@ typedef NS_ENUM(NSInteger, BEDynamicMethodsSwizzleState) {
  */
 + (nullable NSInvocation *)mutateInvocation:(nonnull NSInvocation *)invocation
 								   withMeta:(nonnull BEDynamicMethodMeta *)meta;
+
+/*!
+ * @method methodSignature:matchesSignature:
+ * @abstract Reports whether two method signatures describe the same call frame.
+ * @param signature The first signature.
+ * @param other The second signature.
+ * @return YES when both are non-nil and agree on the argument count, the return type, and every
+ *         argument type; NO otherwise.
+ * @discussion Type qualifiers (`const`, `in`, `out`, `inout`, `bycopy`, `byref`, `oneway`) do not
+ *             change a frame's layout and are ignored. The dispatch path uses this to confirm that
+ *             an invocation built from an earlier methodSignatureForSelector: still fits the
+ *             method record it is about to run.
+ * @since 1.2.0
+ */
++ (BOOL)methodSignature:(nullable NSMethodSignature *)signature matchesSignature:(nullable NSMethodSignature *)other;
 
 @end
 

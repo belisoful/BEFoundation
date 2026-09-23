@@ -62,7 +62,6 @@
 	uint8_t grayData[width * height];
 	uint8_t argbData[argbRowBytes * height];
 	
-	// Fill gray data with test pattern
 	for (size_t i = 0; i < width * height; i++) {
 		grayData[i] = (uint8_t)(i * 16); // 0, 16, 32, 48, ...
 	}
@@ -77,7 +76,6 @@
 	
 	XCTAssertTrue(result, @"Gray8 to XRGB8888 conversion should succeed");
 	
-	// Verify that RGB channels are duplicates of gray values
 	for (size_t i = 0; i < width * height; i++) {
 		uint8_t expectedValue = grayData[i];
 		XCTAssertEqual(argbData[i * 4], 255, @"Alpha channel should be full opaque");
@@ -132,7 +130,6 @@
 	_Float16 grayData[width * height];
 	float argbData[width * height * 4];
 	
-	// Fill with half-precision float test pattern
 	for (size_t i = 0; i < width * height; i++) {
 		grayData[i] = i / (float)(width * height);
 	}
@@ -147,7 +144,6 @@
 	
 	XCTAssertTrue(result, @"Gray16F to RGBFFF conversion should succeed");
 	
-	// Verify that RGB channels contain reasonable float values
 	for (size_t i = 0; i < width * height; i++) {
 		float expectedValue = (float)grayData[i];
 		float r = argbData[i * 4 ];
@@ -232,7 +228,6 @@
 	float grayData[width * height];
 	float argbData[width * height * 4];
 	
-	// Fill with half-precision float test pattern
 	for (size_t i = 0; i < width * height; i++) {
 		grayData[i] = i / (float)(width * height);
 	}
@@ -247,7 +242,6 @@
 	
 	XCTAssertTrue(result, @"Gray32F to RGBXFFFF conversion should succeed");
 	
-	// Verify that RGB channels are duplicates of gray values
 	for (size_t i = 0; i < width * height; i++) {
 		float expectedValue = grayData[i];
 		XCTAssertEqualWithAccuracy(argbData[i * 4], expectedValue, 0.0001f, @"Red channel should match gray value");
@@ -304,7 +298,6 @@
 	id<MTLTexture> texture = [self.device newTextureWithDescriptor:descriptor];
 	XCTAssertNotNil(texture, @"Texture should be created");
 	
-	// Fill texture with test data
 	uint8_t testData[4 * 4 * 4]; // 4x4 BGRA
 	for (int i = 0; i < 64; i++) {
 		testData[i] = (uint8_t)(i * 4);
@@ -330,7 +323,6 @@
 	id<MTLTexture> texture = [self.device newTextureWithDescriptor:descriptor];
 	XCTAssertNotNil(texture, @"Texture should be created");
 	
-	// Fill texture with test data
 	uint8_t testData[4 * 4 * 4]; // 4x4 RGBA
 	for (int i = 0; i < 64; i++) {
 		testData[i] = (uint8_t)(i * 4);
@@ -354,7 +346,6 @@
 	id<MTLTexture> texture = [self.device newTextureWithDescriptor:descriptor];
 	XCTAssertNotNil(texture, @"Texture should be created");
 	
-	// Fill texture with test data
 	float testData[4 * 4 * 4]; // 4x4 RGBA float
 	for (int i = 0; i < 64; i++) {
 		testData[i] = (float)i / 64.0f;
@@ -378,7 +369,6 @@
 	id<MTLTexture> texture = [self.device newTextureWithDescriptor:descriptor];
 	XCTAssertNotNil(texture, @"Texture should be created");
 	
-	// Fill texture with test data
 	uint8_t testData[4 * 4]; // 4x4 single channel
 	for (int i = 0; i < 16; i++) {
 		testData[i] = (uint8_t)(i * 16);
@@ -402,7 +392,6 @@
 	id<MTLTexture> texture = [self.device newTextureWithDescriptor:descriptor];
 	XCTAssertNotNil(texture, @"Texture should be created");
 	
-	// Fill texture with test data (half-precision floats)
 	uint16_t testData[4 * 4]; // 4x4 half-precision float
 	for (int i = 0; i < 16; i++) {
 		testData[i] = 0x3C00; // 1.0 in half precision
@@ -426,7 +415,6 @@
 	id<MTLTexture> texture = [self.device newTextureWithDescriptor:descriptor];
 	XCTAssertNotNil(texture, @"Texture should be created");
 	
-	// Fill texture with test data
 	float testData[4 * 4]; // 4x4 float
 	for (int i = 0; i < 16; i++) {
 		testData[i] = (float)i / 16.0f;

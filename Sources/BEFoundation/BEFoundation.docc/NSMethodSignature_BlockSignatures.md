@@ -41,7 +41,7 @@ compact "small" block-descriptor layouts.
 The `BE_APPLE_TERMS_COMPLIANT` build flag (default `1`) keeps the default build free of
 non-public Apple symbols: only the hand-rolled descriptor reader is used, so the binary is safe
 for App Store submission. Building with `-DBE_APPLE_TERMS_COMPLIANT=0` opts in to the runtime's
-own (non-public) `_Block_signature` extractor — do not ship such a build to the App Store.
+own (non-public) `_Block_signature` extractor. Do not ship such a build to the App Store.
 
 ### Signature Parsing Utilities
 

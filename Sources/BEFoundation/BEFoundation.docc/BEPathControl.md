@@ -6,7 +6,7 @@ An `NSPathControl` subclass that limits displayed path items based on a relative
 
 `BEPathControl` extends `NSPathControl` to introduce a concept of a "relative" root for the displayed file path. When a `relativeURL` is set, the path control automatically filters its path items to only show the components of the full URL that are descendants of the `relativeURL`, including the relative URL itself.
 
-This is useful for displaying file paths within a project or document structure, where the full path is known, but only the parts relative to the project's root should be visible to the user.
+This suits file paths within a project or document structure, where the full path is known and only the parts relative to the project's root should be visible to the user.
 
 ![A BEPathControl whose URL is a deep file path, displaying only the components beneath its relativeURL root: MyApp › Sources › Views › MainView.swift.](bepathcontrol)
 
@@ -36,7 +36,7 @@ NSURL *relativeURL = [NSURL fileURLWithPath:@"/Users/user/Projects/MyProject/"];
 pathControl.relativeURL = relativeURL;
 pathControl.URL = fullURL;
 
-// The path control will display: MyProject / Sources / File.m
+// The path control displays: MyProject / Sources / File.m
 // It hides: / / Users / user / Projects
 ```
 
@@ -63,7 +63,7 @@ BOOL isExternal = [pathControl containsURL:externalPath]; // NO
 
 The URL defining the root of the displayed path items.
 
-When set, the path control will only display path items (`NSPathControlItem`) whose URL is a descendant of, or equal to, this URL. Any leading path components up to and including the system root will be hidden.
+When set, the path control displays only path items (`NSPathControlItem`) whose URL is a descendant of, or equal to, this URL. Any leading path components up to and including the system root are hidden.
 
 Setting this property triggers a rebuild of the path items based on the currently set `URL` property. The URL is automatically standardized for reliable path comparison.
 

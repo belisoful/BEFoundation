@@ -62,7 +62,7 @@
 
 
 
-// Test class that does NOT conform to ObjectRegistryProtocol
+// Test class that does not conform to ObjectRegistryProtocol
 @interface ObjectNonConformingTestObject : NSObject
 @property (nonatomic, strong) NSString *testValue;
 @end
@@ -947,11 +947,9 @@
 - (void)testSetRegistryUUID_DuplicateUUIDException {
 	NSString *customUUID = @"duplicate-test-uuid";
 	
-	// Set the same UUID for two different objects
 	[self.registry setRegistryUUID:customUUID forObject:self.testObject1];
 	[self.registry registerObject:self.testObject1];
 	
-	// This should throw an exception
 	XCTAssertThrowsSpecificNamed([self.registry setRegistryUUID:customUUID forObject:self.testObject2],
 								NSException,
 								NSDuplicateUUIDException,
@@ -1001,7 +999,6 @@
 	XCTAssertEqual(objects.count, maxDispatch, @"All objects should be registered");
 	XCTAssertEqual(self.registry.registeredObjectsCount, maxDispatch, @"Registry should contain all objects");
 	
-	// Verify all UUIDs are unique
 	NSSet *uniqueUUIDs = [NSSet setWithArray:objects.allKeys];
 	XCTAssertEqual(uniqueUUIDs.count, objects.count, @"All UUIDs should be unique");
 }
@@ -1140,10 +1137,7 @@
 }
 
 - (void)testSetRegistryUUID_CustomUUIDObject_DoesNotRekeyOtherObject {
-	// The documented decline of setRegistryUUID:forObject: for CustomRegistryUUID objects must
-	// leave the registry untouched. The old decline returned the input uuid as the "prior"
-	// uuid, so the setter evicted another object registered under that uuid and re-keyed the
-	// table to the declined custom object.
+	// The documented decline of setRegistryUUID:forObject: for CustomRegistryUUID objects must leave the registry untouched.
 	NSString *uuidA = [self.registry registerObject:self.testObject1];
 	XCTAssertEqual([self.registry registeredObjectForUUID:uuidA], self.testObject1);
 
@@ -1179,6 +1173,31 @@
 				 @"The entry keyed by the cleared UUID must not survive.");
 	XCTAssertNil([reg simpleRegistryUUIDForObject:obj],
 				 @"The object must no longer carry the UUID.");
+}
+
+- (void)testUnregisterObject_AfterOtherRegistryWithSameSaltRekeysUUID_LeavesNoEntry
+{
+	BEObjectRegistry *regA = [[BEObjectRegistry alloc] init];
+	BEObjectRegistry *regB = [[BEObjectRegistry alloc] init];
+	TestObjectRegistryObject *obj = [[TestObjectRegistryObject alloc] init];
+
+	NSString *originalUUID = [regA registerObject:obj];
+	XCTAssertEqualObjects([regB registerObject:obj], originalUUID, @"Registries sharing a keySalt share the object's UUID.");
+
+	[regA setRegistryUUID:@"REKEYED-UUID" forObject:obj];
+	XCTAssertEqualObjects([regA registeredObjectForUUID:@"REKEYED-UUID"], obj);
+	XCTAssertEqualObjects([regB registeredObjectForUUID:originalUUID], obj,
+						  @"setRegistryUUID:forObject: re-keys only the receiver's table.");
+
+	XCTAssertEqual([regB unregisterObject:obj], BEUnregisterStatus_Unregistered);
+	XCTAssertNil([regB registeredObjectForUUID:originalUUID], @"The entry under the prior UUID must be removed.");
+	XCTAssertEqual(regB.registeredObjectsCount, 0);
+	XCTAssertFalse([regB isObjectRegistered:obj]);
+	XCTAssertEqual([regB registeredCountForObject:obj], 0);
+
+	XCTAssertEqual([regA unregisterObject:obj], BEUnregisterStatus_Unregistered);
+	XCTAssertEqual(regA.registeredObjectsCount, 0);
+	XCTAssertEqual([regA countForObject:obj], 0, @"Both registrations released the shared count.");
 }
 
 @end

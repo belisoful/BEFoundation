@@ -34,6 +34,7 @@ OUT="${1:?usage: build-xcframework.sh <output-dir>}"
 SCRIPTS="$(cd "$(dirname "$0")" && pwd)"
 mkdir -p "$OUT"
 OUT="$(cd "$OUT" && pwd)"
+cd "$SCRIPTS/.."
 
 PROJECT="BEFoundation.xcodeproj"
 SCHEME="BEFoundation"

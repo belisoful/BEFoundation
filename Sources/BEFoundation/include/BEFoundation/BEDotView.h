@@ -10,16 +10,21 @@
 			 draws a plain filled circle with an optional border instead.
 
 			 It is a @c BEView subclass, so it renders on every platform BEFoundation
-			 supports — @c NSView on macOS, @c UIView on iOS and tvOS. The drawing is a
+			 supports: @c NSView on macOS, @c UIView on iOS. The drawing is a
 			 top-left, y-down coordinate system on every platform (macOS overrides
 			 @c isFlipped), so a single Core Graphics path serves them all.
 
 			 The appearance is set from a single color. @c colorName accepts a web color
 			 name (@c "Green", @c "DeepSkyBlue"), a name prefixed with @c "-" to force the
-			 standard color over any preset, or a hex value (@c "#70FF90"). A named color
-			 uses TDot's preset main and highlight pair; a hex value computes the main
-			 darker and the highlight lighter by @c depth, through the same shade cascade
-			 TDot uses. @c mainColor and @c highlightColor override the pair directly.
+			 standard color over any preset, or a hex value (@c "#70FF90", or the @c "#7F9"
+			 shorthand). A named color uses TDot's preset main and highlight pair; a hex
+			 value computes the main darker and the highlight lighter by @c depth, through
+			 the same shade cascade TDot uses. A hex value with non-hex characters or an
+			 unsupported digit count leaves both colors @c nil. @c mainColor and
+			 @c highlightColor override the pair directly.
+
+			 The defaults apply on every init path, including a nib or storyboard decode
+			 through @c initWithCoder: .
 
 			 For indicator use, @c setState: maps a BEDotState to its status color:
 			 Off gray, Ok LimeGreen, Warning Yellow, Error Red, Active Blue.
@@ -27,6 +32,7 @@
 			 The color presets, the shade cascade, and the tuning constants reproduce
 			 Prado TDot's output (framework/Web/UI/WebControls/TDot.php); the SVG document
 			 becomes Core Graphics radial-gradient drawing.
+ @since      1.1
  */
 
 #ifndef BEDotView_h
@@ -57,17 +63,21 @@ typedef NS_ENUM(NSInteger, BEDotState) {
  */
 @interface BEDotView : BEView
 
-/*! A web color name, a @c "-"-forced name, or a hex value. Setting computes main/highlight. */
+/*! A web color name, a @c "-"-forced name, or a hex value. Setting computes main/highlight
+	and discards any explicit mainColor or highlightColor. */
 @property (nonatomic, copy, nullable) NSString *colorName;
 
-/*! The rim and upper color; overrides the pair computed from colorName. */
+/*! The rim and upper color; overrides the pair computed from colorName. An explicit value
+	survives a depth change. */
 @property (nonatomic, copy, nullable) BEColor *mainColor;
 
-/*! The lower-center highlight color; overrides the pair computed from colorName. */
+/*! The lower-center highlight color; overrides the pair computed from colorName. An explicit
+	value survives a depth change. */
 @property (nonatomic, copy, nullable) BEColor *highlightColor;
 
 /*! The color offset used to compute main/highlight from a hex colorName. Clamped to
-	[0, 255]; defaults to 24. */
+	[0, 255]; defaults to 24. Setting recomputes the pair from colorName only while neither
+	mainColor nor highlightColor is set explicitly. */
 @property (nonatomic, assign) NSInteger depth;
 
 /*! The drop-shadow opacity of the 3D dot. Clamped to [0, 1]; defaults to 0.618. */

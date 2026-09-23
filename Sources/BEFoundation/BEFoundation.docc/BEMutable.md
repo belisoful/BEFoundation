@@ -26,15 +26,15 @@ This header provides a framework for determining object mutability and performin
 
 ```objc
 // Class-level check
-BOOL hasMutability = [NSMutableArray hasMutability];     // YES
-BOOL hasMutability = [NSArray hasMutability];           // NO
+BOOL classMutable = [NSMutableArray hasMutability];     // YES
+BOOL classImmutable = [NSArray hasMutability];          // NO
 
 // Instance-level check
 NSMutableArray *mutable = [NSMutableArray array];
 NSArray *immutable = [NSArray array];
 
-BOOL canMutate = [mutable hasMutability];  // YES
-BOOL canMutate = [immutable hasMutability];  // NO
+BOOL instanceMutable = [mutable hasMutability];      // YES
+BOOL instanceImmutable = [immutable hasMutability];  // NO
 ```
 
 ### Recursive Copying
@@ -57,11 +57,11 @@ NSDictionary *mutableCopy = [nested mutableCopyRecursive];
 
 // Collection-only immutable copy
 NSDictionary *collectionOnlyCopy = [nested copyCollectionRecursive];
-// Only collection objects are copied; primitives are retained
+// Only collection objects are copied; non-collection values are shared
 
 // Collection-only mutable copy
 NSDictionary *collectionMutableCopy = [nested mutableCopyCollectionRecursive];
-// Only collection objects are copied as mutable; primitives are retained
+// Only collection objects are copied as mutable; non-collection values are shared
 ```
 
 ### Classes with Mutable Counterparts
@@ -76,6 +76,7 @@ The following classes conform to [BEHasMutable](doc:BEMutable):
 - `NSData` / `NSMutableData`
 - `NSAttributedString` / `NSMutableAttributedString`
 - `NSURLRequest` / `NSMutableURLRequest`
+- `NSNumber` / [NSMutableNumber](doc:NSMutableNumber)
 - [BECharacterSet](doc:BECharacterSet) / [BEMutableCharacterSet](doc:BEMutableCharacterSet)
 
 ### Character Set Distinction

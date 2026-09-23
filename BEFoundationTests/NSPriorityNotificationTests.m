@@ -98,7 +98,6 @@
 	XCTAssertFalse(notification.reverse);
 	XCTAssertNotNil(notification.postBlock);
 	
-	// Test the block works
 	notification.postBlock(notification);
 	XCTAssertTrue(blockCalled);
 }
@@ -121,7 +120,6 @@
 	XCTAssertFalse(notification.reverse);
 	XCTAssertNotNil(notification.postBlock);
 	
-	// Test the block works and captures the notification
 	notification.postBlock(notification);
 	XCTAssertEqualObjects(capturedNotification, notification);
 }
@@ -171,7 +169,6 @@
 	XCTAssertTrue(notification.reverse);
 	XCTAssertNotNil(notification.postBlock);
 	
-	// Test the block works
 	notification.postBlock(notification);
 	XCTAssertTrue(blockCalled);
 }
@@ -195,7 +192,6 @@
 	XCTAssertTrue(notification.reverse);
 	XCTAssertNotNil(notification.postBlock);
 	
-	// Test the block works and captures the notification
 	notification.postBlock(notification);
 	XCTAssertEqualObjects(capturedNotification, notification);
 }
@@ -259,7 +255,6 @@
 	XCTAssertFalse(notification.reverse);
 	XCTAssertNotNil(notification.postBlock);
 	
-	// Test the block works
 	notification.postBlock(notification);
 	XCTAssertTrue(blockCalled);
 }
@@ -283,7 +278,6 @@
 	XCTAssertTrue(notification.reverse);
 	XCTAssertNotNil(notification.postBlock);
 	
-	// Test the block works and captures the notification
 	notification.postBlock(notification);
 	XCTAssertEqualObjects(capturedNotification, notification);
 }
@@ -308,7 +302,6 @@
 																						userInfo:self.testUserInfo
 																						 reverse:YES];
 	
-	// Encode
 	NSKeyedArchiver *archiver = [[NSKeyedArchiver alloc] initRequiringSecureCoding:NO];
 	[archiver encodeObject:originalNotification forKey:@"notification"];
 	[archiver finishEncoding];
@@ -316,7 +309,6 @@
 	
 	XCTAssertNotNil(data);
 	
-	// Decode
 	NSError *error = nil;
 	NSKeyedUnarchiver *unarchiver = [[NSKeyedUnarchiver alloc] initForReadingFromData:data error:&error];
 	XCTAssertNil(error);
@@ -328,7 +320,6 @@
 	NSPriorityNotification *decodedNotification = [unarchiver decodeObjectForKey:@"notification"];
 	[unarchiver finishDecoding];
 	
-	// Verify
 	XCTAssertNotNil(decodedNotification);
 	XCTAssertEqualObjects(decodedNotification.name, originalNotification.name);
 	XCTAssertNil(decodedNotification.object, @"The object is does not conform to GlobalRegistryProtocol so should return nil");
@@ -349,7 +340,6 @@
 																						   userInfo:self.testUserInfo
 																							reverse:NO];
 		
-		// Encode
 		NSKeyedArchiver *archiver = [[NSKeyedArchiver alloc] initRequiringSecureCoding:NO];
 		[archiver encodeObject:originalNotification forKey:@"notification"];
 		[archiver finishEncoding];
@@ -369,7 +359,6 @@
 		XCTAssertNotNil(data);
 		XCTAssertEqual(NSObject.globalRegistry.registeredObjectsCount, 1);
 		
-		// Decode
 		NSError *error = nil;
 		NSKeyedUnarchiver *unarchiver = [[NSKeyedUnarchiver alloc] initForReadingFromData:data error:&error];
 		XCTAssertNil(error);
@@ -379,7 +368,6 @@
 		NSPriorityNotification *decodedNotification = [unarchiver decodeObjectForKey:@"notification"];
 		[unarchiver finishDecoding];
 		
-		// Verify
 		XCTAssertNotNil(decodedNotification);
 		XCTAssertFalse(decodedNotification.reverse);
 		XCTAssertEqual(decodedNotification.object, globalizedObject2);
@@ -400,7 +388,6 @@
 	originalNotification.tag = random();
 	originalNotification.identifier = [NSString stringWithFormat:@"%ld", originalNotification.tag + 1];
 	
-	// Encode
 	NSKeyedArchiver *archiver = [[NSKeyedArchiver alloc] initRequiringSecureCoding:YES];
 	[archiver encodeObject:originalNotification forKey:@"notification"];
 	[archiver finishEncoding];
@@ -408,7 +395,6 @@
 	
 	XCTAssertNotNil(data);
 	
-	// Decode
 	NSError *error = nil;
 	NSKeyedUnarchiver *unarchiver = [[NSKeyedUnarchiver alloc] initForReadingFromData:data error:&error];
 	XCTAssertNil(error);
@@ -419,7 +405,6 @@
 																		   forKey:@"notification"];
 	[unarchiver finishDecoding];
 	
-	// Verify
 	XCTAssertNotNil(decodedNotification);
 	XCTAssertEqualObjects(decodedNotification.name, originalNotification.name);
 	XCTAssertNil(decodedNotification.object, @"The object is does not conform to GlobalRegistryProtocol so should return nil");
@@ -443,7 +428,6 @@
 		originalNotification.tag = random();
 		originalNotification.identifier = [NSString stringWithFormat:@"%ld", originalNotification.tag + 1];
 		
-		// Encode
 		NSKeyedArchiver *archiver = [[NSKeyedArchiver alloc] initRequiringSecureCoding:YES];
 		[archiver encodeObject:originalNotification forKey:@"notification"];
 		[archiver finishEncoding];
@@ -452,7 +436,6 @@
 		XCTAssertNotNil(data);
 		XCTAssertEqual(NSObject.globalRegistry.registeredObjectsCount, 1);
 		
-		// Decode
 		NSError *error = nil;
 		NSKeyedUnarchiver *unarchiver = [[NSKeyedUnarchiver alloc] initForReadingFromData:data error:&error];
 		XCTAssertNil(error);
@@ -461,7 +444,6 @@
 																			   forKey:@"notification"];
 		[unarchiver finishDecoding];
 		
-		// Verify
 		XCTAssertNotNil(decodedNotification);
 		XCTAssertFalse(decodedNotification.reverse);
 		XCTAssertEqual(decodedNotification.object, globalizedObject);
@@ -478,7 +460,7 @@
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
 
 #if TARGET_OS_OSX  // NSArchiver/NSUnarchiver are macOS-only legacy (non-keyed) archivers
-// Unit test that actually uses NSArchiver to test classForCoder
+// Uses NSArchiver, which consults classForCoder.
 - (void)testBEMutableNumber_ClassForKeyedCoder_OldMacOS
 {
 	@synchronized (NSObject.globalRegistry) {
@@ -492,11 +474,9 @@
 		originalNotification.tag = random();
 		originalNotification.identifier = [NSString stringWithFormat:@"%ld", originalNotification.tag + 1];
 		
-		// Test using NSArchiver (which uses classForCoder)
 		NSData *archivedData = [NSArchiver archivedDataWithRootObject:originalNotification];
 		XCTAssertNotNil(archivedData, @"Archiving with NSArchiver should succeed");
 		
-		// Unarchive using NSUnarchiver
 		NSPriorityNotification *result = [NSUnarchiver unarchiveObjectWithData:archivedData];
 		
 		XCTAssertNotNil(result, @"Unarchiving should succeed");
@@ -507,12 +487,11 @@
 		
 		XCTAssertTrue([result isKindOfClass:[NSPriorityNotification class]], @"Unarchived object should be NSPriorityNotification");
 		
-		// Verify that classForCoder was used during archiving
 		XCTAssertEqual([result class], [NSPriorityNotification class], @"Result should be NSMutableNumber class");
 	}
 }
 
-// Unit test that actually uses NSArchiver to test classForCoder
+// Uses NSArchiver, which consults classForCoder.
 - (void)testBEMutableNumber_ClassForUnkeyedCoder_OldMacOS
 {
 	@synchronized (NSObject.globalRegistry) {
@@ -526,11 +505,9 @@
 		originalNotification.tag = random();
 		originalNotification.identifier = [NSString stringWithFormat:@"%ld", originalNotification.tag + 1];
 		
-		// Test using NSArchiver (which uses classForCoder)
 		NSData *archivedData = [NSArchiver archivedDataWithRootObject:originalNotification];
 		XCTAssertNotNil(archivedData, @"Archiving with NSArchiver should succeed");
 		
-		// Unarchive using NSUnarchiver
 		NSPriorityNotification *result = [NSUnarchiver unarchiveObjectWithData:archivedData];
 		
 		XCTAssertNotNil(result, @"Unarchiving should succeed");
@@ -546,7 +523,6 @@
 		
 		XCTAssertTrue([result isKindOfClass:[NSPriorityNotification class]], @"Unarchived object should be NSPriorityNotification");
 		
-		// Verify that classForCoder was used during archiving
 		XCTAssertEqual([result class], [NSPriorityNotification class], @"Result should be NSMutableNumber class");
 	}
 }
@@ -594,9 +570,7 @@
 }
 
 - (void)testNSSecureCoding_IdentifierAndTagRoundTripSecurely {
-	// Pins that every decoded key uses class-validated decoding: identifier and tag
-	// previously decoded via plain decodeObjectForKey:, which strict secure-coding
-	// enforcement (deployment-target macOS 11) rejects.
+	// Pins that every decoded key uses class-validated decoding; strict secure-coding enforcement (deployment-target macOS 11) rejects plain decodeObjectForKey:.
 	NSPriorityNotification *original = [NSPriorityNotification notificationWithName:@"N" object:nil userInfo:nil];
 	original.identifier = @"secure-id";
 	original.tag = 42;
@@ -704,10 +678,8 @@
 																					   postBlock:testBlock];
 			weakNotification = notification;
 			
-			// Block should be retained
 			XCTAssertNotNil(notification.postBlock);
 			
-			// Execute the block to verify it works
 			notification.postBlock(notification);
 			XCTAssertTrue(blockExecuted);
 		}
@@ -753,18 +725,14 @@
 - (void)testStandardNotificationIsPriorityPostToggle {
 	NSNotification *notification = [NSNotification notificationWithName:self.testNotificationName object:self.testObject];
 	
-	// Initially false
 	XCTAssertFalse(notification.isPriorityPost);
 	
-	// Set to true
 	[notification setIsPriorityPost:YES];
 	XCTAssertTrue(notification.isPriorityPost);
 	
-	// Set back to false
 	[notification setIsPriorityPost:NO];
 	XCTAssertFalse(notification.isPriorityPost);
 	
-	// Set to true again
 	[notification setIsPriorityPost:YES];
 	XCTAssertTrue(notification.isPriorityPost);
 }
@@ -773,7 +741,6 @@
 	NSPriorityNotification *notification = [NSPriorityNotification notificationWithName:self.testNotificationName
 																				  object:self.testObject];
 	
-	// Should work with NSPriorityNotification too (inherits from NSNotification)
 	XCTAssertFalse(notification.isPriorityPost);
 	[notification setIsPriorityPost:YES];
 	XCTAssertTrue(notification.isPriorityPost);
@@ -785,7 +752,6 @@
 	@autoreleasepool {
 		NSNotification *notification = [NSNotification notificationWithName:self.testNotificationName object:self.testObject];
 		
-		// Set isPriorityPost multiple times to test memory management
 		for (int i = 0; i < 100; i++) {
 			[notification setIsPriorityPost:(i % 2 == 0)];
 			XCTAssertEqual(notification.isPriorityPost, (i % 2 == 0));
@@ -808,14 +774,12 @@
 																				 reverse:YES
 																			   postBlock:testBlock];
 	
-	// Test that all properties remain consistent
 	XCTAssertEqualObjects(notification.name, self.testNotificationName);
 	XCTAssertEqualObjects(notification.object, self.testObject);
 	XCTAssertEqualObjects(notification.userInfo, self.testUserInfo);
 	XCTAssertTrue(notification.reverse);
 	XCTAssertNotNil(notification.postBlock);
 	
-	// Test multiple times to ensure consistency
 	for (int i = 0; i < 10; i++) {
 		XCTAssertEqualObjects(notification.name, self.testNotificationName);
 		XCTAssertEqualObjects(notification.object, self.testObject);
@@ -824,7 +788,6 @@
 		XCTAssertNotNil(notification.postBlock);
 	}
 	
-	// Test block still works
 	notification.postBlock(notification);
 	XCTAssertTrue(blockCalled);
 }
@@ -838,12 +801,10 @@
 																				   object:nil
 																				  reverse:NO];
 	
-	// Test that notifications are independent
 	XCTAssertTrue(notification1.reverse);
 	XCTAssertFalse(notification2.reverse);
 	XCTAssertNotEqualObjects(notification1.name, notification2.name);
 	
-	// Test isPriorityPost independence for regular notifications
 	NSNotification *stdNotification1 = [NSNotification notificationWithName:@"Std1" object:nil];
 	NSNotification *stdNotification2 = [NSNotification notificationWithName:@"Std2" object:nil];
 	

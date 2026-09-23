@@ -20,7 +20,7 @@ NS_ASSUME_NONNULL_BEGIN
 */
 @interface BEWindowControllerManager ()
 	/*!
-	 @var           _windowControllers
+	 @property      mutableWindowControllers
 	 @abstract      The mutable backing store for all tracked controllers.
 	 @discussion    This array is the single source of truth for the manager.
 					It holds strong references to the window controllers.
@@ -128,7 +128,7 @@ NS_ASSUME_NONNULL_BEGIN
 					tracking array.
 
 				The descendant search uses a visited set, so it is idempotent and safe
-				against cyclic parent graphs. Descendants are removed from tracking BEFORE
+				against cyclic parent graphs. Descendants are removed from tracking before
 				`-close` is sent, so a controller whose `-close` is overridden to defer
 				(e.g. a confirmation sheet) is not leaked by the tracking array.
  @param         notification The notification object. The `object` is the `NSWindow`
@@ -154,7 +154,7 @@ NS_ASSUME_NONNULL_BEGIN
 		}
 	}
 
-	// Cascade close — BFS over descendants. `visited` keeps it idempotent and cycle-safe.
+	// Cascade close: BFS over descendants. `visited` keeps it idempotent and cycle-safe.
 	NSMutableArray<NSWindowController *> *controllersToClose = [NSMutableArray array];
 	NSMutableSet<NSWindowController *> *visited = [NSMutableSet setWithObject:controller];
 	NSMutableArray<NSWindowController *> *queue = [NSMutableArray arrayWithObject:controller];

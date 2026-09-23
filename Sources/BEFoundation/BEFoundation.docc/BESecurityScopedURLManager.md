@@ -93,12 +93,12 @@ manager.storageOptions = BESecurityScopedURLStorageAll;            // Both (defa
 
 ### Persistence Keys
 
-The catalog is persisted under fixed, internally-defined keys:
+The shared manager persists its catalog under fixed, internally-defined keys:
 
 - **NSUserDefaults key:** `BESecurityScopedURLManagerCatalog` — used when `storageOptions` includes `BESecurityScopedURLStorageUserDefaults`. The archived catalog is read/written under this key on `[NSUserDefaults standardUserDefaults]`.
 - **Cache filename:** `BESecurityScopedURLManager_Catalog.archive` — used when `storageOptions` includes `BESecurityScopedURLStorageCacheDirectory`. The archive file is written into the application's Caches directory.
 
-These keys are defined internally and are not configurable. Avoid writing to these keys directly; use the manager's catalog methods to mutate persisted state.
+A manager created with `initWithStorageIdentifier:` derives its own key and filename from the identifier, so private instances persist separately from the shared manager. Avoid writing to these keys directly; use the manager's catalog methods to mutate persisted state.
 
 ## See Also
 

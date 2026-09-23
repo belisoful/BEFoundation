@@ -197,19 +197,27 @@ static NSURLSessionConfiguration *s_defaultSessionConfiguration = nil;
 
 
 /*!
- @method     initWithBytes:length:copy: deallocator
+ @method     initWithBytes:length:copy:deallocator:
  @abstract   Initialize the BEWebData with bytes of a length.
  @param      bytes	The bytes to encapsulate.
  @param      length	The length of the bytes to encapsulate.
+ @param      shouldCopy	Ignored. The bytes are always copied into private storage.
+ @param      deallocator	Called once with @c bytes and @c length after the copy, so a caller
+			 that hands over ownership (for example @c dataWithBytesNoCopy:length:freeWhenDone:)
+			 has its buffer released.
  @discussion This is the method needed to implement abstract initializers of NSData. NSData's
-			 class-cluster initializers (e.g. -initWithData:, +dataWithData:) dispatch to it at
-			 runtime even though no caller names it directly, so it must remain implemented.
+			 class-cluster initializers (e.g. -initWithData:, +dataWithData:,
+			 -initWithBytesNoCopy:length:deallocator:) dispatch to it at runtime even though no
+			 caller names it directly, so it must remain implemented.
 */
-- (instancetype)initWithBytes:(const void *)bytes length:(NSUInteger)length copy:(void*)copyBlock deallocator:(nullable void (^)(void *bytes, NSUInteger length))deallocator {
+- (instancetype)initWithBytes:(const void *)bytes length:(NSUInteger)length copy:(BOOL)shouldCopy deallocator:(nullable void (^)(void *bytes, NSUInteger length))deallocator {
 	self = [super init];
 	if (self) {
 		_data = [NSData dataWithBytes:bytes length:length];
 		_isComplete = YES;
+	}
+	if (deallocator) {
+		deallocator((void *)bytes, length);
 	}
 	return self;
 }
@@ -256,7 +264,7 @@ static NSURLSessionConfiguration *s_defaultSessionConfiguration = nil;
  @abstract   Initializes BEWebData from a URL.
  @param      url The URL to load data from.
  @discussion If the URL is a data URL, parses and decodes it, storing metadata.
-			 If it's a regular URL, uses NSData's standard loading mechanism.
+			 If it is a regular URL, uses NSData's standard loading mechanism.
  @return     An initialized BEWebData instance, or nil if loading fails.
 */
 - (instancetype)initWithContentsOfURL:(NSURL *)url
@@ -334,7 +342,6 @@ static NSURLSessionConfiguration *s_defaultSessionConfiguration = nil;
 			NSURLSession *session = sessionConfiguration ? [NSURLSession sessionWithConfiguration:sessionConfiguration] : [NSURLSession sharedSession];
 			_dataTaskSemaphore = dispatch_semaphore_create(0);
 			
-			//__block NSURLResponse *response = nil;
 			__weak typeof(self) weakSelf = self;
 			
 			_dataTask = [session dataTaskWithURL:url
@@ -346,10 +353,10 @@ static NSURLSessionConfiguration *s_defaultSessionConfiguration = nil;
 					return;
 				}
 
-				// Publish all state under the per-object lock and set _isComplete LAST, so a reader
-				// that observes isComplete == YES (also read under the lock) is guaranteed — via the
-				// lock's barrier — to see the fully-written data and metadata. The user completion
-				// block is invoked OUTSIDE the lock to avoid calling out while holding it.
+				// Publish all state under the per-object lock and set _isComplete last, so a reader
+				// that observes isComplete == YES (also read under the lock) is guaranteed, via the
+				// lock's barrier, to see the fully-written data and metadata. The user completion
+				// block is invoked outside the lock to avoid calling out while holding it.
 				BEWebDataCompletionBlock completionHandler = nil;
 				@synchronized (_self) {
 					_self->_data = data;
@@ -359,14 +366,11 @@ static NSURLSessionConfiguration *s_defaultSessionConfiguration = nil;
 					if (!error && [response isKindOfClass:[NSHTTPURLResponse class]]) {
 						NSString *contentType = ((NSHTTPURLResponse *)response).allHeaderFields[@"Content-Type"];
 						if (contentType.length > 0) {
-							NSArray<NSString *> *parts = [contentType componentsSeparatedByString:@";"];
-							_self->_MIMEType = parts[0];
-							for(int i = 1; i < parts.count; i++) {
-								NSString *part = [parts[i] stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceCharacterSet];
-								if ([part hasPrefix:@"charset="]) {
-									_self->_charset = [part substringFromIndex:8];
-									_self->_stringEncoding = [NSURL stringEncodingFromCharset:_self->_charset];
-								}
+							_self->_MIMEType = [contentType componentsSeparatedByString:@";"].firstObject;
+							NSString *charset = [NSURL charsetFromMediaType:contentType];
+							if (charset) {
+								_self->_charset = charset;
+								_self->_stringEncoding = [NSURL stringEncodingFromCharset:charset];
 							}
 						}
 					}
@@ -379,10 +383,10 @@ static NSURLSessionConfiguration *s_defaultSessionConfiguration = nil;
 					completionHandler(_self, response, error);
 				}
 
-				// Signal only. Do NOT nil the ivar here: the synchronous path below reads
+				// Signal only. Do not nil the ivar here: the synchronous path below reads
 				// _dataTaskSemaphore to pass to dispatch_semaphore_wait, and releasing it from
 				// this (possibly concurrent) completion would either hand wait() a NULL semaphore
-				// or deallocate it mid-wait — a use-after-free. The ivar keeps it alive until the
+				// or deallocate it mid-wait (a use-after-free). The ivar keeps it alive until the
 				// entry deallocates.
 				dispatch_semaphore_signal(_self->_dataTaskSemaphore);
 			}];
@@ -396,7 +400,6 @@ static NSURLSessionConfiguration *s_defaultSessionConfiguration = nil;
 
 			if (!(options & BEDataReadingAsynchronous)) {
 				
-				// Block the current thread until completion
 				dispatch_semaphore_wait(_dataTaskSemaphore, DISPATCH_TIME_FOREVER);
 				
 				if (error && self.dataTaskError) {
@@ -409,7 +412,6 @@ static NSURLSessionConfiguration *s_defaultSessionConfiguration = nil;
 			}
 			
 		} else {
-			// Unsupported scheme
 			if (error) {
 				*error = [NSError errorWithDomain:NSCocoaErrorDomain
 											 code:NSFileReadUnsupportedSchemeError
@@ -458,7 +460,7 @@ static NSURLSessionConfiguration *s_defaultSessionConfiguration = nil;
 - (void)encodeWithCoder:(NSCoder *)coder
 {
 	// Take the lock once so the archived bytes and metadata are a single consistent snapshot even
-	// if an asynchronous load is concurrently writing them (recursive lock — the getters re-enter).
+	// if an asynchronous load is concurrently writing them (recursive lock; the getters re-enter).
 	@synchronized (self) {
 		[coder encodeBytes:self.bytes length:self.length forKey:@"bytes"];
 		[coder encodeObject:_MIMEType forKey:@"MIMEType"];
@@ -533,17 +535,10 @@ static NSURLSessionConfiguration *s_defaultSessionConfiguration = nil;
  @param      outCharset Pointer to receive the charset.
  @param      outEncoding Pointer to receive the NSStringEncoding.
  @param      outBase64 Pointer to receive the base64 flag.
- @discussion This method parses the data URL according to RFC 2397:
-			 1. Verifies the URL is a data URL
-			 2. Locates the comma separator
-			 3. Parses metadata (MIME type, charset, base64 flag)
-			 4. Decodes the data (base64 or percent-encoding)
-			 5. Returns the decoded data and populates out parameters
-			 
-			 Default values:
-			 - MIME type: "text/plain"
-			 - Charset: "US-ASCII"
-			 - Base64: NO
+ @discussion Parsing and decoding run through the NSURL (Data) category, so this method and
+			 the NSURL properties (@c dataMIMEType, @c dataCharset, @c stringEncoding,
+			 @c isBase64, @c decodedData) return identical results for the same URL. The out
+			 parameters are left untouched when decoding fails.
  @return     The decoded NSData, or nil if parsing fails.
 */
 + (NSData *)decodeDataURL:(NSURL *)url
@@ -552,75 +547,26 @@ static NSURLSessionConfiguration *s_defaultSessionConfiguration = nil;
 				 encoding:(NSStringEncoding * _Nullable)outEncoding
 				   base64:(BOOL *_Nullable)outBase64
 {
-	// 1. Only handle valid data URLs
 	if (![self isDataURL:url]) {
 		return nil;
 	}
-	
-	NSString *resourceSpecifier = url.resourceSpecifier;
-	
-	// 2. Locate the comma separating metadata from data
-	NSRange commaRange = [resourceSpecifier rangeOfString:@","];
-	if (commaRange.location == NSNotFound) {
-		return nil; // Malformed data URL
-	}
-	
-	// 3. Extract meta info and payload
-	NSString *meta = [resourceSpecifier substringToIndex:commaRange.location];
-	NSString *dataPart = [resourceSpecifier substringFromIndex:commaRange.location + 1];
-	
-	// 4. Split meta into parts
-	NSArray<NSString *> *parts = [meta componentsSeparatedByString:@";"];
-	
-	// 5. Default values per RFC 2397
-	NSString *mimeType = BEURL_DefaultTextMimeType;
-	NSString *charset = BEURL_DefaultCharset;
-	BOOL isBase64 = NO;
-	
-	// 6. Parse MIME type and parameters
-	if (parts.count > 0) {
-		if (parts[0].length > 0) {
-			mimeType = parts[0]; // first part is MIME type if present
-		}
-		for (NSUInteger i = 1; i < parts.count; i++) {
-			NSString *p = parts[i];
-			if ([p isEqualToString:@"base64"]) {
-				isBase64 = YES;
-			} else if ([p hasPrefix:@"charset="]) {
-				charset = [p substringFromIndex:8];
-			}
-		}
-	}
-	
-	NSStringEncoding encoding = [NSURL stringEncodingFromCharset:charset];
-	
-	// 7. Decode payload
-	NSData *decodedData = nil;
-	if (isBase64) {
-		decodedData = [[NSData alloc] initWithBase64EncodedString:dataPart options:NSDataBase64DecodingIgnoreUnknownCharacters];
-	} else {
-		// Decode byte-wise through NSURL's decoder, which yields the payload bytes in the
-		// declared charset.  Routing through -stringByRemovingPercentEncoding instead
-		// interprets the bytes as UTF-8 and then re-encodes them, which drops a payload
-		// whose charset is not UTF-8 and fails outright when the re-encode cannot
-		// represent the string.
-		decodedData = url.decodedData;
-	}
-	
-	// 8. Set out parameters
-	if (outMIMEType) {
-		*outMIMEType = mimeType;
-	}
-	if (outCharset) {
-		*outCharset = charset;
-	}
-	if (outEncoding) {
-		*outEncoding = encoding;
-	}
-	if (outBase64) {
-		*outBase64 = isBase64;
+	NSData *decodedData = url.decodedData;
+	if (!decodedData) {
+		return nil;
 	}
 
+	if (outMIMEType) {
+		*outMIMEType = url.dataMIMEType;
+	}
+	if (outCharset) {
+		*outCharset = url.dataCharset;
+	}
+	if (outEncoding) {
+		*outEncoding = url.stringEncoding;
+	}
+	if (outBase64) {
+		*outBase64 = url.isBase64;
+	}
 	return decodedData;
 }
 

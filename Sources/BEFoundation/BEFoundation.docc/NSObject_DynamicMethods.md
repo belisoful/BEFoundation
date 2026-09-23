@@ -10,7 +10,9 @@ A system for adding and managing dynamic methods to Objective-C objects at runti
 
 This category provides a runtime method injection system that adds methods to existing objects and classes using blocks. The system supports both instance methods (added to specific object instances) and class methods (added to all instances of a class).
 
-![A flowchart showing how a selector resolves: object dynamic method, then protocol target (required or optional-with-respondsToSelector), then no-protocol forward target, then class dynamic method, otherwise normal forwarding.](dynamic-method-resolution)
+![A flowchart of the isDynamicMethod: check order: object dynamic method, then protocol target (required or optional-with-respondsToSelector), then no-protocol forward target, then class dynamic method, otherwise normal forwarding.](dynamic-method-resolution)
+
+The diagram shows the order `isDynamicMethod:` checks. Signature lookup and invocation dispatch consult the class-wide dynamic method before protocol and forward targets: object dynamic method, class dynamic method (instance receivers only), protocol target, no-protocol forward target.
 
 Key features:
 - Add methods to existing objects without subclassing
@@ -32,7 +34,7 @@ Before using dynamic methods, you must enable them for your class:
 [MyClass enableDynamicMethods];
 
 // Enable for Foundation classes (use with caution)
-[NSString allowNSDynamicMethods] = YES;
+NSString.allowNSDynamicMethods = YES;
 [NSString enableDynamicMethods];
 ```
 
@@ -44,7 +46,7 @@ Add methods available to all instances of a class:
 // Enable dynamic methods first
 [MyClass enableDynamicMethods];
 
-// Add a class method (callable on the class)
+// Add a class-wide method (available on every instance of MyClass)
 [MyClass addClassMethod:@selector(greet) block:^(id self) {
     return @"Hello!";
 }];
@@ -66,17 +68,18 @@ Add methods available to all instances of a class:
 Add methods to a specific object instance only:
 
 ```objc
-// Create an instance
-NSString *str = [[NSString alloc] initWithString:@"Hello"];
+// Create an instance of a class with dynamic methods enabled
+[MyClass enableDynamicMethods];
+MyClass *obj = [[MyClass alloc] init];
 
 // Add a custom method to this specific instance
-[str addObjectMethod:@selector(customMethod:) block:^(id self, NSString *param) {
+[obj addObjectMethod:@selector(customMethod:) block:^(id self, NSString *param) {
     NSLog(@"Custom method called with: %@", param);
-    return [self stringByAppendingString:param];
+    return [param uppercaseString];
 }];
 
 // Call the dynamic method
-NSString *result = [str customMethod:@" World"];  // Returns "Hello World"
+NSString *result = [obj customMethod:@"hello"];  // Returns "HELLO"
 ```
 
 ### Protocol-Based Forwarding
@@ -105,7 +108,6 @@ Forward method calls to protocol implementations:
 
 // Enable dynamic methods and register the protocol
 [MyClass enableDynamicMethods];
-[MyClass addInstanceProtocol:@protocol(MyProtocol)];
 [MyClass addInstanceProtocol:@protocol(MyProtocol) withClass:[MyHandler class]];
 
 // Now instances of MyClass respond to MyProtocol methods
@@ -121,7 +123,6 @@ Forward protocol methods to a specific target object:
 MyClass *obj = [[MyClass alloc] init];
 MyHandler *handler = [[MyHandler alloc] init];
 
-[obj addObjectProtocol:@protocol(MyProtocol)];
 [obj addObjectProtocol:@protocol(MyProtocol) withTarget:handler];
 ```
 
@@ -162,7 +163,7 @@ Method implementation blocks must follow this format:
 ReturnType (^)(id self, SEL _cmd, ...parameters)
 ```
 
-The `SEL _cmd` parameter is optional. If included, the block will receive the selector of the method being called. If omitted, the system automatically adjusts the signature.
+The `SEL _cmd` parameter is optional. If included, the block receives the selector of the method being called. If omitted, the system adjusts the signature.
 
 ## Thread Safety
 
@@ -173,15 +174,14 @@ replace cannot free an implementation that is mid-invocation.
 
 One caveat applies to instance-protocol forwarding: reconfiguring an instance's forwarded
 protocols concurrently with dispatch on that same instance may briefly present a stale view of
-the forwarded protocols. This self-corrects on the next synchronization — it does not crash or
-corrupt state. If you reconfigure protocol forwarding at runtime from multiple threads, serialize
+the forwarded protocols. This self-corrects on the next synchronization without crashing or
+corrupting state. If you reconfigure protocol forwarding at runtime from multiple threads, serialize
 that reconfiguration externally.
 
 ## Limitations
 
-- NSMethodSignatures cannot properly encode compiler SIMD, vector, or NEON parameter types and will fail
-- Use their base types as arrays or pointers instead for arguments
-- The `_Float16` type also produces errors for malformed Block Signatures
+- NSMethodSignature cannot encode SIMD, vector, or NEON parameter types; pass their base types as arrays or pointers instead
+- `_Float16` parameters also fail signature parsing
 
 ## See Also
 

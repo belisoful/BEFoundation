@@ -83,7 +83,7 @@
 
 
 /**
- @brief Initialize number object with ponter to the value and `\@encode` value type.
+ @brief Initialize number object with pointer to the value and `\@encode` value type.
  @param value Pointer to the value, should not be nil.
  @param type Type string, returned by the `\@encode`, should not be nil.
  @warning Used assert for track nullability of the parameters.
@@ -382,9 +382,9 @@
 
 
 /**
- @brief Thread safe bitwise NOT unsigned long long value.
+ @brief Thread safe bitwise NOT of the value as unsigned long long. Read-only; use bitNot for a new number.
  */
-@property (nonatomic, assign, readwrite) unsigned long long bitNotValue;
+@property (nonatomic, assign, readonly) unsigned long long bitNotValue;
 
 
 /**
@@ -566,7 +566,7 @@
 @property (class, copy, readonly) NSNumber * _Nonnull zero;
 
 /**
- @brief Thread safe zero.
+ @brief Thread safe negative zero.
  */
 @property (class, copy, readonly) NSNumber * _Nonnull negativeZero;
 
@@ -589,7 +589,7 @@
 
 
 /**
- @brief Thread safe getter and setter for the value casted to unichar.
+ @brief Thread safe getter for the value casted to unichar.
  */
 @property (readonly) unichar unicharValue;
 

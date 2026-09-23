@@ -124,18 +124,18 @@ NSDictionary *dict2 = @{
 // dict1 is now: {@"a": @{@"x": @1, @"y": @20, @"z": @30}, @"b": @3, @"c": @4}
 ```
 
-Recursive descent requires the receiver's existing nested value to be an `NSMutableDictionary` (hence the `mutableCopy` above). The `flags:` variants accept `BEDictionarySelfMutableCollectionFlag` to convert an immutable nested dictionary to mutable first. Without either, merge keeps an immutable nested dictionary unchanged and add replaces it by reference.
+Recursive descent happens whenever both sides hold a dictionary for a key. An immutable nested dictionary in the receiver is replaced by a mutable copy before the recursion, so the `mutableCopy` above is optional. `BEDictionarySelfMutableCollectionFlag` remains accepted and adds no further behavior.
 
 ### Combine Flags
 
-The [BEDictionaryCombineFlags](doc:NSDictionary_BExtension) enum controls recursive merge behavior:
+The `BEDictionaryCombineFlags` enum controls recursive merge behavior:
 
 ```objc
 typedef NS_ENUM(NSInteger, BEDictionaryCombineFlags) {
     BEDictionaryDefaultCombineFlags = 0,
     BEDictionaryMergeEntriesFlag = (1 << 0),        // Preserve existing entries
-    BEDictionarySelfMutableCollectionFlag = (1 << 1), // Convert immutable to mutable
-    BEDictionaryMutableCollectionCopyFlag = (1 << 2), // Copy mutable collections
+    BEDictionarySelfMutableCollectionFlag = (1 << 1), // No-op; kept for source compatibility
+    BEDictionaryMutableCollectionCopyFlag = (1 << 2), // Copy BECollectionAbstract values as mutable
     BEDictionaryMutableCopyFlag = (1 << 3),          // Copy NSMutableCopying objects
 };
 ```

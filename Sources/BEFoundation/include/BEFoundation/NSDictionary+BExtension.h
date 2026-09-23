@@ -4,7 +4,7 @@
  @date			2025-01-01
  @author		belisoful@icloud.com
 @abstract		An extension to NSDictionary and NSMutableDictionary providing collection manipulation, indexed subscripting, and recursive merging capabilities.
-@discussion		This extension adds functional programming methods to NSDictionary and NSMutableDictionary, including indexed access, object class inspection, dictionary mapping and filtering, and recursive merging operations. The extension adds commonly needed operations to the native Foundation dictionary classes while following Apple's design patterns and conventions.
+@discussion		This extension adds functional programming methods to NSDictionary and NSMutableDictionary, including indexed access, object class inspection, dictionary mapping and filtering, and recursive merging operations.
 */
 
 #ifndef NSDictionary_BExtension_h
@@ -17,7 +17,7 @@
  @abstract Options for controlling how dictionaries are combined during recursive merge operations.
  @constant BEDictionaryDefaultCombineFlags Default behavior with no special flags.
  @constant BEDictionaryMergeEntriesFlag When set, existing entries are preserved (merge behavior). When clear, existing entries are overwritten (add behavior).
- @constant BEDictionarySelfMutableCollectionFlag When set, immutable collections in the target dictionary are converted to mutable versions during merging.
+ @constant BEDictionarySelfMutableCollectionFlag Retained for source compatibility. Recursive combining always replaces an immutable nested dictionary in the receiver with its mutable copy before descending into it; this flag adds no further behavior.
  @constant BEDictionaryMutableCollectionCopyFlag When set, collection objects conforming to BECollectionAbstract are copied as mutable versions.
  @constant BEDictionaryMutableCopyFlag When set, objects conforming to NSMutableCopying are copied as mutable versions.
  */
@@ -62,7 +62,7 @@ typedef NS_ENUM(NSInteger, BEDictionaryCombineFlags) {
  @property objectsClasses
  @abstract A dictionary mapping the receiver's keys to the classes of their corresponding values.
  @return A new NSDictionary where keys are preserved and values are the Class objects of the original values.
- @discussion This property creates a new dictionary that maintains the same key structure while replacing each value with its corresponding Class object, useful for type inspection and validation.
+ @discussion This property creates a new dictionary that maintains the same key structure while replacing each value with its corresponding Class object.
  */
 @property (readonly, nonnull) NSDictionary<KeyType, Class> *objectsClasses;
 
@@ -70,7 +70,7 @@ typedef NS_ENUM(NSInteger, BEDictionaryCombineFlags) {
  @property objectsClassNames
  @abstract A dictionary mapping the receiver's keys to the class names of their corresponding values.
  @return A new NSDictionary where keys are preserved and values are NSString representations of the original values' class names.
- @discussion This property creates a new dictionary that maintains the same key structure while replacing each value with its class name as a string, useful for debugging and serialization.
+ @discussion This property creates a new dictionary that maintains the same key structure while replacing each value with its class name as a string.
  */
 @property (readonly, nonnull) NSDictionary<KeyType, NSString*> *objectsClassNames;
 
@@ -78,7 +78,7 @@ typedef NS_ENUM(NSInteger, BEDictionaryCombineFlags) {
  @property objectsUniqueClasses
  @abstract A counted set of the unique classes represented by the dictionary's values.
  @return A new NSCountedSet containing Class objects with their occurrence counts.
- @discussion This property analyzes all values in the dictionary and returns a counted set showing how many times each class appears, useful for understanding the type distribution of dictionary contents.
+ @discussion This property analyzes all values in the dictionary and returns a counted set showing how many times each class appears.
  */
 @property (readonly, nonnull) NSCountedSet<Class> *objectsUniqueClasses;
 
@@ -86,7 +86,7 @@ typedef NS_ENUM(NSInteger, BEDictionaryCombineFlags) {
  @property objectsUniqueClassNames
  @abstract A counted set of the unique class names represented by the dictionary's values.
  @return A new NSCountedSet containing NSString class names with their occurrence counts.
- @discussion This property analyzes all values in the dictionary and returns a counted set showing how many times each class name appears, useful for debugging and analyzing dictionary content types.
+ @discussion This property analyzes all values in the dictionary and returns a counted set showing how many times each class name appears.
  */
 @property (readonly, nonnull) NSCountedSet<NSString*> *objectsUniqueClassNames;
 
@@ -102,8 +102,8 @@ typedef NS_ENUM(NSInteger, BEDictionaryCombineFlags) {
  @method mapUsingBlock:
  @abstract Creates a new dictionary by applying a transformation block to each key-value pair.
  @param block A block that takes pointers to the key and value, allowing modification, and returns YES to include the pair in the result.
- @return A new dictionary containing the transformed key-value pairs.
- @discussion This method provides functional mapping capabilities, allowing both keys and values to be transformed. The block can modify the key and value through the provided pointers and should return YES to include the pair in the result dictionary.
+ @return A new dictionary containing the transformed key-value pairs. Returns a copy of the receiver if block is nil.
+ @discussion This method provides functional mapping capabilities, allowing both keys and values to be transformed. The block can modify the key and value through the provided pointers and should return YES to include the pair in the result dictionary. A pair whose key or value the block sets to nil is dropped.
  */
 - (nonnull instancetype)mapUsingBlock:(BOOL (^_Nullable)(id _Nullable *_Nonnull key, id _Nullable *_Nonnull obj, BOOL *_Nonnull stop))block;
 
@@ -120,7 +120,8 @@ typedef NS_ENUM(NSInteger, BEDictionaryCombineFlags) {
  @abstract Creates a new dictionary by adding entries from another dictionary, overwriting existing keys.
  @param otherDictionary The dictionary whose entries should be added.
  @return A new dictionary containing entries from both dictionaries, with otherDictionary taking precedence for duplicate keys.
- @discussion This method creates a new dictionary by combining the receiver with another dictionary. If both dictionaries contain the same key, the value from otherDictionary is used in the result.
+ @discussion This method creates a new dictionary by combining the receiver with another dictionary. If both dictionaries contain the same key, the value from otherDictionary is used in the result. A nil otherDictionary returns a copy of the receiver with the receiver's mutability.
+ @exception NSInvalidArgumentException Raised when otherDictionary is not an NSDictionary.
  */
 - (nonnull id)dictionaryByAddingDictionary:(nonnull NSDictionary *)otherDictionary;
 
@@ -129,7 +130,8 @@ typedef NS_ENUM(NSInteger, BEDictionaryCombineFlags) {
  @abstract Creates a new dictionary by merging entries from another dictionary, preserving existing keys.
  @param otherDictionary The dictionary whose entries should be merged.
  @return A new dictionary containing entries from both dictionaries, with the receiver taking precedence for duplicate keys.
- @discussion This method creates a new dictionary by combining the receiver with another dictionary. If both dictionaries contain the same key, the value from the receiver is preserved in the result.
+ @discussion This method creates a new dictionary by combining the receiver with another dictionary. If both dictionaries contain the same key, the value from the receiver is preserved in the result. A nil otherDictionary returns a copy of the receiver with the receiver's mutability.
+ @exception NSInvalidArgumentException Raised when otherDictionary is not an NSDictionary.
  */
 - (nonnull id)dictionaryByMergingDictionary:(nonnull NSDictionary *)otherDictionary;
 
@@ -179,7 +181,8 @@ typedef NS_ENUM(NSInteger, BEDictionaryCombineFlags) {
  @method mergeEntriesFromDictionary:
  @abstract Merges entries from another dictionary without overwriting existing keys.
  @param otherDictionary The dictionary whose entries should be merged.
- @discussion This method adds entries from otherDictionary to the receiver, but only for keys that don't already exist in the receiver. Unlike addEntriesFromDictionary:, this method preserves existing values.
+ @discussion This method adds entries from otherDictionary to the receiver, but only for keys that don't already exist in the receiver. Unlike addEntriesFromDictionary:, this method preserves existing values. A nil otherDictionary leaves the receiver unchanged.
+ @exception NSInvalidArgumentException Raised when otherDictionary is not an NSDictionary.
  */
 - (void)mergeEntriesFromDictionary:(nonnull NSDictionary<KeyType, ObjectType> *)otherDictionary;
 
@@ -187,7 +190,7 @@ typedef NS_ENUM(NSInteger, BEDictionaryCombineFlags) {
  @method mergeEntriesFromDictionaryRecursive:
  @abstract Recursively merges entries from another dictionary using default combine flags.
  @param otherDictionary The dictionary whose entries should be merged recursively.
- @discussion This method performs a deep merge of nested dictionaries, preserving existing keys at all levels. Nested dictionaries are merged recursively at every level.
+ @discussion This method performs a deep merge of nested dictionaries, preserving existing keys at all levels. Nested dictionaries are merged recursively at every level. Where both dictionaries hold a dictionary for the same key, an immutable nested dictionary in the receiver is replaced by its mutable copy and the merge descends into it.
  */
 - (void)mergeEntriesFromDictionaryRecursive:(nonnull NSDictionary<KeyType, ObjectType> *)otherDictionary;
 
@@ -196,7 +199,7 @@ typedef NS_ENUM(NSInteger, BEDictionaryCombineFlags) {
  @abstract Recursively merges entries from another dictionary with specified combine flags.
  @param otherDictionary The dictionary whose entries should be merged recursively.
  @param combineFlags Options controlling how the merge is performed.
- @discussion This method performs a deep merge of nested dictionaries with customizable behavior. The flags parameter controls whether existing keys are preserved, whether mutable copies are created, and how collection objects are handled.
+ @discussion This method performs a deep merge of nested dictionaries with customizable behavior. The flags parameter controls whether values added from otherDictionary are mutable-copied (BEDictionaryMutableCopyFlag, BEDictionaryMutableCollectionCopyFlag). Nested dictionaries in the receiver are mutable-copied and descended into regardless of flags.
  */
 - (void)mergeEntriesFromDictionaryRecursive:(nonnull NSDictionary<KeyType, ObjectType> *)otherDictionary flags:(BEDictionaryCombineFlags)combineFlags;
 
@@ -204,7 +207,7 @@ typedef NS_ENUM(NSInteger, BEDictionaryCombineFlags) {
  @method addEntriesFromDictionaryRecursive:
  @abstract Recursively adds entries from another dictionary, overwriting existing keys.
  @param otherDictionary The dictionary whose entries should be added recursively.
- @discussion This method performs a deep merge of nested dictionaries, overwriting existing keys at all levels. Nested dictionaries are merged recursively at every level.
+ @discussion This method performs a deep merge of nested dictionaries, overwriting existing keys at all levels. Nested dictionaries are merged recursively at every level. Where both dictionaries hold a dictionary for the same key, an immutable nested dictionary in the receiver is replaced by its mutable copy and the addition descends into it.
  */
 - (void)addEntriesFromDictionaryRecursive:(nonnull NSDictionary<KeyType, ObjectType> *)otherDictionary;
 
@@ -213,7 +216,7 @@ typedef NS_ENUM(NSInteger, BEDictionaryCombineFlags) {
  @abstract Recursively adds entries from another dictionary with specified combine flags.
  @param otherDictionary The dictionary whose entries should be added recursively.
  @param combineFlags Options controlling how the addition is performed.
- @discussion This method performs a deep merge of nested dictionaries with customizable behavior. The flags parameter controls whether existing keys are overwritten, whether mutable copies are created, and how collection objects are handled.
+ @discussion This method performs a deep merge of nested dictionaries with customizable behavior. The flags parameter controls whether values added from otherDictionary are mutable-copied (BEDictionaryMutableCopyFlag, BEDictionaryMutableCollectionCopyFlag). Nested dictionaries in the receiver are mutable-copied and descended into regardless of flags.
  */
 - (void)addEntriesFromDictionaryRecursive:(nonnull NSDictionary<KeyType, ObjectType> *)otherDictionary flags:(BEDictionaryCombineFlags)combineFlags;
 
@@ -222,7 +225,7 @@ typedef NS_ENUM(NSInteger, BEDictionaryCombineFlags) {
  @abstract Core method for recursively combining entries from another dictionary with full flag control.
  @param otherDictionary The dictionary whose entries should be combined.
  @param combineFlags Complete set of flags controlling the combine operation.
- @discussion This is the fundamental method that implements all recursive dictionary combining operations. It handles nested dictionaries, mutable copying, and various merge strategies based on the provided flags.
+ @discussion This is the fundamental method that implements all recursive dictionary combining operations. BEDictionaryMergeEntriesFlag selects merge (existing keys kept) or add (existing keys overwritten). Where both dictionaries hold a dictionary for the same key, the receiver's nested dictionary is mutable-copied if immutable, stored back, and combined recursively with the same flags. Other values are set according to the merge/add rule, mutable-copied when BEDictionaryMutableCopyFlag or BEDictionaryMutableCollectionCopyFlag applies.
  */
 - (void)combineEntriesFromDictionaryRecursive:(nullable NSDictionary *)otherDictionary flags:(BEDictionaryCombineFlags)combineFlags;
 

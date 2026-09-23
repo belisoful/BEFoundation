@@ -36,24 +36,26 @@ typedef NS_ENUM(NSInteger, NSURLBase64Type) {
 };
 
 
+/*! @const BEURL_DefaultTextMimeType The MIME type a data URL with no media type carries: "text/plain". */
 FOUNDATION_EXPORT NSString * _Nonnull const BEURL_DefaultTextMimeType;
+/*! @const BEURL_DefaultDataMimeType The MIME type for binary data with no declared type: "application/octet-stream". */
 FOUNDATION_EXPORT NSString * _Nonnull const BEURL_DefaultDataMimeType;
 
-
-FOUNDATION_EXPORT NSString * _Nonnull const BEURL_DefaultCharset;// "US-ASCII"  Pure 7-bit ASCII
-FOUNDATION_EXPORT NSString * _Nonnull const BEURL_LatinCharSet_1;// "iso-8859-1"
-FOUNDATION_EXPORT NSString * _Nonnull const BEURL_LatinCharSet_2;// "iso-8859-2"
-FOUNDATION_EXPORT NSString * _Nonnull const BEURL_Windows1250;// "windows-1250"
-FOUNDATION_EXPORT NSString * _Nonnull const BEURL_Windows1251;// "windows-1251"
-FOUNDATION_EXPORT NSString * _Nonnull const BEURL_Windows1252;// "windows-1252"
-FOUNDATION_EXPORT NSString * _Nonnull const BEURL_Windows1253;// "windows-1253"
-FOUNDATION_EXPORT NSString * _Nonnull const BEURL_Windows1254;// "windows-1254"
-FOUNDATION_EXPORT NSString * _Nonnull const BEURL_UTF8CharSet;// "utf-8"
-FOUNDATION_EXPORT NSString * _Nonnull const BEURL_UTF16CharSet;// "utf-16"
-FOUNDATION_EXPORT NSString * _Nonnull const BEURL_UTF32CharSet;// "utf-32"
-FOUNDATION_EXPORT NSString * _Nonnull const BEURL_EUC_JP;// "EUC-JP"
-FOUNDATION_EXPORT NSString * _Nonnull const BEURL_Shift_JIS;// "Shift_JIS"
-FOUNDATION_EXPORT NSString * _Nonnull const BEURL_ISO_2022_JP;// "ISO-2022-JP"
+/*! @abstract Charset names accepted by the charset parameter, as IANA spellings. */
+FOUNDATION_EXPORT NSString * _Nonnull const BEURL_DefaultCharset;   /*!< "US-ASCII", the charset a text-based data URL defaults to. */
+FOUNDATION_EXPORT NSString * _Nonnull const BEURL_LatinCharSet_1;   /*!< "iso-8859-1" */
+FOUNDATION_EXPORT NSString * _Nonnull const BEURL_LatinCharSet_2;   /*!< "iso-8859-2" */
+FOUNDATION_EXPORT NSString * _Nonnull const BEURL_Windows1250;      /*!< "windows-1250" */
+FOUNDATION_EXPORT NSString * _Nonnull const BEURL_Windows1251;      /*!< "windows-1251" */
+FOUNDATION_EXPORT NSString * _Nonnull const BEURL_Windows1252;      /*!< "windows-1252" */
+FOUNDATION_EXPORT NSString * _Nonnull const BEURL_Windows1253;      /*!< "windows-1253" */
+FOUNDATION_EXPORT NSString * _Nonnull const BEURL_Windows1254;      /*!< "windows-1254" */
+FOUNDATION_EXPORT NSString * _Nonnull const BEURL_UTF8CharSet;      /*!< "utf-8" */
+FOUNDATION_EXPORT NSString * _Nonnull const BEURL_UTF16CharSet;     /*!< "utf-16" */
+FOUNDATION_EXPORT NSString * _Nonnull const BEURL_UTF32CharSet;     /*!< "utf-32" */
+FOUNDATION_EXPORT NSString * _Nonnull const BEURL_EUC_JP;           /*!< "EUC-JP" */
+FOUNDATION_EXPORT NSString * _Nonnull const BEURL_Shift_JIS;        /*!< "Shift_JIS" */
+FOUNDATION_EXPORT NSString * _Nonnull const BEURL_ISO_2022_JP;      /*!< "ISO-2022-JP" */
 
 /*!
  @category   NSURL (DataConstructors)
@@ -270,6 +272,11 @@ FOUNDATION_EXPORT NSString * _Nonnull const BEURL_ISO_2022_JP;// "ISO-2022-JP"
  @discussion This category adds properties and methods to decode data URLs, extract
 			 metadata (MIME type, charset, encoding), and retrieve the original data
 			 or string content. All properties use lazy evaluation and caching.
+
+			 Parameter parsing follows RFC 2045: each parameter is percent-decoded, its name
+			 and the `base64` token are matched case-insensitively after trimming whitespace,
+			 and a quoted value is unquoted. `BEWebData` decodes through this category, so both
+			 APIs return identical metadata and bytes for the same URL.
  @code
 	NSURL *url = [NSURL URLWithString:@"data:text/plain;charset=utf-8;base64,SGVsbG8="];
 	if (url.isDataURL) {
@@ -302,7 +309,11 @@ FOUNDATION_EXPORT NSString * _Nonnull const BEURL_ISO_2022_JP;// "ISO-2022-JP"
  @property   dataCharset
  @abstract   The character set specified in the data URL.
  @discussion Extracts and returns the charset from the data URL metadata.
-			 Defaults to "US-ASCII" if not specified. Returns `nil` for non-data URLs.
+			 When the URL declares no charset:
+			 - text-based MIME type (`text/-`, `-/json`, `-+json`, `-/xml`, `-+xml`, `-/javascript`) → "US-ASCII"
+			 - any other MIME type → `nil`
+
+			 Returns `nil` for non-data URLs.
 */
 @property (nullable, readonly, copy) NSString	*dataCharset;
 
@@ -310,7 +321,8 @@ FOUNDATION_EXPORT NSString * _Nonnull const BEURL_ISO_2022_JP;// "ISO-2022-JP"
  @property   stringEncoding
  @abstract   The `NSStringEncoding` corresponding to the data URL's charset.
  @discussion Converts the charset parameter to an appropriate NSStringEncoding value.
-			 Returns 0 for non-data URLs or unrecognized charsets.
+			 Returns 0 for non-data URLs and when `dataCharset` is `nil`; an unrecognized
+			 charset maps to `NSASCIIStringEncoding`.
 */
 @property (readonly) NSStringEncoding			stringEncoding;
 
@@ -333,8 +345,10 @@ FOUNDATION_EXPORT NSString * _Nonnull const BEURL_ISO_2022_JP;// "ISO-2022-JP"
 /*!
  @property   decodedData
  @abstract   The decoded binary data from the data URL.
- @discussion Base64 content is base64-decoded. Percent-encoded content is decoded byte-wise,
-			 so the result carries the payload bytes in the URL's declared charset.
+ @discussion Base64 content is percent-decoded, then base64-decoded ignoring characters
+			 outside the base64 alphabet, so whitespace and line breaks in the payload are
+			 tolerated. Percent-encoded content is decoded byte-wise, so the result carries
+			 the payload bytes in the URL's declared charset.
 			 Returns `nil` if decoding fails or for non-data URLs.
 */
 @property (nullable, readonly) NSData			*decodedData;
@@ -373,6 +387,18 @@ FOUNDATION_EXPORT NSString * _Nonnull const BEURL_ISO_2022_JP;// "ISO-2022-JP"
  @return     `YES` if base64-encoded, `NO` otherwise or for non-data URLs.
 */
 - (BOOL)isBase64;
+
+/*!
+ @method     charsetFromMediaType:
+ @abstract   Returns the charset parameter of a media type string.
+ @param      mediaType A media type with optional parameters, such as an HTTP `Content-Type`
+			 value ("text/html; charset=utf-8").
+ @discussion Applies the same parameter rules as data URL parsing: the name is matched
+			 case-insensitively after trimming whitespace, and a quoted value is unquoted.
+ @return     The charset value, or `nil` when the parameter is absent or empty.
+ @since      1.2.0
+*/
++ (nullable NSString *)charsetFromMediaType:(nullable NSString *)mediaType;
 
 /*!
  @method     stringEncodingFromCharset:

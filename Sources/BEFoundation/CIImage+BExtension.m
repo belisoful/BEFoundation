@@ -13,16 +13,16 @@
 
 /*!
 	@method     +createImageText:fontName:fontSize:angle:color:blur:position:
-	@abstract   This generates an image with the specified text, font name, font size, angle, color, blur, and position.
-	@param      text		The text to render.
-	@param      fontName	The font name of the font the text is rendered with.
-	@param		fontSize	The font size of the font the text is rendered with.
-	@param		angle		The angle of the text.
-	@param      color 		The color of the text to render
-	@param      blur		The blur, in pixels, applied to the text.
-	@param      position	The position of the text to be rendered.
-	@discussion	This is a compound function to generate text in a specific font, size, angle, color, blur, and position.
-	@result     Returns a CIImage containing the rendered text, or nil if @c text or @c color is nil or text image generation fails.
+	@abstract   Generates a CIImage containing rendered text with specified attributes.
+	@param      text		The string to render into the image.
+	@param      fontName	The name of the font to use for the text (e.g., "Helvetica-Bold").
+	@param		fontSize	The point size of the font.
+	@param		angle		The rotation angle of the text in degrees.
+	@param      color 		The color of the text.
+	@param      blur		The radius of the Gaussian blur to apply to the text image, in pixels.
+	@param      position	The translation offset (x, y) to apply to the text image.
+	@discussion	This method chains Core Image filters for text generation, transformation, and blurring.
+	@return     A new CIImage containing the rendered and styled text, or nil if @c text or @c color is nil or text image generation fails. If @c fontName is nil or unrecognized, the system font of @c fontSize is used.
  */
 + (CIImage *)createImageText:(NSString *)text
 					fontName:(NSString *)fontName
@@ -36,7 +36,6 @@
 		return nil;
 	}
 
-	// Fall back to the system font when fontName is nil or unrecognized.
 	BEFont *font = [BEFont fontWithName:fontName size:fontSize];
 	if (font == nil) {
 		font = [BEFont systemFontOfSize:fontSize];
@@ -49,7 +48,6 @@
 										  initWithString:text
 										  attributes:attributes];
 
-	// Create CIAttributedText filter
 	CIFilter *textFilter = [CIFilter filterWithName:@"CIAttributedTextImageGenerator"];
 	[textFilter setValue:attributedString forKey:@"inputText"];
 	// inputScaleFactor is a scale multiplier, not a flag.
@@ -60,14 +58,11 @@
 		return nil;
 	}
 	
-	// Apply rotation transform
 	CGAffineTransform rotationTransform = CGAffineTransformMakeRotation(angle * M_PI / 180.0);
 	textImage = [textImage imageByApplyingTransform:rotationTransform];
 	
-	// Apply position transform
 	textImage = [textImage imageByApplyingTransform:CGAffineTransformMakeTranslation(position.x, position.y)];
 	
-	// Apply Gaussian blur if blur value is not zero
 	if (blur > 0) {
 		CIFilter *gaussianBlur = [CIFilter filterWithName:@"CIGaussianBlur"];
 		[gaussianBlur setValue:textImage forKey:kCIInputImageKey];
@@ -82,13 +77,13 @@
 
 /*!
 	@method     +combineImage:alpha:withImage:
-	@abstract   This combines two images with the topImage having an alpha over the bottomImage.
-	@param      topImage	The image composited on top.
- 	@param		topAlpha	The opacity applied to topImage, from 0.0 (transparent) to 1.0 (opaque).
-	@param      bottomImage	The background image composited underneath.
-	@discussion	Adjusts the alpha of topImage via CIColorMatrix, then composites it over
-				bottomImage using CISourceOverCompositing.
-	@result     Returns a CIImage containing the combined images, or nil if either image is nil.
+	@abstract   Composites a top image over a bottom image with a specified alpha level.
+	@param      topImage	The CIImage to place on top.
+ 	@param		topAlpha	The opacity of the topImage, from 0.0 (transparent) to 1.0 (opaque).
+	@param      bottomImage	The CIImage to use as the background.
+	@discussion	This method uses the CISourceOverCompositing filter to blend the two images. The
+				top image's alpha channel is replaced with topAlpha via a CIColorMatrix before compositing.
+	@return     A new CIImage representing the result of the composition, or nil if either image is nil. topAlpha is clamped to the range 0.0–1.0.
  */
 + (CIImage *)combineImage:(CIImage *)topImage
 					alpha:(CGFloat)topAlpha
@@ -100,11 +95,9 @@
 	// Clamp alpha to [0,1]; out-of-range values produce invalid premultiplied alpha.
 	CGFloat clampedAlpha = topAlpha < 0.0 ? 0.0 : (topAlpha > 1.0 ? 1.0 : topAlpha);
 
-	// Create source over compositing filter
 	CIFilter *sourceOverFilter = [CIFilter filterWithName:@"CISourceOverCompositing"];
 	[sourceOverFilter setValue:bottomImage forKey:kCIInputBackgroundImageKey];
 
-	// Create color matrix filter for alpha adjustment
 	CIFilter *colorMatrix = [CIFilter filterWithName:@"CIColorMatrix"];
 	[colorMatrix setValue:topImage forKey:kCIInputImageKey];
 	[colorMatrix setValue:[CIVector vectorWithX:1 Y:0 Z:0 W:0] forKey:@"inputRVector"];

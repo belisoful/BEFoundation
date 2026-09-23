@@ -18,11 +18,9 @@
 // Test Fixtures: Various NSNumber types to be used in tests
 - (void)setUp {
 	[super setUp];
-	// This method is called before the invocation of each test method in the class.
 }
 
 - (void)tearDown {
-	// This method is called after the invocation of each test method in the class.
 	[super tearDown];
 }
 
@@ -63,25 +61,21 @@
 #pragma mark - Addition Tests
 
 - (void)testAddNumber_Basic {
-	// Test adding two integers
 	NSNumber *a = @5;
 	NSNumber *b = @10;
 	NSNumber *expected = @15;
 	XCTAssertEqualObjects([a addNumber:b], expected, @"Integer addition failed.");
 
-	// Test adding an integer and a double
 	NSNumber *c = @5;
 	NSNumber *d = @10.5;
 	NSNumber *expectedDouble = @15.5;
 	XCTAssertEqualObjects([c addNumber:d], expectedDouble, @"Integer and double addition failed. Type promotion to double should occur.");
 
-	// Test adding two doubles
 	NSNumber *e = @5.5;
 	NSNumber *f = @10.5;
 	NSNumber *expectedSumDouble = @16.0;
 	XCTAssertEqualObjects([e addNumber:f], expectedSumDouble, @"Double addition failed.");
 	
-	// Test adding char and long long
 	NSNumber *g = [NSNumber numberWithChar:10];
 	NSNumber *h = [NSNumber numberWithLongLong:10000000000];
 	NSNumber *expectedLongLong = [NSNumber numberWithLongLong:10000000010];
@@ -89,7 +83,6 @@
 }
 
 - (void)testAddNumber_Integers {
-	// Test adding two integers
 	SInt64 aInt, bInt;
 	UInt64 aUInt, bUInt;
 	
@@ -142,10 +135,9 @@
 	bUInt = -12;
 	a = [NSNumber numberWithUnsignedLongLong:aUInt];
 	b = [NSNumber numberWithUnsignedLongLong:bUInt];
-	expected = [NSNumber numberWithUnsignedLongLong:-22];
-	XCTAssertEqualObjects([a addNumber:b], expected, @"Integer addition failed.");
-	XCTAssertEqualObjects([b addNumber:a], expected, @"Integer addition failed.");
-	XCTAssertEqual(aUInt + bUInt, -22);
+	expected = @(NAN);
+	XCTAssertEqualObjects([a addNumber:b], expected, @"Unsigned sum above UINT64_MAX is NaN.");
+	XCTAssertEqualObjects([b addNumber:a], expected, @"Unsigned sum above UINT64_MAX is NaN.");
 }
 
 - (void)testAddInt {
@@ -173,25 +165,21 @@
 #pragma mark - Subtraction Tests
 
 - (void)testSubtractNumber_Basic {
-	// Test subtracting two integers
 	NSNumber *a = @20;
 	NSNumber *b = @5;
 	NSNumber *expected = @15;
 	XCTAssertEqualObjects([a subtractNumber:b], expected, @"Integer subtraction failed.");
 
-	// Test subtracting an integer and a double
 	NSNumber *c = @20;
 	NSNumber *d = @4.5;
 	NSNumber *expectedDouble = @15.5;
 	XCTAssertEqualObjects([c subtractNumber:d], expectedDouble, @"Integer and double subtraction failed. Type promotion to double should occur.");
 
-	// Test subtracting two doubles
 	NSNumber *e = @10.5;
 	NSNumber *f = @5.2;
 	NSNumber *expectedSumDouble = @5.3;
 	XCTAssertEqualObjects([e subtractNumber:f], expectedSumDouble, @"Double subtraction failed.");
 	
-	// Test subtracting char and long long
 	NSNumber *g = [NSNumber numberWithLongLong:10000000000];
 	NSNumber *h = [NSNumber numberWithChar:-10];
 	NSNumber *expectedLongLong = [NSNumber numberWithLongLong:10000000010];
@@ -199,7 +187,6 @@
 }
 
 - (void)testSubtractNumber_Integers {
-	// Test adding two integers
 	SInt64 aInt, bInt;
 	UInt64 aUInt, bUInt;
 	
@@ -243,22 +230,20 @@
 	bUInt = -2;
 	a = [NSNumber numberWithUnsignedLongLong:aUInt];
 	b = [NSNumber numberWithUnsignedLongLong:bUInt];
-	expected = @12;
-	XCTAssertEqualObjects([a subtractNumber:b], expected, @"Integer subtraction failed.");
+	expected = @(NAN);
+	XCTAssertEqualObjects([a subtractNumber:b], expected, @"Negative unsigned long long difference is NaN.");
 	expected = [NSNumber numberWithUnsignedLongLong:-12];
 	XCTAssertEqualObjects([b subtractNumber:a], expected, @"Integer subtraction failed.");
-	XCTAssertEqual(aUInt - bUInt, 12);
 	
 
 	aUInt = -12;
 	bUInt = -5;
 	a = [NSNumber numberWithUnsignedLongLong:aUInt];
 	b = [NSNumber numberWithUnsignedLongLong:bUInt];
-	expected = [NSNumber numberWithUnsignedLongLong:-7];
-	XCTAssertEqualObjects([a subtractNumber:b], expected, @"Integer subtraction failed.");
+	expected = @(NAN);
+	XCTAssertEqualObjects([a subtractNumber:b], expected, @"Negative unsigned long long difference is NaN.");
 	expected = @((unsigned long long)7);
 	XCTAssertEqualObjects([b subtractNumber:a], expected, @"Integer subtraction failed.");
-	XCTAssertEqual(aUInt - bUInt, -7);
 }
 
 - (void)testSubtractInt {
@@ -286,25 +271,21 @@
 
 - (void)testMultiplyNumber_Basic {
 	
-	// Test multiplying two integers
 	NSNumber *a = @7;
 	NSNumber *b = @6;
 	NSNumber *expected = @42;
 	XCTAssertEqualObjects([a multiplyNumber:b], expected, @"Integer multiply failed.");
 
-	// Test multiplying an integer and a double
 	NSNumber *c = @3;
 	NSNumber *d = @4.5;
 	NSNumber *expectedDouble = @13.5;
 	XCTAssertEqualObjects([c multiplyNumber:d], expectedDouble, @"Integer and double multiply failed. Type promotion to double should occur.");
 
-	// Test multiplying two doubles
 	NSNumber *e = @2.5;
 	NSNumber *f = @3.5;
 	NSNumber *expectedSumDouble = @8.75;
 	XCTAssertEqualObjects([e multiplyNumber:f], expectedSumDouble, @"Double multiply failed.");
 	
-	// Test multiplying char and long long
 	NSNumber *g = [NSNumber numberWithLongLong:10000000000];
 	NSNumber *h = [NSNumber numberWithChar:-10];
 	NSNumber *expectedLongLong = [NSNumber numberWithLongLong:-100000000000];
@@ -312,7 +293,6 @@
 }
 
 - (void)testMultiplyNumber_Integers {
-	// Test adding two integers
 	SInt64 aInt, bInt;
 	UInt64 aUInt, bUInt;
 	
@@ -365,20 +345,18 @@
 	bUInt = -2;
 	a = [NSNumber numberWithUnsignedLongLong:aUInt];
 	b = [NSNumber numberWithUnsignedLongLong:bUInt];
-	expected = [NSNumber numberWithUnsignedLongLong:-20];
-	XCTAssertEqualObjects([a multiplyNumber:b], expected, @"Integer multiply failed.");
-	XCTAssertEqualObjects([b multiplyNumber:a], expected, @"Integer multiply failed.");
-	XCTAssertEqual(aUInt * bUInt, (unsigned long long)-20);
+	expected = @(NAN);
+	XCTAssertEqualObjects([a multiplyNumber:b], expected, @"Unsigned product above UINT64_MAX is NaN.");
+	XCTAssertEqualObjects([b multiplyNumber:a], expected, @"Unsigned product above UINT64_MAX is NaN.");
 	
 	
 	aUInt = -10;
 	bUInt = -2;
 	a = [NSNumber numberWithUnsignedLongLong:aUInt];
 	b = [NSNumber numberWithUnsignedLongLong:bUInt];
-	expected = [NSNumber numberWithUnsignedLongLong:20];
-	XCTAssertEqualObjects([a multiplyNumber:b], expected, @"Integer multiply failed.");
-	XCTAssertEqualObjects([b multiplyNumber:a], expected, @"Integer multiply failed.");
-	XCTAssertEqual(aUInt * bUInt, (unsigned long long)20);
+	expected = @(NAN);
+	XCTAssertEqualObjects([a multiplyNumber:b], expected, @"Unsigned product above UINT64_MAX is NaN.");
+	XCTAssertEqualObjects([b multiplyNumber:a], expected, @"Unsigned product above UINT64_MAX is NaN.");
 }
 
 - (void)testMultiplyInt {
@@ -406,25 +384,21 @@
 
 - (void)testDivideNumber {
 	
-	// Test divide two integers
 	NSNumber *a = @20;
 	NSNumber *b = @4;
 	NSNumber *expected = @5;
 	XCTAssertEqualObjects([a divideNumber:b], expected, @"Integer division failed.");
 
-	// Test divide an integer and a double
 	NSNumber *c = @2.22;
 	NSNumber *d = @0.1;
 	NSNumber *expectedDouble = @22.2;
 	XCTAssertEqualObjects([c divideNumber:d], expectedDouble, @"Integer and double division failed. Type promotion to double should occur.");
 
-	// Test divide two doubles
 	NSNumber *e = @3.25;
 	NSNumber *f = @0.1;
 	NSNumber *expectedSumDouble = @32.5;
 	XCTAssertEqualObjects([e divideNumber:f], expectedSumDouble, @"Double division failed.");
 	
-	// Test divide char and long long
 	NSNumber *g = [NSNumber numberWithLongLong:10000000000];
 	NSNumber *h = [NSNumber numberWithChar:-10];
 	NSNumber *expectedLongLong = [NSNumber numberWithLongLong:-1000000000];
@@ -432,14 +406,12 @@
 }
 
 - (void)testDivideNumber_ByZero {
-	// Test division by zero for integer types
 	NSNumber *g = @10;
 	NSNumber *h = @0;
 	NSNumber *result = [g divideNumber:h];
 	XCTAssertTrue(isnan([result doubleValue]), @"Division by zero should result in NAN.");
 	XCTAssertEqualObjects(result, @(NAN) );
 	
-	// Test division by zero for floating point types
 	NSNumber *i = @10.1;
 	NSNumber *j = @0.0;
 	NSNumber *fpResult = [i divideNumber:j];
@@ -447,7 +419,7 @@
 }
 
 - (void)testModulusNumber_ByZero {
-	// Integer modulus by zero must NOT crash (SIGFPE); it mirrors divide-by-zero → NaN.
+	// Integer modulus by zero must not crash (SIGFPE); it mirrors divide-by-zero → NaN.
 	NSNumber *result = [@10 modulusNumber:@0];
 	XCTAssertTrue(isnan([result doubleValue]), @"Integer modulus by zero should result in NAN.");
 	XCTAssertEqualObjects(result, @(NAN));
@@ -462,7 +434,6 @@
 }
 
 - (void)testDivideNumber_Integers {
-	// Test adding two integers
 	SInt64 aInt, bInt;
 	UInt64 aUInt, bUInt;
 	
@@ -568,25 +539,21 @@
 
 - (void)testModulusNumber_Basic {
 	
-	// Test divide two integers
 	NSNumber *a = @23;
 	NSNumber *b = @4;
 	NSNumber *expected = @3;
 	XCTAssertEqualObjects([a modulusNumber:b], expected, @"Integer modulus failed.");
 
-	// Test divide an integer and a double
 	NSNumber *c = @4;
 	NSNumber *d = @1.2;
 	NSNumber *expectedDouble = @0.4;
 	XCTAssertEqualWithAccuracy([c modulusNumber:d].doubleValue, expectedDouble.doubleValue, 0.00000000001, @"Integer and double modulus failed. Type promotion to double should occur.");
 
-	// Test divide two doubles
 	NSNumber *e = @3.5;
 	NSNumber *f = @1.2;
 	NSNumber *expectedSumDouble = @1.1;
 	XCTAssertEqualObjects([e modulusNumber:f], expectedSumDouble, @"Double modulus failed.");
 	
-	// Test divide char and long long
 	NSNumber *g = [NSNumber numberWithLongLong:333];
 	NSNumber *h = [NSNumber numberWithChar:-10];
 	NSNumber *expectedLongLong = [NSNumber numberWithLongLong:3];
@@ -594,7 +561,6 @@
 }
 
 - (void)testModulusNumber_Integers {
-	// Test adding two integers
 	SInt64 aInt, bInt;
 	UInt64 aUInt, bUInt;
 	
@@ -744,31 +710,26 @@
 
 - (void)testPowerNumber_Basic {
 	
-	// Test power two integers
 	NSNumber *a = @2;
 	NSNumber *b = @8;
 	NSNumber *expected = @256;
 	XCTAssertEqualObjects([a powerNumber:b], expected, @"Integer power failed.");
 
-	// Test power an integer and a double
 	NSNumber *c = @4;
 	NSNumber *d = @2.5;
 	NSNumber *expectedDouble = @32;
 	XCTAssertEqualWithAccuracy([c powerNumber:d].doubleValue, expectedDouble.doubleValue, 0.00000000001, @"Integer and double power failed. Type promotion to double should occur.");
 	
-	// Test power an integer and a double
 	c = @4;
 	d = @0.5;
 	expected = @2;
 	XCTAssertEqualObjects([c powerNumber:d], expected, @"Integer and double power failed. Type promotion to double should occur.");
 
-	// Test power two doubles
 	NSNumber *e = @4;
 	NSNumber *f = @0.5;
 	NSNumber *expectedSumDouble = @2;
 	XCTAssertEqualObjects([e powerNumber:f], expectedSumDouble, @"Double power failed.");
 	
-	// Test power char and long long
 	NSNumber *g = [NSNumber numberWithLongLong:2];
 	NSNumber *h = [NSNumber numberWithChar:16];
 	NSNumber *expectedLongLong = [NSNumber numberWithLongLong:65536];
@@ -776,7 +737,6 @@
 }
 
 - (void)testPowerNumber_Integers {
-	// Test adding two integers
 	SInt64 aInt, bInt;
 	UInt64 aUInt, bUInt;
 	
@@ -899,7 +859,6 @@
 
 
 - (void)testXorNumber_Integers {
-	// Test adding two integers
 	SInt64 aInt, bInt;
 	UInt64 aUInt, bUInt;
 	
@@ -1428,8 +1387,9 @@
 	result = [checkNumber addNumber:lNumber];
 	XCTAssertEqual(result.longLongValue, checkNumber.longLongValue + lNumber.longLongValue);
 	
+	// -11111 + 11110 resolves to unsigned long long ('L' encodes as 'Q' on LP64); -1 does not fit.
 	result = [checkNumber addNumber:ulNumber];
-	XCTAssertEqual(result.longLongValue, checkNumber.longLongValue + ulNumber.longLongValue);
+	XCTAssertTrue(isnan(result.doubleValue));
 	
 	result = [checkNumber addNumber:llNumber];
 	XCTAssertEqual(result.longLongValue, checkNumber.longLongValue + llNumber.longLongValue);
@@ -1484,14 +1444,16 @@
 	result = [checkNumber addNumber:uiNumber];
 	XCTAssertEqual(result.longLongValue, checkNumber.longLongValue + uiNumber.longLongValue);
 	
+	// 11110 + -11111 resolves to unsigned long long ('L' encodes as 'Q' on LP64); -1 does not fit.
 	result = [checkNumber addNumber:lNumber];
-	XCTAssertEqual(result.longLongValue, checkNumber.longLongValue + lNumber.longLongValue);
+	XCTAssertTrue(isnan(result.doubleValue));
 	
 	result = [checkNumber addNumber:ulNumber];
 	XCTAssertEqual(result.longLongValue, checkNumber.longLongValue + ulNumber.longLongValue);
 	
+	// 11110 + -111111 resolves to unsigned long long; -100001 does not fit.
 	result = [checkNumber addNumber:llNumber];
-	XCTAssertEqual(result.longLongValue, checkNumber.longLongValue + llNumber.longLongValue);
+	XCTAssertTrue(isnan(result.doubleValue));
 	
 	result = [checkNumber addNumber:ullNumber];
 	XCTAssertEqual(result.longLongValue, checkNumber.longLongValue + ullNumber.longLongValue);
@@ -1546,14 +1508,16 @@
 	result = [checkNumber addNumber:lNumber];
 	XCTAssertEqual(result.longLongValue, checkNumber.longLongValue + lNumber.longLongValue);
 	
+	// -111111 + 11110 resolves to unsigned long long ('L' encodes as 'Q' on LP64); -100001 does not fit.
 	result = [checkNumber addNumber:ulNumber];
-	XCTAssertEqual(result.longLongValue, checkNumber.longLongValue + ulNumber.longLongValue);
+	XCTAssertTrue(isnan(result.doubleValue));
 	
 	result = [checkNumber addNumber:llNumber];
 	XCTAssertEqual(result.longLongValue, checkNumber.longLongValue + llNumber.longLongValue);
 	
+	// -111111 + 111110 resolves to unsigned long long; the exact result -1 does not fit.
 	result = [checkNumber addNumber:ullNumber];
-	XCTAssertEqual(result.longLongValue, checkNumber.longLongValue + ullNumber.longLongValue);
+	XCTAssertTrue(isnan(result.doubleValue));
 }
 
 
@@ -1608,11 +1572,128 @@
 	result = [checkNumber addNumber:ulNumber];
 	XCTAssertEqual(result.longLongValue, checkNumber.longLongValue + ulNumber.longLongValue);
 	
+	// 111110 + -111111 resolves to unsigned long long; the exact result -1 does not fit.
 	result = [checkNumber addNumber:llNumber];
-	XCTAssertEqual(result.longLongValue, checkNumber.longLongValue + llNumber.longLongValue);
+	XCTAssertTrue(isnan(result.doubleValue));
 	
 	result = [checkNumber addNumber:ullNumber];
 	XCTAssertEqual(result.longLongValue, checkNumber.longLongValue + ullNumber.longLongValue);
+}
+
+#pragma mark - numberOperation Edge Semantics
+
+- (void)testDivideNumber_FloatingByZeroFollowsIEEE754 {
+	NSNumber *negInf = [@(-1.0) divideNumber:@0.0];
+	XCTAssertTrue(isinf(negInf.doubleValue));
+	XCTAssertLessThan(negInf.doubleValue, 0.0);
+	
+	NSNumber *posInf = [@1.0 divideNumber:@0.0];
+	XCTAssertTrue(isinf(posInf.doubleValue));
+	XCTAssertGreaterThan(posInf.doubleValue, 0.0);
+	
+	XCTAssertTrue(isnan([@0.0 divideNumber:@0.0].doubleValue));
+	
+	NSNumber *mixedNegInf = [@(-1) divideNumber:@0.0];
+	XCTAssertTrue(isinf(mixedNegInf.doubleValue));
+	XCTAssertLessThan(mixedNegInf.doubleValue, 0.0);
+	
+	// Float operands resolve to float; Foundation reports a non-finite float as 'd'.
+	NSNumber *floatFinite = [[NSNumber numberWithFloat:1.0f] divideNumber:[NSNumber numberWithFloat:4.0f]];
+	XCTAssertEqual(strcmp(floatFinite.objCType, @encode(float)), 0, @"got %s", floatFinite.objCType);
+	XCTAssertEqual(floatFinite.floatValue, 0.25f);
+	
+	NSNumber *floatInf = [[NSNumber numberWithFloat:1.0f] divideNumber:[NSNumber numberWithFloat:0.0f]];
+	XCTAssertTrue(strcmp(floatInf.objCType, @encode(float)) == 0 || strcmp(floatInf.objCType, @encode(double)) == 0,
+				  @"got %s", floatInf.objCType);
+	XCTAssertTrue(isinf(floatInf.floatValue));
+	XCTAssertGreaterThan(floatInf.floatValue, 0.0f);
+	
+	NSNumber *floatNaN = [[NSNumber numberWithFloat:0.0f] divideNumber:[NSNumber numberWithFloat:0.0f]];
+	XCTAssertTrue(strcmp(floatNaN.objCType, @encode(float)) == 0 || strcmp(floatNaN.objCType, @encode(double)) == 0,
+				  @"got %s", floatNaN.objCType);
+	XCTAssertTrue(isnan(floatNaN.floatValue));
+}
+
+- (void)testAddSubtractMultiplyNumber_SignedOverflowReturnsNaN {
+	NSNumber *nan = @(NAN);
+	XCTAssertEqualObjects([@(INT64_MAX) addNumber:@1], nan);
+	XCTAssertEqualObjects([@(INT64_MAX - 1) addNumber:@1], @(INT64_MAX));
+	XCTAssertEqualObjects([@(INT64_MIN) addNumber:@(-1)], nan);
+	
+	XCTAssertEqualObjects([@(INT64_MIN) subtractNumber:@1], nan);
+	XCTAssertEqualObjects([@(INT64_MIN + 1) subtractNumber:@1], @(INT64_MIN));
+	XCTAssertEqualObjects([@(INT64_MAX) subtractNumber:@(-1)], nan);
+	
+	XCTAssertEqualObjects([@(INT64_MAX) multiplyNumber:@2], nan);
+	XCTAssertEqualObjects([@(INT64_MIN) multiplyNumber:@(-1)], nan);
+	XCTAssertEqualObjects([@(INT64_MAX / 2) multiplyNumber:@2], @(INT64_MAX - 1));
+}
+
+- (void)testAddSubtractMultiplyNumber_UnsignedOverflowReturnsNaN {
+	NSNumber *nan = @(NAN);
+	NSMockNumber *zeroUnsigned = [NSMockNumber numberWithUnsignedLongLong:0];
+	NSMockNumber *oneUnsigned = [NSMockNumber numberWithUnsignedLongLong:1];
+	NSMockNumber *twoUnsigned = [NSMockNumber numberWithUnsignedLongLong:2];
+	XCTAssertEqual(strcmp(zeroUnsigned.objCType, @encode(unsigned long long)), 0,
+				   @"Pre-condition: operand must carry a genuine 'Q' encoding");
+	NSNumber *maxUnsigned = [NSNumber numberWithUnsignedLongLong:UINT64_MAX];
+	
+	XCTAssertEqualObjects([zeroUnsigned subtractNumber:oneUnsigned], nan);
+	XCTAssertEqualObjects([oneUnsigned subtractNumber:zeroUnsigned], @1);
+	XCTAssertEqualObjects([zeroUnsigned subtractNumber:zeroUnsigned], @0);
+	
+	XCTAssertEqualObjects([maxUnsigned addNumber:oneUnsigned], nan);
+	XCTAssertEqualObjects([maxUnsigned addNumber:zeroUnsigned], maxUnsigned);
+	
+	XCTAssertEqualObjects([maxUnsigned multiplyNumber:twoUnsigned], nan);
+	XCTAssertEqualObjects([maxUnsigned multiplyNumber:oneUnsigned], maxUnsigned);
+	
+	// Mixed sign in an unsigned long long result: the exact result must be non-negative.
+	XCTAssertEqualObjects([@(-2) addNumber:oneUnsigned], nan);
+	XCTAssertEqualObjects([@(-1) addNumber:oneUnsigned], @0);
+	XCTAssertEqualObjects([oneUnsigned subtractNumber:@(-1)], @2);
+	XCTAssertEqualObjects([oneUnsigned multiplyNumber:@(-1)], nan);
+}
+
+- (void)testPowerNumber_NegativeIntegerExponentUsesDoublePow {
+	NSNumber *half = [@2 powerNumber:@(-1)];
+	XCTAssertEqual(strcmp(half.objCType, @encode(double)), 0, @"got %s", half.objCType);
+	XCTAssertEqualWithAccuracy(half.doubleValue, 0.5, 1e-12);
+	XCTAssertEqualWithAccuracy([@2 powerNumber:@(-2)].doubleValue, 0.25, 1e-12);
+	XCTAssertEqualWithAccuracy([@(-2) powerNumber:@(-3)].doubleValue, -0.125, 1e-12);
+	XCTAssertEqualObjects([@1 powerNumber:@(-5)], @1.0);
+	XCTAssertTrue(isinf([@0 powerNumber:@(-1)].doubleValue));
+	
+	XCTAssertEqualWithAccuracy([[NSMockNumber numberWithUnsignedInt:4] powerNumber:@(-1)].doubleValue, 0.25, 1e-12);
+	XCTAssertEqualWithAccuracy([[NSMockNumber numberWithUnsignedLongLong:4] powerNumber:@(-1)].doubleValue, 0.25, 1e-12);
+	
+	XCTAssertEqualObjects([@2 powerNumber:@3], @8);
+	XCTAssertEqualObjects([@2 powerNumber:@0], @1);
+}
+
+- (void)testXorNumber_NaNOperandReturnsNaN {
+	XCTAssertTrue(isnan([@(NAN) xorNumber:@1].doubleValue));
+	XCTAssertTrue(isnan([@1.5 xorNumber:@(NAN)].doubleValue));
+	XCTAssertTrue(isnan([@(NAN) xorNumber:@(NAN)].doubleValue));
+	
+	NSNumber *floatNaN = [[NSNumber numberWithFloat:NAN] xorNumber:[NSNumber numberWithFloat:1.0f]];
+	XCTAssertTrue(isnan(floatNaN.floatValue));
+	
+	XCTAssertEqualObjects([@15.0 xorNumber:@9.0], @6.0);
+}
+
+- (void)testNumberOperation_NilOrUnsupportedOperandRaises {
+	NSNumber *nilNumber = nil;
+	XCTAssertThrowsSpecificNamed([@1 addNumber:nilNumber], NSException, NSInvalidArgumentException);
+	XCTAssertThrowsSpecificNamed([@1 divideNumber:nilNumber], NSException, NSInvalidArgumentException);
+	XCTAssertThrowsSpecificNamed([@1.5 powerNumber:nilNumber], NSException, NSInvalidArgumentException);
+	XCTAssertThrowsSpecificNamed([@1 xorNumber:nilNumber], NSException, NSInvalidArgumentException);
+	
+	NSMockNumber *unsupported = [NSMockNumber numberWithInt:1];
+	unsupported.typeEncoding = "*";
+	XCTAssertThrowsSpecificNamed([@1 addNumber:unsupported], NSException, NSInvalidArgumentException);
+	XCTAssertThrowsSpecificNamed([unsupported addNumber:@1], NSException, NSInvalidArgumentException);
+	XCTAssertThrowsSpecificNamed([@1.5 multiplyNumber:unsupported], NSException, NSInvalidArgumentException);
 }
 
 #pragma mark - floatToFpXX
@@ -1649,9 +1730,7 @@
 	XCTAssertEqual(floatToFpXX(1.0, 5, 10, -1,  YES), 0);   // negative explicit bias
 	XCTAssertEqual(floatToFpXX(1.0, 5, 10, 100, YES), 0);   // bias > exponentMaxValue (31)
 
-	// Non-finite inputs saturate at the maximum representable magnitude (the format has no
-	// inf/NaN encodings); before the guard these hit (int64_t)log2(inf) undefined behavior
-	// whose result changed with optimization level.
+	// Non-finite inputs saturate at the maximum representable magnitude (the format has no inf/NaN encodings).
 	XCTAssertEqual(floatToFpXX(INFINITY,  5, 10, INT_MIN, NO), 0x7FFF);
 	XCTAssertEqual(floatToFpXX(-INFINITY, 5, 10, INT_MIN, NO), 0xFFFF);
 	XCTAssertEqual(floatToFpXX(NAN,       5, 10, INT_MIN, NO), 0x7FFF);

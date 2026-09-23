@@ -3,9 +3,10 @@
  @copyright		-© 2025 Delicense - @belisoful. All rights released.
  @date			2025-01-01
  @author		belisoful@icloud.com
-@abstract		A system for adding and managing dynamic methods to Objective-C objects at runtime using blocks.
-  @discussion	This header provides a runtime method injection system that adds methods to existing objects
- 				and classes using blocks. The system supports class methods (added to all instances of a class).
+ @abstract		A system for adding and managing dynamic methods to Objective-C objects at runtime using blocks.
+ @discussion	This header provides a runtime method injection system that adds methods to existing objects
+ 				and classes using blocks. It supports object methods (added to one instance) and class
+ 				methods (added to all instances of a class).
 
 				The system provides the following capabilities:
 				- Add methods to existing objects without subclassing
@@ -23,8 +24,8 @@
 				ReturnType (^)(id self, SEL _cmd, ...parameters)
 				```
 				
-				The `SEL _cmd` parameter is optional. If included, the block will receive the selector
-				of the method being called. If omitted, the system automatically adjusts the signature.
+				The `SEL _cmd` parameter is optional. If included, the block receives the selector
+				of the method being called. If omitted, the system adjusts the signature.
 				
 				## Activation and Inheritance
 				
@@ -39,6 +40,16 @@
 				concurrent remove or replace cannot free an implementation that is mid-invocation (no
 				use-after-free).
 
+				A dispatch reads each class in the chain under that class's own lock and enumerates a
+				snapshot of protocol registrations, so a registration on a superclass concurrent with
+				dispatch on a subclass instance does not mutate a collection being enumerated. No lock
+				is held while calling into another class.
+
+				A dispatch compares the invocation against the method record it is about to run. When
+				the record was replaced with a block of a different arity or types after
+				methodSignatureForSelector: produced the invocation, the dispatch does not handle the
+				invocation and it falls through to the original forwardInvocation: path.
+
 				One caveat applies to instance-protocol forwarding: reconfiguring an instance's forwarded
 				protocols (addInstanceProtocol:/removeInstanceProtocol: and related) concurrently with
 				dispatch on that same instance may briefly present a stale view of the forwarded
@@ -49,9 +60,8 @@
 				
 				## Limitations
 				
-				NSMethodSignatures cannot properly encode compiler SIMD, vector, or NEON parameter types and will fail.
-				Use their base types as arrays or pointers instead for arguments.
-				The `_Float16` type also produces errors for malformed Block Signatures.
+				NSMethodSignature cannot encode SIMD, vector, or NEON parameter types; pass their base
+				types as arrays or pointers instead. `_Float16` parameters also fail signature parsing.
 				
 				## Usage Example
 				
@@ -60,14 +70,14 @@
 				[MyClass enableDynamicMethods];
 				
 				// Add a dynamic method to a specific object
-				NSString *str = @"Hello";
-				[str addObjectMethod:@selector(customMethod:) block:^(id self, NSString *param) {
+				MyClass *obj = [[MyClass alloc] init];
+				[obj addObjectMethod:@selector(customMethod:) block:^(id self, NSString *param) {
 					NSLog(@"Called with: %@", param);
-					return [self stringByAppendingString:param];
+					return [param uppercaseString];
 				}];
 				
 				// Add a dynamic method to all instances of a class
-				[NSString addClassMethod:@selector(globalMethod) block:^(id self) {
+				[MyClass addClassMethod:@selector(globalMethod) block:^(id self) {
 					return @"Global method called";
 				}];
 				
@@ -110,6 +120,10 @@
 				(if implemented) to provide a reference to the original object. This
 				allows the implementation to access the original object's state or
 				forward additional method calls.
+
+				The original object stores the target strongly for as long as the protocol
+				is attached. The receiver must store @c object weakly; a strong reference
+				forms a retain cycle and neither object deallocates.
  */
 - (void)setOriginalObject:(id _Nonnull)object;
 @end
@@ -192,8 +206,7 @@
  @property		implementation
  @abstract		The IMP created from the block.
  @discussion	The implementation pointer generated from the block using
-				imp_implementationWithBlock. This is used for direct method invocation
-				and provides optimal performance for dynamic method calls.
+				imp_implementationWithBlock. This is used for direct method invocation.
  */
 @property (assign, nonnull, readonly) IMP implementation;
 
@@ -261,15 +274,13 @@ typedef NS_ENUM(NSInteger, BEDynamicMethodsActivationState) {
 
 /*!
  @category		NSObject (DynamicMethods)
-@abstract		Category that adds dynamic method capabilities to all NSObject instances.
-  @discussion	This category provides the core functionality for adding, removing, and
- 				managing dynamic methods on both individual objects and classes. It supports
- 				class methods (added to all instances of a class).
+ @abstract		Category that adds dynamic method capabilities to all NSObject instances.
+ @discussion	This category adds, removes, and manages dynamic methods on individual objects
+ 				and on classes. Object methods apply to one instance; class methods apply to
+ 				all instances of a class.
  				
- 				Dynamic methods are implemented using blocks and are managed through
- 				associated objects to ensure proper memory management and thread safety.
- 				All operations are synchronized to prevent race conditions in multi-threaded
- 				environments.
+ 				Dynamic methods are blocks stored as associated objects. All operations are
+ 				synchronized.
  				
  				The system distinguishes between:
  				- Class methods: Added to all instances of a class
@@ -301,7 +312,8 @@ typedef NS_ENUM(NSInteger, BEDynamicMethodsActivationState) {
 				By default, this is NO to prevent potential conflicts with system classes.
 				
 				Set this to YES on specific classes if you need to add dynamic methods
-				to Foundation classes. This setting is inherited by subclasses.
+				to Foundation classes. This setting is inherited by subclasses. Setting it
+				on NSObject itself is ignored.
  */
 @property (class, nonatomic, readwrite) BOOL allowNSDynamicMethods;
 
@@ -310,14 +322,22 @@ typedef NS_ENUM(NSInteger, BEDynamicMethodsActivationState) {
 /*!
  @method		enableDynamicMethods
  @abstract		Enables dynamic method support for this class.
- @return		YES if dynamic methods were successfully enabled, NO if they were already enabled or enabling failed.
+ @return		YES if dynamic methods were enabled. NO if they were already enabled, the receiver is
+				NSObject or a metaclass, or the receiver's name begins with "NS" and
+				`allowNSDynamicMethods` is NO.
  @discussion	This class method enables dynamic method support by installing the necessary
 				method swizzling and runtime hooks. Once enabled, the class can use dynamic
 				methods, protocol forwarding, and other dynamic capabilities.
-				
+
 				This method is thread-safe and can be called multiple times safely.
 				Subclasses inherit dynamic method capabilities from their parents.
-				
+
+				A subclass of an enabled class that overrides `respondsToSelector:`,
+				`methodSignatureForSelector:`, `forwardInvocation:`, or `conformsToProtocol:`
+				(or their class-side counterparts) bypasses the inherited hooks for that
+				selector. Calling this method on the subclass wraps each such override, so
+				dynamic dispatch runs before the override.
+
 				@note This method cannot be called on NSObject itself or metaclasses.
  */
 + (BOOL)enableDynamicMethods;
@@ -327,8 +347,9 @@ typedef NS_ENUM(NSInteger, BEDynamicMethodsActivationState) {
  @abstract		Disables dynamic method support for this class.
  @return		YES if dynamic methods were successfully disabled, NO if they were already disabled or disabling failed.
  @discussion	This class method disables dynamic method support for this specific class.
-				Existing dynamic methods remain in memory but will not be invoked.
-				Subclasses are not affected unless they explicitly disable dynamic methods.
+				Existing dynamic methods remain in memory but are not invoked.
+				A subclass with no explicit state of its own inherits the disabled state;
+				a subclass that has called enableDynamicMethods itself keeps its own state.
 				
 				This method is thread-safe and can be called multiple times safely.
 				
@@ -368,23 +389,23 @@ typedef NS_ENUM(NSInteger, BEDynamicMethodsActivationState) {
  @param			selector	The selector for the new method.
  @param			block		The block that implements the method.
  @return		YES if the method was successfully added, NO otherwise.
- @discussion	This class method adds a dynamic method that will be available to all
-				instances of this class and its subclasses. The block should follow the format:
+ @discussion	This class method adds a dynamic method that is available to all
+				instances of this class and its subclasses. The block follows the format:
 				
 				```
 				ReturnType (^)(id self, SEL _cmd, ...parameters)
 				```
 				
-				The SEL parameter is optional. If present, the block will receive the
-				actual selector used to call the method.
+				The SEL parameter is optional. If present, the block receives the
+				selector used to call the method.
 				
-				If a method with the same selector already exists, it will be replaced
-				and the previous implementation will be cleaned up automatically.
+				If a method with the same selector already exists, it is replaced and the
+				previous implementation is released.
 				
-				This method is thread-safe and properly manages memory for the block.
+				This method is thread-safe.
 				
-				@warning The block parameter must be a valid block object. Passing nil
-				or non-block values will result in failure.
+				@warning The block parameter must be a block object. Passing nil or a
+				non-block value returns NO.
  */
 + (BOOL)addClassMethod:(nonnull SEL)selector block:(nullable id)block;
 
@@ -394,7 +415,7 @@ typedef NS_ENUM(NSInteger, BEDynamicMethodsActivationState) {
  @param			selector	The selector of the method to remove.
  @return		YES if the method was successfully removed, NO if it wasn't found.
  @discussion	This class method removes a previously added dynamic class method.
- 				The associated block is properly released and all metadata is cleaned up.
+ 				The block and its metadata are released.
  				
  				This method only removes methods that were added directly to this class,
  				not methods inherited from parent classes.
@@ -422,24 +443,24 @@ typedef NS_ENUM(NSInteger, BEDynamicMethodsActivationState) {
  @param			selector	The selector for the new method.
  @param			block		The block that implements the method.
  @return		YES if the method was successfully added, NO otherwise.
- @discussion	This method adds a dynamic method that will be available only to this
-				specific object instance. The block should follow the format:
+ @discussion	This method adds a dynamic method that is available only to this
+				object instance. The block follows the format:
 				
 				```
 				ReturnType (^)(id self, SEL _cmd, ...parameters)
 				```
 				
-				The SEL parameter is optional. If present, the block will receive the
-				actual selector used to call the method.
+				The SEL parameter is optional. If present, the block receives the
+				selector used to call the method.
 				
 				Object methods take precedence over class methods when both are present.
-				If a method with the same selector already exists on this object, it will
-				be replaced and the previous implementation will be cleaned up automatically.
+				If a method with the same selector already exists on this object, it is
+				replaced and the previous implementation is released.
 				
-				This method is thread-safe and properly manages memory for the block.
+				This method is thread-safe.
 				
-				@warning The block parameter must be a valid block object. Passing nil
-				or non-block values will result in failure.
+				@warning The block parameter must be a block object. Passing nil or a
+				non-block value returns NO.
  */
 - (BOOL)addObjectMethod:(nonnull SEL)selector block:(nullable id)block;
 
@@ -449,7 +470,7 @@ typedef NS_ENUM(NSInteger, BEDynamicMethodsActivationState) {
  @param			selector	The selector of the method to remove.
  @return		YES if the method was successfully removed, NO if it wasn't found.
  @discussion	This method removes a previously added dynamic object method.
-				The associated block is properly released and all metadata is cleaned up.
+				The block and its metadata are released.
 				
 				This method is thread-safe and can be called even if the method doesn't exist.
  */
@@ -475,10 +496,13 @@ typedef NS_ENUM(NSInteger, BEDynamicMethodsActivationState) {
  @return		YES if the protocol was successfully registered, NO otherwise.
  @discussion	This class method registers a protocol for dynamic method forwarding.
 				When a method from this protocol is called on an instance, the system
-				will attempt to forward the call to a registered implementation class.
+				attempts to forward the call to a registered implementation class.
 				
-				The implementation class must be registered separately using
-				addInstanceProtocol:withClass: or the protocol methods will not be forwarded.
+				This registers the protocol with no implementation class. To register the
+				protocol together with its implementation class, call
+				addInstanceProtocol:withClass: instead. A protocol registered by either
+				method cannot be registered again until it is removed; a second registration
+				returns NO.
  */
 + (BOOL)addInstanceProtocol:(nonnull Protocol *)protocol;
 
@@ -489,11 +513,12 @@ typedef NS_ENUM(NSInteger, BEDynamicMethodsActivationState) {
  @return		YES if the class was successfully registered, NO otherwise.
  @discussion	This class method registers a class to handle method calls that don't
 				match any existing methods or protocols. When an unrecognized method
-				is called, the system will create an instance of the target class
-				and forward the method call to it.
+				is called, the system creates an instance of the target class
+				and forwards the method call to it.
 				
-				Multiple forward classes can be registered. The system will try each
+				Multiple forward classes can be registered. The system tries each
 				one in registration order until it finds one that responds to the selector.
+				A class is registered once; registering it again returns NO.
  */
 + (BOOL)addInstanceForwardClass:(nonnull Class)targetClass;
 
@@ -505,14 +530,20 @@ typedef NS_ENUM(NSInteger, BEDynamicMethodsActivationState) {
  @return		YES if the registration was successful, NO otherwise.
  @discussion	This class method registers a protocol along with the class that implements
 				its methods. When a method from the protocol is called on an instance,
-				the system will create an instance of the target class and forward the
+				the system creates an instance of the target class and forwards the
 				method call to it.
 				
 				If protocol is nil, this method behaves like addInstanceForwardClass:.
 				If targetClass is nil, this method behaves like addInstanceProtocol:.
 				
 				The target class can optionally implement the NSProtocolImpClass protocol
-				to receive a reference to the original object via setOriginalObject:.
+				to receive a reference to the original object via setOriginalObject:. The
+				instance stores the created target strongly, so the target must hold the
+				original object weakly.
+
+				Removing a protocol and registering the same protocol with a different class
+				takes effect on every instance at its next dispatch, including instances that
+				already forwarded to the previous class.
  */
 + (BOOL)addInstanceProtocol:(nullable Protocol *)protocol withClass:(nullable Class)targetClass;
 
@@ -522,7 +553,7 @@ typedef NS_ENUM(NSInteger, BEDynamicMethodsActivationState) {
  @param			protocol	The protocol to unregister.
  @return		YES if the protocol was successfully unregistered, NO if it wasn't found.
  @discussion	This class method removes a previously registered protocol from dynamic
-				method forwarding. Methods from this protocol will no longer be forwarded
+				method forwarding. Methods from this protocol are no longer forwarded
 				to implementation classes.
  */
 + (BOOL)removeInstanceProtocol:(nonnull Protocol *)protocol;
@@ -533,7 +564,7 @@ typedef NS_ENUM(NSInteger, BEDynamicMethodsActivationState) {
  @param			targetClass	The class to unregister.
  @return		YES if the class was successfully unregistered, NO if it wasn't found.
  @discussion	This class method removes a previously registered forward class from
-				dynamic method forwarding. The class will no longer receive forwarded
+				dynamic method forwarding. The class no longer receives forwarded
 				method calls for unrecognized selectors.
  */
 + (BOOL)removeInstanceForwardClass:(nonnull Class)targetClass;
@@ -541,16 +572,19 @@ typedef NS_ENUM(NSInteger, BEDynamicMethodsActivationState) {
 /*!
  @method		removeInstanceProtocol:withClass:
  @abstract		Unregisters a protocol and/or class from method forwarding.
- @param			protocol		The protocol to unregister, or nil to match any protocol.
- @param			targetClass		The class to unregister, or nil to match any class.
+ @param			protocol	The protocol to unregister, or nil to select by targetClass.
+ @param			targetClass		The class to unregister, or nil to select by protocol.
  @return		YES if a registration was successfully removed, NO if no match was found.
  @discussion	This class method removes protocol/class registrations from dynamic method
 				forwarding. The parameters work as filters:
 				
-				- If both protocol and targetClass are specified, only that exact combination is removed
-				- If only protocol is specified, the protocol registration is removed regardless of class
-				- If only targetClass is specified, all registrations for that class are removed
-				- If protocol is nil, it matches non-protocol forward targets
+				- If both protocol and targetClass are specified, the protocol registration is removed
+				  only when targetClass is its implementation class.
+				- If only protocol is specified, the protocol registration is removed regardless of class.
+				- If only targetClass is specified, the one registration that class holds is removed:
+				  its protocol registration when it was registered with a protocol, otherwise its
+				  no-protocol forward entry.
+				- If both are nil, nothing is removed and NO is returned.
  */
 + (BOOL)removeInstanceProtocol:(nullable Protocol *)protocol withClass:(nullable Class)targetClass;
 
@@ -568,13 +602,13 @@ typedef NS_ENUM(NSInteger, BEDynamicMethodsActivationState) {
 
 /*!
  @method		targetForProtocol:
- @abstract		returns the target implementation object for a specific protocol.
+ @abstract		Returns the target implementation object for a specific protocol.
  @param			protocol	The protocol to retrieve the target implementation object.
  @return		The target, an NSArray when without a protocol, or nil.
  @discussion	This returns the target implementation for a specific protocol.
  				When the protocol parameter is nil or `\@protocol(NSNoProtocol)`, this
- 				will return an NSArray of targets that don't have a protocol.
- 				nil if none.
+ 				returns an NSArray of the targets registered without a protocol, or nil
+ 				when there are none.
  */
 - (nullable id)targetForProtocol:(nullable Protocol *)protocol;
 
@@ -585,10 +619,12 @@ typedef NS_ENUM(NSInteger, BEDynamicMethodsActivationState) {
  @return		YES if the protocol was successfully registered, NO otherwise.
  @discussion	This method registers a protocol for dynamic method forwarding on this
 				specific object instance. When a method from this protocol is called,
-				the system will attempt to forward the call to a registered target object.
+				the system attempts to forward the call to a registered target object.
 				
-				The target object must be registered separately using addObjectProtocol:withTarget:
-				or the protocol methods will not be forwarded.
+				This registers the protocol with no target. To register the protocol together
+				with its target, call addObjectProtocol:withTarget: instead. A protocol
+				registered by either method cannot be registered again until it is removed; a
+				second registration returns NO.
 				
 				@note Class methods cannot be implemented for object protocols. Dynamic
 				class methods must use addInstanceProtocol:withClass:.
@@ -602,7 +638,7 @@ typedef NS_ENUM(NSInteger, BEDynamicMethodsActivationState) {
  @return		YES if the target was successfully registered, NO otherwise.
  @discussion	This method registers an object to handle method calls that don't
 				match any existing methods or protocols on this specific instance.
-				When an unrecognized method is called, the system will forward
+				When an unrecognized method is called, the system forwards
 				the method call to the target object if it responds to the selector.
 				
 				Multiple forward targets can be registered, at most one per target
@@ -623,13 +659,15 @@ typedef NS_ENUM(NSInteger, BEDynamicMethodsActivationState) {
  @return		YES if the registration was successful, NO otherwise.
  @discussion	This method registers a protocol along with the object that implements
 				its methods on this specific instance. When a method from the protocol
-				is called, the system will forward the method call to the target object.
+				is called, the system forwards the method call to the target object.
 				
 				If protocol is nil, this method behaves like addObjectForwardTarget:.
 				If target is nil, this method behaves like addObjectProtocol:.
 				
-				The target object can optionally implement the NSProtocolImpClass protocol
-				to receive a reference to the original object via setOriginalObject:.
+				The receiver stores @c target strongly, so a target that keeps a reference to
+				the original object must hold it weakly. setOriginalObject: is sent only to
+				targets the class-level sync constructs from an addInstanceProtocol:withClass:
+				registration; a target passed here receives no such message.
 				
 				@note Class methods cannot be implemented for object protocols. Dynamic
 				class methods must use addInstanceProtocol:withClass:.
@@ -643,7 +681,7 @@ typedef NS_ENUM(NSInteger, BEDynamicMethodsActivationState) {
  @return		YES if the protocol was successfully unregistered, NO if it wasn't found.
  @discussion	This method removes a previously registered protocol from dynamic
 				method forwarding on this specific object instance. Methods from this
-				protocol will no longer be forwarded to target objects.
+				protocol are no longer forwarded to target objects.
  */
 - (BOOL)removeObjectProtocol:(nonnull Protocol *)protocol;
 
@@ -654,23 +692,26 @@ typedef NS_ENUM(NSInteger, BEDynamicMethodsActivationState) {
  @return		YES if the target was successfully unregistered, NO if it wasn't found.
  @discussion	This method removes a previously registered forward target from
 				dynamic method forwarding on this specific object instance. The target
-				will no longer receive forwarded method calls for unrecognized selectors.
+				no longer receives forwarded method calls for unrecognized selectors.
  */
 - (BOOL)removeObjectForwardTarget:(nonnull id)target;
 
 /*!
  @method		removeObjectProtocol:withTarget:
  @abstract		Unregisters a protocol and/or target from method forwarding on this object.
- @param			protocol	The protocol to unregister, or nil to match any protocol.
- @param			target		The target to unregister, or nil to match any target.
+ @param			protocol	The protocol to unregister, or nil to select by target.
+ @param			target		The target to unregister, or nil to select by protocol.
  @return		YES if a registration was successfully removed, NO if no match was found.
  @discussion	This method removes protocol/target registrations from dynamic method
 				forwarding on this specific object instance. The parameters work as filters:
 				
-				- If both protocol and target are specified, only that exact combination is removed
-				- If only protocol is specified, the protocol registration is removed regardless of target
-				- If only target is specified, all registrations for that target are removed
-				- If protocol is nil, it matches non-protocol forward targets
+				- If both protocol and target are specified, the protocol registration is removed
+				  only when target is its registered target.
+				- If only protocol is specified, the protocol registration is removed regardless of target.
+				- If only target is specified, the one registration that target holds is removed:
+				  its protocol registration when it was registered with a protocol, otherwise its
+				  no-protocol forward entry.
+				- If both are nil, nothing is removed and NO is returned.
  */
 - (BOOL)removeObjectProtocol:(nullable Protocol *)protocol withTarget:(nullable id)target;
 
@@ -682,7 +723,7 @@ typedef NS_ENUM(NSInteger, BEDynamicMethodsActivationState) {
  @param			selector	The selector to check.
  @return		YES if the selector is a dynamic object method or, for non-class receivers, a
 				dynamic class method; NO otherwise.
-@discussion	Returns YES if any of the following is true, checked in order:
+ @discussion	Returns YES if any of the following is true, checked in order:
  				- The selector is a dynamic object method, or
  				- The selector is handled by an object/instance protocol target (a required
  				  protocol method, or an optional one the target responds to) or a no-protocol
